@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # system imports
 import os
+import sys
 
 # libtcod
 import libtcodpy as libtcod
@@ -27,7 +28,7 @@ RNG = libtcod.random_new_from_seed(RANDOM_SEED)
 # stuff
 map = Map()
 
-player = Player(Position(10,10),'@',libtcod.white)
+player = Player(Position(10,10))
 map.add(player)
 
 mpos = []
@@ -48,11 +49,14 @@ KEYMAP = {
     'u': player.move_ne,
     'b': player.move_sw,
     'n': player.move_se,
+    'q': sys.exit,
 }
+
 def handle_keys():
-    key = libtcod.console_wait_for_keypress(True)
-    if key.pressed and chr(key.c) in KEYMAP:
-            KEYMAP.get(chr(key.c))()
+    key = None
+    while not ( key and key.pressed and chr(key.c) in KEYMAP ):
+        key = libtcod.console_wait_for_keypress(True)
+    KEYMAP.get(chr(key.c))()
 
 # main loop
 while not libtcod.console_is_window_closed():

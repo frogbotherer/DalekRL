@@ -10,21 +10,15 @@ class Position:
 
     def __add__(self,other):
         if isinstance(other,tuple):
-            self.x += other[0]
-            self.y += other[1]
+            return Position(self.x + other[0], self.y + other[1])
         else:
-            self.x += other.x
-            self.y += other.y
-        return self
+            return Position(self.x + other.x, self.y + other.y)
 
     def __sub__(self,other):
         if isinstance(other,tuple):
-            self.x -= other[0]
-            self.y -= other[1]
+            return Position(self.x - other[0], self.y - other[1])
         else:
-            self.x -= other.x
-            self.y -= other.y
-        return self
+            return Position(self.x - other.x, self.y - other.y)
 
     def __gt__(self,other):
         """Furthest from origin is largest; if tied, larger x beats larger y so that we sort left-right, top-bottom"""
@@ -96,6 +90,23 @@ class Mappable:
         #erase the character that represents this object
         libtcod.console_put_char(0, self.pos.x, self.pos.y, ' ', libtcod.BKGND_NONE)
 
+
+class Tanglable:
+    def __init__(self,tangle_turns=5):
+        self.tangle_counter = 0
+        self.tangle_turns = tangle_turns
+
+    def tangle(self):
+        self.tangle_counter = self.tangle_turns
+
+    def is_tangled(self):
+        return self.tangle_counter > 0
+
+    def untangle(self):
+        if not self.is_tangled():
+            return False
+        self.tangle_counter -= 1
+        return True
 
 
 # for later

@@ -25,14 +25,12 @@ class Map:
         
     def add(self, obj, layer=None):
         """add object to map layer"""
-        if not isinstance(obj,Mappable):
-            raise TypeError("%s cannot appear on map"%obj)
+        assert isinstance(obj,Mappable), "%s cannot appear on map"%obj
         if layer is None:
             for l in self.__layer_order:
                 if isinstance(obj, l):
                     layer = l
-        if not layer in self.__layer_order:
-            raise KeyError("No such map layer %s"%layer)
+        assert layer in self.__layer_order, "No such map layer %s"%layer
 
         self.__layers[layer].append(obj)
         obj.map = self
@@ -42,7 +40,9 @@ class Map:
         r = 10000000 # safely larger than the map
         ro = None
         for o in self.__layers[layer]:
-            d = obj.distance_to(o)
+            if obj is o:
+                continue
+            d = obj.pos.distance_to(o.pos)
             if d<r:
                 r  = d
                 ro = o
