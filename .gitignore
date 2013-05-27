@@ -1,2 +1,6 @@
 *~
 __pycache__/*
+.eric*
+*.pyc
+*.pyo
+*.e4p
