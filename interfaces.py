@@ -64,14 +64,22 @@ class Mappable:
     def move_to(self, pos):
         self.pos = pos
 
-    def move_up(self):
-        self.pos += (0,-1)
-    def move_down(self):
-        self.pos += (0,1)
-    def move_left(self):
-        self.pos += (-1,0)
-    def move_right(self):
-        self.pos += (1,0)
+    def move_n(self):
+        self.move( (0,-1) )
+    def move_s(self):
+        self.move( (0,1) )
+    def move_w(self):
+        self.move( (-1,0) )
+    def move_e(self):
+        self.move( (1,0) )
+    def move_ne(self):
+        self.move( (1,-1) )
+    def move_nw(self):
+        self.move( (-1,-1) )
+    def move_se(self):
+        self.move( (1,1) )
+    def move_sw(self):
+        self.move( (-1,1) )
 
 
     ##

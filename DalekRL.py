@@ -40,10 +40,14 @@ while len(mpos)<10:
 
 # handle input
 KEYMAP = {
-    'j': player.move_up,
-    'k': player.move_down, 
-    'h': player.move_left, 
-    'l': player.move_right, 
+    'k': player.move_n,
+    'j': player.move_s, 
+    'h': player.move_w, 
+    'l': player.move_e,
+    'y': player.move_nw,
+    'u': player.move_ne,
+    'b': player.move_sw,
+    'n': player.move_se,
 }
 def handle_keys():
     key = libtcod.console_wait_for_keypress(True)
