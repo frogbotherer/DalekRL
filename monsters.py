@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 import libtcodpy as libtcod
-from interfaces import Mappable, Tanglable, Position
+from interfaces import Mappable, Tanglable, Position, Activatable, Activator
+from items import HandTeleport
 
 class Monster (Mappable):
     def take_turn(self):
@@ -55,10 +56,35 @@ class Dalek (Monster,Tanglable):
 
 
 # put here for now
-class Player (Mappable):
+class Player (Mappable,Activator):
     def __init__(self,pos):
         Mappable.__init__(self,pos,'@',libtcod.white)
-        self.items = [None,None,None]
+        self.items = [HandTeleport(self),None,None]
 
-#    def use_item(self,slot):
-#        assert slot 
+    def use_item(self,slot):
+        assert slot<len(self.items), "Using undefined item slot"
+        if self.items[slot] is None:
+            return
+        assert isinstance(self.items[slot],Activatable)
+        
+        return self.items[slot].activate()
+
+
+    def move_n(self):
+        self.move( (0,-1) )
+    def move_s(self):
+        self.move( (0,1) )
+    def move_w(self):
+        self.move( (-1,0) )
+    def move_e(self):
+        self.move( (1,0) )
+    def move_ne(self):
+        self.move( (1,-1) )
+    def move_nw(self):
+        self.move( (-1,-1) )
+    def move_se(self):
+        self.move( (1,1) )
+    def move_sw(self):
+        self.move( (-1,1) )
+    def use_item1(self):
+        self.use_item(0)

@@ -58,23 +58,6 @@ class Mappable:
     def move_to(self, pos):
         self.pos = pos
 
-    def move_n(self):
-        self.move( (0,-1) )
-    def move_s(self):
-        self.move( (0,1) )
-    def move_w(self):
-        self.move( (-1,0) )
-    def move_e(self):
-        self.move( (1,0) )
-    def move_ne(self):
-        self.move( (1,-1) )
-    def move_nw(self):
-        self.move( (-1,-1) )
-    def move_se(self):
-        self.move( (1,1) )
-    def move_sw(self):
-        self.move( (-1,1) )
-
 
     ##
     # map stuff
@@ -110,7 +93,20 @@ class Tanglable:
 
 
 # for later
-class Item:
-    pass
 class Tile:
     pass
+
+
+class Carryable:
+    pass
+
+class Activator:
+    pass
+
+class Activatable:
+    def __init__(self,owner):
+        assert isinstance(owner,Activator), "%s can't activate %s"%(owner,self.__classname__)
+        self.owner = owner
+
+    def activate(self):
+        raise NotImplementedError("%s can't be activated"%self.__classname__)

@@ -38,6 +38,7 @@ KEYMAP = {
     'u': player.move_ne,
     'b': player.move_sw,
     'n': player.move_se,
+    '1': player.use_item1,
     'q': sys.exit,
 }
 

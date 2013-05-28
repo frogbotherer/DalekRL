@@ -3,13 +3,10 @@
 import libtcodpy as libtcod
 from monsters import Monster, Player, Dalek
 from interfaces import Mappable, Position
-
+from items import Item
 
 class Tile:
     pass
-class Item:
-    pass
-
 
 class Map:
     __layer_order = [Tile,Item,Monster,Player]
@@ -52,6 +49,14 @@ class Map:
                 ro = o
         return ro
 
+    def find_random_clear(self):
+        """find random clear cell in map"""
+        occupied = map( lambda o: o.pos, self.__layers[Player] + self.__layers[Monster] )
+        while 1:
+            p = Position(libtcod.random_get_int(self.rng,1,self.size.x),libtcod.random_get_int(self.rng,1,self.size.y))
+            if not p in occupied:
+                return p
+
     def draw(self):
         """draw the map"""
         for layer in self.__layer_order:
@@ -73,13 +78,10 @@ class Map:
 class DalekMap(Map):
 
     def generate(self):
-        self.player = Player(Position(10,10))
+        self.player = Player(self.find_random_clear())
         self.add(self.player)
 
-        mpos = []
-        while len(mpos)<10:
-            p = Position(libtcod.random_get_int(self.rng,1,self.size.x),libtcod.random_get_int(self.rng,1,self.size.y))
-            if not p in mpos:
-                mpos.append(p)
-                self.add(Dalek(p))
+        for i in range(1,10):
+            d = Dalek(self.find_random_clear())
+            self.add(d)
 
