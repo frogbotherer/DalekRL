@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 import libtcodpy as libtcod
-from monsters import Monster, Player
-from interfaces import Mappable
+from monsters import Monster, Player, Dalek
+from interfaces import Mappable, Position
 
 
 class Tile:
@@ -14,7 +14,8 @@ class Item:
 class Map:
     __layer_order = [Tile,Item,Monster,Player]
 
-    def __init__(self):
+    def __init__(self, seed, size):
+        self.player = None
         self.monsters = []
         self.__layers = {
             Player: [],
@@ -22,6 +23,9 @@ class Map:
             Item: [],
             Tile: []
             }
+        self.rng = libtcod.random_new_from_seed(seed)
+        self.size = size
+
         
     def add(self, obj, layer=None):
         """add object to map layer"""
@@ -61,5 +65,21 @@ class Map:
                 d.clear()
 
 
+    def generate(self):
+        raise NotImplementedError
 
+
+
+class DalekMap(Map):
+
+    def generate(self):
+        self.player = Player(Position(10,10))
+        self.add(self.player)
+
+        mpos = []
+        while len(mpos)<10:
+            p = Position(libtcod.random_get_int(self.rng,1,self.size.x),libtcod.random_get_int(self.rng,1,self.size.y))
+            if not p in mpos:
+                mpos.append(p)
+                self.add(Dalek(p))
 

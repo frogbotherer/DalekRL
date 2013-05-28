@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 # system imports
 import os
 import sys
@@ -9,35 +10,23 @@ import libtcodpy as libtcod
 # our imports
 from interfaces import Position
 from monsters import *
-from maps import Map
+from maps import DalekMap
 
-SCREEN_WIDTH = 80
-SCREEN_HEIGHT = 50
+SCREEN_SIZE = Position(80,50)
 LIMIT_FPS = 30
 RANDOM_SEED = 1999
 
 # init window
 font = os.path.join(b'resources', b'consolas10x10_gs_tc.png')
 libtcod.console_set_custom_font(font, libtcod.FONT_TYPE_GREYSCALE | libtcod.FONT_LAYOUT_TCOD)
-libtcod.console_init_root(SCREEN_WIDTH, SCREEN_HEIGHT, b'DalekRL')
+libtcod.console_init_root(SCREEN_SIZE.x, SCREEN_SIZE.y, b'DalekRL')
 libtcod.sys_set_fps(LIMIT_FPS)
 
-# init random
-RNG = libtcod.random_new_from_seed(RANDOM_SEED)
-
-# stuff
-map = Map()
-
-player = Player(Position(10,10))
-map.add(player)
-
-mpos = []
-while len(mpos)<10:
-    p = Position(libtcod.random_get_int(RNG,1,SCREEN_WIDTH),libtcod.random_get_int(RNG,1,SCREEN_HEIGHT))
-    if not p in mpos:
-        mpos.append(p)
-        map.add(Dalek(p))
-
+# generate default map
+map = DalekMap(RANDOM_SEED,SCREEN_SIZE)
+map.generate()
+assert not map.player is None
+player = map.player
 
 # handle input
 KEYMAP = {
