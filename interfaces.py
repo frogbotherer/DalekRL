@@ -53,10 +53,11 @@ class Mappable:
     ##
     # movement
     def move(self, delta):
-        #move by the given amount
+        """move by a delta"""
         self.pos += delta
  
     def move_to(self, pos):
+        """move by an absolute"""
         self.pos = pos
 
 
@@ -70,8 +71,8 @@ class Mappable:
         libtcod.console_put_char(0, self.pos.x, self.pos.y, self.symbol, libtcod.BKGND_NONE)
  
     def clear(self):
-        #if not self.is_visible: # this probably needs to be cleverer
-        #    return
+        if not self.is_visible: # this probably needs to be cleverer
+            return
 
         #erase the character that represents this object
         libtcod.console_put_char(0, self.pos.x, self.pos.y, ' ', libtcod.BKGND_NONE)

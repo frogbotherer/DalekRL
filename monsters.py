@@ -20,8 +20,8 @@ class Dalek (Monster,Tanglable):
         # sanity checks
         assert not self.map is None, "%s can't take turn without a map" % self
 
-        # if tangled: untangle
-        if self.untangle():
+        # if not visible, do nothing
+        if not self.is_visible:
             return
 
         # find player

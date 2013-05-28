@@ -52,7 +52,7 @@ class Map:
         r = 10000000 # safely larger than the map
         ro = None
         for o in self.__layers[layer]:
-            if obj is o:
+            if obj is o or not obj.is_visible:
                 continue
             d = obj.pos.distance_to(o.pos)
             if d<r:

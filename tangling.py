@@ -13,7 +13,7 @@ class Tanglable:
             other.add(self)
             
         elif isinstance(other,Tanglable):
-            assert other.tangled_with is None, "oops tangling is broken"
+            assert other.tangled_with is None, "oops tangling is broken. %s is still tangled with %s" %(other,other.tangled_with)
             t = Tangle()
             t.add(self)
             t.add(other)
@@ -23,11 +23,6 @@ class Tanglable:
 
     def is_tangled(self):
         return not self.tangled_with is None and self.tangled_with.tangle_counter > 0
-
-    def untangle(self):
-        if not self.is_tangled():
-            return False
-        return self.tangled_with.untangle()
 
 
 from monsters import Monster
@@ -49,21 +44,22 @@ class Tangle(Monster):
             monster.tangled_with = self
             # hide monster
             monster.is_visible = False
-            # find largest turn count of monsters in pile
-            # ... and multiply by size of pile
-            self.tangle_counter = len(self.__dogpile) * max(map(lambda o: o.tangle_turns, self.__dogpile))
+            # increment tangle counter
+            self.tangle_counter += monster.tangle_turns
 
-    def untangle(self):
+    def take_turn(self):
+        if self.tangle_counter == 0:
+            return
+
         self.tangle_counter -= 1
         if self.tangle_counter == 0:
             # restore monsters in dogpile
             for o in self.__dogpile:
-                o.is_visible = True
                 o.tangled_with = None
+                o.is_visible = True
                 # TODO: tell monsters not to immediately tangle again
             # remove tangle from map
             self.map.remove(self)
-            return False
-        return True
+
 
 
