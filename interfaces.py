@@ -48,6 +48,7 @@ class Mappable:
         self.symbol = symbol
         self.colour = colour
         self.walk_cost = walk_cost
+        self.is_visible = True
 
     ##
     # movement
@@ -60,36 +61,24 @@ class Mappable:
 
 
     ##
-    # map stuff
-
-    ##
     # drawing
     def draw(self):
+        if not self.is_visible:
+            return
         #set the color and then draw the character that represents this object at its position
         libtcod.console_set_default_foreground(0, self.colour)
         libtcod.console_put_char(0, self.pos.x, self.pos.y, self.symbol, libtcod.BKGND_NONE)
  
     def clear(self):
+        #if not self.is_visible: # this probably needs to be cleverer
+        #    return
+
         #erase the character that represents this object
         libtcod.console_put_char(0, self.pos.x, self.pos.y, ' ', libtcod.BKGND_NONE)
 
 
-class Tanglable:
-    def __init__(self,tangle_turns=5):
-        self.tangle_counter = 0
-        self.tangle_turns = tangle_turns
 
-    def tangle(self):
-        self.tangle_counter = self.tangle_turns
 
-    def is_tangled(self):
-        return self.tangle_counter > 0
-
-    def untangle(self):
-        if not self.is_tangled():
-            return False
-        self.tangle_counter -= 1
-        return True
 
 
 # for later

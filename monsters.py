@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 
 import libtcodpy as libtcod
-from interfaces import Mappable, Tanglable, Position, Activatable, Activator
+from interfaces import Mappable, Position, Activatable, Activator
 from items import HandTeleport
 
 class Monster (Mappable):
     def take_turn(self):
         pass
+
+from tangling import Tanglable
 
 
 class Dalek (Monster,Tanglable):
@@ -49,10 +51,10 @@ class Dalek (Monster,Tanglable):
 
         # if on monster square: tangle
         if self.pos == m.pos:
-            self.tangle()
-            m.tangle()
+            self.tangle(m)
 
 
+    
 
 
 # put here for now
