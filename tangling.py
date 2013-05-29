@@ -13,8 +13,9 @@ class Tanglable:
             other.add(self)
             
         elif isinstance(other,Tanglable):
-            assert other.tangled_with is None, "oops tangling is broken. %s is still tangled with %s" %(other,other.tangled_with)
-            t = Tangle()
+            t = other.tangled_with
+            if other.tangled_with is None:
+                t = Tangle()
             t.add(self)
             t.add(other)
 
@@ -28,6 +29,7 @@ class Tanglable:
 from monsters import Monster
 
 class Tangle(Monster):
+
     def __init__(self):
         self.__dogpile = []
         self.tangle_counter = 0
@@ -37,7 +39,6 @@ class Tangle(Monster):
         if not monster in self.__dogpile:
             if self.pos is None:
                 self.pos = monster.pos
-                print("%s %s"%(self.pos,self))
                 monster.map.add(self)
             self.__dogpile.append(monster)
             # create reference to tangle
@@ -60,6 +61,5 @@ class Tangle(Monster):
                 # TODO: tell monsters not to immediately tangle again
             # remove tangle from map
             self.map.remove(self)
-
 
 

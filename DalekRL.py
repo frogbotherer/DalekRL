@@ -64,3 +64,4 @@ while not libtcod.console_is_window_closed():
     # monster movement
     for m in map.monsters:
         m.take_turn()
+

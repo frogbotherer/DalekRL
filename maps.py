@@ -67,7 +67,7 @@ class Map:
         if from_map_seed:
             rng = self.map_rng
         while 1:
-            p = Position(libtcod.random_get_int(rng,1,self.size.x),libtcod.random_get_int(rng,1,self.size.y))
+            p = Position(libtcod.random_get_int(rng,0,self.size.x-1),libtcod.random_get_int(rng,0,self.size.y-1))
             if not p in occupied:
                 return p
 

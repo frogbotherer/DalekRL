@@ -8,8 +8,12 @@ class Monster (Mappable):
     def take_turn(self):
         pass
 
-from tangling import Tanglable
+    def __str__(self):
+        return "%s at %s" %(self.__class__.__name__,self.pos)
 
+
+
+from tangling import Tanglable
 
 class Dalek (Monster,Tanglable):
     def __init__(self,pos=None):
@@ -51,6 +55,7 @@ class Dalek (Monster,Tanglable):
 
         # if on monster square: tangle
         if self.pos == m.pos:
+            print( "found %s" % m)
             self.tangle(m)
 
 
