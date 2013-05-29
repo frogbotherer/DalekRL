@@ -3,6 +3,7 @@
 import libtcodpy as libtcod
 from interfaces import Mappable, Position, Activatable, Activator
 from items import HandTeleport
+from errors import GameOverError
 
 class Monster (Mappable):
     def take_turn(self):
@@ -51,11 +52,10 @@ class Dalek (Monster,Tanglable):
 
         # if on player square: lose
         if self.pos == p.pos:
-            raise Exception("Game Over")
+            raise GameOverError("Game Over")
 
         # if on monster square: tangle
         if self.pos == m.pos:
-            print( "found %s" % m)
             self.tangle(m)
 
 

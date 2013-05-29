@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 
 import libtcodpy as libtcod
-from monsters import Monster, Player, Dalek
-from interfaces import Mappable, Position
-from items import Item
 
-class Tile:
-    pass
+from monsters import Monster, Player, Dalek
+from interfaces import Mappable, Position, Traversable
+from items import Item
+from tiles import Tile, Wall
 
 class Map:
     __layer_order = [Tile,Item,Monster,Player]
@@ -62,7 +61,11 @@ class Map:
 
     def find_random_clear(self,from_map_seed=False):
         """find random clear cell in map"""
-        occupied = map( lambda o: o.pos, self.__layers[Player] + self.__layers[Monster] )
+        occupied = map( lambda o: o.pos, 
+                        self.__layers[Player]
+                         + self.__layers[Monster]
+                         + list(filter(lambda t: t.blocks_movement(), self.__layers[Tile]))
+                        )
         rng = self.rng
         if from_map_seed:
             rng = self.map_rng
@@ -70,6 +73,28 @@ class Map:
             p = Position(libtcod.random_get_int(rng,0,self.size.x-1),libtcod.random_get_int(rng,0,self.size.y-1))
             if not p in occupied:
                 return p
+
+    def find_at_pos(self, pos, layer=None):
+        # TODO: this is stunningly inefficient; the map should be keyed by position
+        layers = [layer]
+        if layer is None:
+            layers = self.__layer_order
+        for l in layers:
+            for o in self.__layers[l]:
+                if o.pos == pos:
+                    return o
+        return None
+
+    def get_walk_cost(self, pos):
+        obj = self.find_at_pos(pos,Tile)
+        if isinstance(obj,Traversable):
+            return obj.walk_cost
+        else:
+            # can traverse an empty space and objects that don't implement Traversable
+            return 1.0
+
+    def is_blocked(self, pos):
+        return self.get_walk_cost(pos) == 0.0
 
     def draw(self):
         """draw the map"""
@@ -92,9 +117,19 @@ class Map:
 class DalekMap(Map):
 
     def generate(self):
+        # place map edges
+        for i in range(0,self.size.x):
+            self.add(Wall(Position(i,0)))
+            self.add(Wall(Position(i,self.size.y-1)))
+        for i in range(1,self.size.y-1):
+            self.add(Wall(Position(0,i)))
+            self.add(Wall(Position(self.size.x-1,i)))
+
+        # place player
         self.player = Player(self.find_random_clear(True))
         self.add(self.player)
 
+        # place daleks
         for i in range(1,10):
             d = Dalek(self.find_random_clear(True))
             self.add(d)

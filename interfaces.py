@@ -3,6 +3,8 @@
 import libtcodpy as libtcod
 from math import hypot
 
+from errors import InvalidMoveError
+
 class Position:
     def __init__(self,x,y):
         self.x = x
@@ -42,22 +44,28 @@ class Position:
 class Mappable:
     """Can appear on the map"""
 
-    def __init__(self,pos,symbol,colour,walk_cost=0.0):
+    def __init__(self, pos, symbol, colour):
         self.map = None
         self.pos = pos
         self.symbol = symbol
         self.colour = colour
-        self.walk_cost = walk_cost
         self.is_visible = True
 
     ##
     # movement
     def move(self, delta):
         """move by a delta"""
+        # test whether movement is valid
+        if not self.map is None and self.map.is_blocked(self.pos+delta):
+            raise InvalidMoveError( "Can't move %s by %s"%(self,delta) )
+            
         self.pos += delta
  
     def move_to(self, pos):
         """move by an absolute"""
+        # test whether movement is valid
+        if not self.map is None and self.map.is_blocked(pos):
+            raise InvalidMoveError( "Can't move %s to %s"%(self,pos) )
         self.pos = pos
 
 
@@ -80,11 +88,14 @@ class Mappable:
 
 
 
+class Traversable:
+    def __init__(self, walk_cost=0.0):
+        # 0.0 => can't traverse
+        # 1.0 => traverse with no penalty
+        self.walk_cost = walk_cost
 
-
-# for later
-class Tile:
-    pass
+    def blocks_movement(self):
+        return self.walk_cost == 0.0
 
 
 class Carryable:
