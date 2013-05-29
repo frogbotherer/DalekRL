@@ -9,8 +9,8 @@ import libtcodpy as libtcod
 
 # our imports
 from interfaces import Position
-from monsters import *
 from maps import DalekMap
+from errors import InvalidMoveError
 
 SCREEN_SIZE = Position(80,50)
 LIMIT_FPS = 30
@@ -29,6 +29,8 @@ assert not map.player is None
 player = map.player
 
 # handle input
+def do_nothing():
+    pass
 KEYMAP = {
     'k': player.move_n,
     'j': player.move_s, 
@@ -38,6 +40,7 @@ KEYMAP = {
     'u': player.move_ne,
     'b': player.move_sw,
     'n': player.move_se,
+    '.': do_nothing,
     '1': player.use_item1,
     'q': sys.exit,
 }
@@ -58,8 +61,12 @@ while not libtcod.console_is_window_closed():
     # clear screen
     map.cls()
     
-    # handle player input
-    handle_keys()
+    try:
+        # handle player input
+        handle_keys()
+    except InvalidMoveError:
+        print("You can't move like that")
+        continue
 
     # monster movement
     for m in map.monsters:
