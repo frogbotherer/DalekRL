@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import libtcodpy as libtcod
-from interfaces import Mappable, Position, Activatable, Activator
+from interfaces import Mappable, Position, Activatable, Activator, CountUp
 from items import HandTeleport
 from errors import GameOverError
 
@@ -95,3 +95,19 @@ class Player (Mappable,Activator):
         self.move( (-1,1) )
     def use_item1(self):
         self.use_item(0)
+
+
+class Stairs(Monster,CountUp,Tanglable):
+    def __init__(self, pos):
+        Monster.__init__(self, pos, '<', libtcod.grey)
+        CountUp.__init__(self, 10)
+        Tanglable.__init__(self, 10)
+
+    def take_turn(self):
+        if self.pos == self.map.player.pos:
+            if self.inc():
+                raise GameOverError("You have escaped!")
+            else:
+                print("%d turns to win"%(self.count_to-self.count))
+        else:
+            self.reset()

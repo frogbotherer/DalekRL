@@ -2,7 +2,7 @@
 
 import libtcodpy as libtcod
 
-from monsters import Monster, Player, Dalek
+from monsters import Monster, Player, Dalek, Stairs
 from interfaces import Mappable, Position, Traversable
 from items import Item
 from tiles import Tile, Wall
@@ -124,6 +124,9 @@ class DalekMap(Map):
         for i in range(1,self.size.y-1):
             self.add(Wall(Position(0,i)))
             self.add(Wall(Position(self.size.x-1,i)))
+
+        # place stairs
+        self.add(Stairs(self.find_random_clear(True)))
 
         # place player
         self.player = Player(self.find_random_clear(True))

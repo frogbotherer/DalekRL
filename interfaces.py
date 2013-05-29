@@ -98,6 +98,22 @@ class Traversable:
         return self.walk_cost == 0.0
 
 
+class CountUp:
+    """things that count up (e.g. multi-turn stairs traversal)"""
+    def __init__(self,count_to):
+        self.count_to = count_to
+        self.count    = 0
+
+    def inc(self):
+        self.count += 1
+        return self.count == self.count_to
+
+    def reset(self):
+        self.count = 0
+
+
+
+
 class Carryable:
     pass
 
