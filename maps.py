@@ -5,7 +5,7 @@ import libtcodpy as libtcod
 from monsters import Monster, Player, Dalek, Stairs
 from interfaces import Mappable, Position, Traversable
 from items import Item
-from tiles import Tile, Wall
+from tiles import Tile, Wall, Floor
 
 class Map:
     __layer_order = [Tile,Item,Monster,Player]
@@ -22,7 +22,6 @@ class Map:
         self.map_rng = libtcod.random_new_from_seed(seed)
         self.rng = libtcod.random_get_instance()
         self.size = size
-
         
     def __get_layer_from_obj(self, obj):
         for l in self.__layer_order:
@@ -71,7 +70,7 @@ class Map:
             rng = self.map_rng
         while 1:
             p = Position(libtcod.random_get_int(rng,0,self.size.x-1),libtcod.random_get_int(rng,0,self.size.y-1))
-            if not p in occupied:
+            if not p in occupied and not self.is_blocked(p):
                 return p
 
     def find_at_pos(self, pos, layer=None):
@@ -90,8 +89,8 @@ class Map:
         if isinstance(obj,Traversable):
             return obj.walk_cost
         else:
-            # can traverse an empty space and objects that don't implement Traversable
-            return 1.0
+            # can't traverse an empty space and objects that don't implement Traversable
+            return 0.0
 
     def is_blocked(self, pos):
         return self.get_walk_cost(pos) == 0.0
@@ -124,6 +123,18 @@ class DalekMap(Map):
         for i in range(1,self.size.y-1):
             self.add(Wall(Position(0,i)))
             self.add(Wall(Position(self.size.x-1,i)))
+
+        # put floor in
+        # put an impassable box in the middle
+        for i in range(1,self.size.x-1):
+            for j in range(1,self.size.y-1):
+                if i in range(int(self.size.x/4),int(self.size.x*3/4)+1) and j in range(int(self.size.y/4),int(self.size.y*3/4)+1):
+                    if i in (int(self.size.x/4),int(self.size.x*3/4)) or j in (int(self.size.y/4),int(self.size.y*3/4)):
+                        self.add(Wall(Position(i,j)))
+                    else:
+                        pass
+                else:
+                    self.add(Floor(Position(i,j)))
 
         # place stairs
         self.add(Stairs(self.find_random_clear(True)))

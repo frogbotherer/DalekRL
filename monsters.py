@@ -102,11 +102,11 @@ class Player (Mappable,Activator):
 class Stairs(Monster,CountUp,Tanglable):
     def __init__(self, pos):
         Monster.__init__(self, pos, '<', libtcod.grey)
-        CountUp.__init__(self, 10)
+        CountUp.__init__(self, 11)
         Tanglable.__init__(self, 10)
 
         self.bar = HBar(Position(pos.x-2,pos.y-1),5,libtcod.light_blue,libtcod.darkest_grey)
-        self.bar.max_value = self.count_to
+        self.bar.max_value = self.count_to-1
 
     def take_turn(self):
         if self.pos == self.map.player.pos:

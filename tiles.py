@@ -10,7 +10,11 @@ class Tile(Mappable,Traversable):
 
 class Wall(Tile):
     def __init__(self, pos):
-        Tile.__init__(self, pos, '#', libtcod.grey)
+        Tile.__init__(self, pos, '#', libtcod.light_grey)
+
+class Floor(Tile):
+    def __init__(self, pos):
+        Tile.__init__(self, pos, '.', libtcod.dark_grey, 1.0)
 
 #class Stairs(Tile):
 #    def __init__(self, pos):
