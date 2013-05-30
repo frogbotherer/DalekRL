@@ -133,7 +133,7 @@ class DalekMap(Map):
         self.add(self.player)
 
         # place daleks
-        for i in range(1,10):
+        for i in range(0,10):
             d = Dalek(self.find_random_clear(True))
             self.add(d)
 

@@ -4,6 +4,8 @@ import libtcodpy as libtcod
 from interfaces import Mappable, Position, Activatable, Activator, CountUp
 from items import HandTeleport
 from errors import GameOverError
+from ui import HBar
+
 
 class Monster (Mappable):
     def take_turn(self):
@@ -103,6 +105,9 @@ class Stairs(Monster,CountUp,Tanglable):
         CountUp.__init__(self, 10)
         Tanglable.__init__(self, 10)
 
+        self.bar = HBar(Position(pos.x-2,pos.y-1),5,libtcod.light_blue,libtcod.darkest_grey)
+        self.bar.max_value = self.count_to
+
     def take_turn(self):
         if self.pos == self.map.player.pos:
             if self.inc():
@@ -111,3 +116,11 @@ class Stairs(Monster,CountUp,Tanglable):
                 print("%d turns to win"%(self.count_to-self.count))
         else:
             self.reset()
+
+    def draw(self):
+        Monster.draw(self)
+        if self.count>0:
+            self.bar.value = self.count_to-self.count
+            self.bar.draw()
+
+    
