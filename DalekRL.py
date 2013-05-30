@@ -8,7 +8,7 @@ import sys
 import libtcodpy as libtcod
 
 # our imports
-from interfaces import Position
+from interfaces import Position, UI
 from maps import DalekMap
 from errors import InvalidMoveError
 
@@ -56,10 +56,12 @@ while not libtcod.console_is_window_closed():
 
     # draw and flush screen
     map.draw()
+    UI.draw_all()
     libtcod.console_flush()
     
     # clear screen
-    map.cls()
+    #map.cls()
+    libtcod.console_clear(0)
     
     try:
         # handle player input

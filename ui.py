@@ -2,9 +2,11 @@
 
 import libtcodpy as libtcod
 
+from interfaces import UI
 
-class Bar:
+class Bar(UI):
     def __init__(self, pos, size, fgcolours, bgcolour, show_numerator=True, show_denominator=False):
+        UI.__init__(self)
         self.pos = pos
         self.size = size
         if not isinstance(fgcolours,list):
@@ -22,6 +24,7 @@ class Bar:
 
     def draw(self):
         raise NotImplementedError
+
 
 class HBar(Bar):
     
@@ -48,5 +51,4 @@ class HBar(Bar):
                     fg_idx += 1
                     assert fg_idx < len(self.percentiles), "HBar not configured correctly"
                 col = self.fgcolours[fg_idx]
-            print("  %d/%d %2f %2f"%(i,self.size,f,fv))
             libtcod.console_put_char_ex(0, self.pos.x+i, self.pos.y, s[i], libtcod.white, col)

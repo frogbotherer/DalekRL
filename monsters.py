@@ -110,17 +110,16 @@ class Stairs(Monster,CountUp,Tanglable):
 
     def take_turn(self):
         if self.pos == self.map.player.pos:
+            if self.count == 0:
+                self.bar.is_visible = True
             if self.inc():
                 raise GameOverError("You have escaped!")
             else:
-                print("%d turns to win"%(self.count_to-self.count))
+                self.bar.value = self.count_to-self.count
         else:
+            self.bar.is_visible = False
+            self.bar.value = 0
             self.reset()
 
-    def draw(self):
-        Monster.draw(self)
-        if self.count>0:
-            self.bar.value = self.count_to-self.count
-            self.bar.draw()
 
     

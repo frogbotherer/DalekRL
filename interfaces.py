@@ -87,6 +87,20 @@ class Mappable:
 
 
 
+class UI:
+    ui_elements = []
+    def __init__(self):
+        self.ui_elements.append(self)
+        self.is_visible = False
+
+    def __del__(self):
+        self.ui_elements.remove(self)
+
+    def draw_all():
+        for e in UI.ui_elements:
+            if e.is_visible:
+                e.draw()
+
 
 class Traversable:
     def __init__(self, walk_cost=0.0):

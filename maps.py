@@ -17,7 +17,7 @@ class Map:
             Player: [],
             Monster: self.monsters,
             Item: [],
-            Tile: []
+            Tile: [],
             }
         self.map_rng = libtcod.random_new_from_seed(seed)
         self.rng = libtcod.random_get_instance()
