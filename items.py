@@ -3,6 +3,7 @@
 import libtcodpy as libtcod
 
 from interfaces import Carryable, Activatable, CountUp
+from ui import Bar, Message
 
 class Item(Carryable, Activatable):
     def __str__(self):

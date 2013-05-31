@@ -27,7 +27,7 @@ libtcod.console_init_root(SCREEN_SIZE.x, SCREEN_SIZE.y, b'DalekRL')
 libtcod.sys_set_fps(LIMIT_FPS)
 
 # generate default map
-map = DalekMap(RANDOM_SEED,SCREEN_SIZE)
+map = DalekMap(RANDOM_SEED,SCREEN_SIZE-(0,4))
 map.generate()
 assert not map.player is None
 player = map.player

@@ -4,6 +4,20 @@ import libtcodpy as libtcod
 
 from interfaces import UI
 
+class Message(UI):
+    def __init__(self, pos, text, centred=False):
+        UI.__init__(self)
+        self.pos = pos
+        self.text = text
+        self.centred = centred
+
+    def draw(self):
+        x = self.pos.x
+        if self.centred:
+            x -= len(self.text)//2
+        libtcod.console_print(0, x, self.pos.y, self.text) #, libtcod.white, libtcod.BKGND_NONE)
+
+
 class Bar(UI):
     def __init__(self, pos, size, fgcolours, bgcolour, show_numerator=True, show_denominator=False):
         UI.__init__(self)

@@ -156,11 +156,15 @@ class DalekMap(Map):
             self.add(Wall(Position(self.size.x-1,i)))
 
         # put floor in
-        # put an impassable box in the middle
+        # put a randomly-sized impassable box in the middle
+        left_x   = int(libtcod.random_get_float(self.map_rng,0.1,0.4)*self.size.x)
+        right_x  = int(libtcod.random_get_float(self.map_rng,0.6,0.9)*self.size.x)
+        top_y    = int(libtcod.random_get_float(self.map_rng,0.1,0.4)*self.size.y)
+        bottom_y = int(libtcod.random_get_float(self.map_rng,0.6,0.9)*self.size.y)
         for i in range(1,self.size.x-1):
             for j in range(1,self.size.y-1):
-                if i in range(self.size.x//4,self.size.x*3//4+1) and j in range(self.size.y//4,self.size.y*3//4+1):
-                    if i in (self.size.x//4,self.size.x*3//4) or j in (self.size.y//4,self.size.y*3//4):
+                if i in range(left_x,right_x+1) and j in range(top_y,bottom_y+1):
+                    if i in (left_x,right_x) or j in (top_y,bottom_y):
                         self.add(Wall(Position(i,j)))
                     else:
                         pass

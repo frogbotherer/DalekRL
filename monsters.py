@@ -4,7 +4,7 @@ import libtcodpy as libtcod
 from interfaces import Mappable, Position, Activatable, Activator, CountUp
 from items import HandTeleport
 from errors import GameOverError, InvalidMoveError
-from ui import HBar
+from ui import HBar, Message
 
 
 class Monster (Mappable):
@@ -22,6 +22,8 @@ class Dalek (Monster,Tanglable):
     def __init__(self,pos=None):
         Monster.__init__(self,pos,'D',libtcod.red)
         Tanglable.__init__(self,5)
+        self.chatter = ['**EXTERMINATE**','**DESTROY**']
+        self.is_talking = None
 
     def take_turn(self):
         # sanity checks
@@ -66,8 +68,17 @@ class Dalek (Monster,Tanglable):
             self.tangle(m)
 
 
-    
-
+        # chatter
+        if self.is_talking is None:
+            if libtcod.random_get_int(None,1,10)>9:
+                self.is_talking = Message(self.pos-(0,1),
+                                          self.chatter[libtcod.random_get_int(None,0,len(self.chatter)-1)],
+                                          True)
+                self.is_talking.is_visible = True
+        elif self.is_talking.is_visible:
+            self.is_talking.is_visible = False
+        else:
+            self.is_talking = None
 
 # put here for now
 class Player (Mappable,Activator):
