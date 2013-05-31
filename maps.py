@@ -22,6 +22,8 @@ class Map:
         self.map_rng = libtcod.random_new_from_seed(seed)
         self.rng = libtcod.random_get_instance()
         self.size = size
+        self.__tcod_map = libtcod.map_new( self.size.x, self.size.y )
+        self.__tcod_pathfinder = None
         
     def __get_layer_from_obj(self, obj):
         for l in self.__layer_order:
@@ -107,11 +109,39 @@ class Map:
             for d in self.__layers[layer]:
                 d.clear()
 
+    def recalculate_paths(self):
+        libtcod.map_clear(self.__tcod_map)
+        for o in self.__layers[Tile]:
+            if isinstance(o,Traversable) and o.walk_cost>0.0:
+                libtcod.map_set_properties(self.__tcod_map,o.pos.x,o.pos.y,True,not o.blocks_movement())
+        #self.__tcod_pathfinder = libtcod.path_new_using_map(self.__tcod_map)
+        self.__tcod_pathfinder = libtcod.dijkstra_new(self.__tcod_map)
+
+    def get_path(self,from_pos,to_pos,steps=None):
+        """gets array of Position objects from from_pos to to_pos. set steps to limit number of objects to return"""
+        #libtcod.path_compute(self.__tcod_pathfinder,from_pos.x,from_pos.y,to_pos.x,to_pos.y)
+        # TODO: can i compute one of these for each cell on the map and cache the results, indexed by pos?
+        libtcod.dijkstra_compute(self.__tcod_pathfinder,from_pos.x,from_pos.y)
+        libtcod.dijkstra_path_set(self.__tcod_pathfinder,to_pos.x,to_pos.y)
+
+        if steps is None:
+            steps = libtcod.dijkstra_size(self.__tcod_pathfinder)
+
+        p = []
+        for i in range(steps):
+            x,y = libtcod.dijkstra_get(self.__tcod_pathfinder,i)
+            p.append(Position(x,y))
+
+        return p
+
+    def __del__(self):
+        #libtcod.path_delete(self.__tcod_pathfinder)
+        libtcod.dijkstra_delete(self.__tcod_pathfinder)
 
     def generate(self):
         raise NotImplementedError
 
-
+    
 
 class DalekMap(Map):
 
@@ -148,3 +178,5 @@ class DalekMap(Map):
             d = Dalek(self.find_random_clear(True))
             self.add(d)
 
+        # calculate path information
+        self.recalculate_paths()

@@ -35,19 +35,10 @@ class Dalek (Monster,Tanglable):
         p = self.map.find_nearest(self,Player)
 
         # move towards them
-        d = self.pos - p.pos
-        v = Position(0,0)
+        next_move = self.map.get_path(self.pos,p.pos,1)
 
-        if d.x > 0:
-            v.x = -1
-        elif d.x < 0:
-            v.x = 1
-        if d.y > 0:
-            v.y = -1
-        elif d.y < 0:
-            v.y = 1
-
-        self.move(v)
+        if len(next_move):
+            self.move_to(next_move[0])
 
         # find monster
         m = self.map.find_nearest(self,Monster)
