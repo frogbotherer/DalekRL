@@ -3,7 +3,7 @@
 import libtcodpy as libtcod
 from interfaces import Mappable, Position, Activatable, Activator, CountUp
 from items import HandTeleport
-from errors import GameOverError
+from errors import GameOverError, InvalidMoveError
 from ui import HBar
 
 
@@ -37,10 +37,14 @@ class Dalek (Monster,Tanglable):
         # if recently tangled, move randomly
         if self.recently_tangled:
             self.recently_tangled = False
+
             # this will give us a random direction +/- 1 square, or no move
             d = libtcod.random_get_int(None,0,8)
             v = Position( d%3-1, d//3-1 )
-            self.move(v)
+            try:
+                self.move(v)
+            except InvalidMoveError:
+                pass
 
         # otherwise chase player
         else:
