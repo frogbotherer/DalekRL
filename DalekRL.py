@@ -70,6 +70,11 @@ while not libtcod.console_is_window_closed():
         print("You can't move like that")
         continue
 
+    # items
+    for i in map.items + player.items:
+        if not i is None:
+            i.take_turn()
+
     # monster movement
     for m in map.monsters:
         m.take_turn()

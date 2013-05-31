@@ -119,13 +119,16 @@ class CountUp:
         self.count    = 0
 
     def inc(self):
+        if self.full():
+            return True
         self.count += 1
-        return self.count == self.count_to
+        return self.full()
 
     def reset(self):
         self.count = 0
 
-
+    def full(self):
+        return self.count == self.count_to
 
 
 class Carryable:

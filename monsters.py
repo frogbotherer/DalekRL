@@ -73,7 +73,7 @@ class Dalek (Monster,Tanglable):
 class Player (Mappable,Activator):
     def __init__(self,pos):
         Mappable.__init__(self,pos,'@',libtcod.white)
-        self.items = [HandTeleport(self),None,None]
+        self.items = [HandTeleport(self,10),None,None]
 
     def use_item(self,slot):
         assert slot<len(self.items), "Using undefined item slot"

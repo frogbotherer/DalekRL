@@ -13,10 +13,11 @@ class Map:
     def __init__(self, seed, size):
         self.player = None
         self.monsters = []
+        self.items = []
         self.__layers = {
             Player: [],
             Monster: self.monsters,
-            Item: [],
+            Item: self.items,
             Tile: [],
             }
         self.map_rng = libtcod.random_new_from_seed(seed)
