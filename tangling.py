@@ -7,6 +7,7 @@ class Tanglable:
     def __init__(self,tangle_turns=5):
         self.tangle_turns = tangle_turns
         self.tangled_with = None
+        self.recently_tangled = False
 
     def tangle(self,other):
         if isinstance(other,Tangle):
@@ -58,7 +59,8 @@ class Tangle(Monster):
             for o in self.__dogpile:
                 o.tangled_with = None
                 o.is_visible = True
-                # TODO: tell monsters not to immediately tangle again
+                o.recently_tangled = True
+
             # remove tangle from map
             self.map.remove(self)
 

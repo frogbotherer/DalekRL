@@ -31,14 +31,24 @@ class Dalek (Monster,Tanglable):
         if not self.is_visible:
             return
 
-        # find player
+        # find player (needed in a moment)
         p = self.map.find_nearest(self,Player)
 
-        # move towards them
-        next_move = self.map.get_path(self.pos,p.pos,1)
+        # if recently tangled, move randomly
+        if self.recently_tangled:
+            self.recently_tangled = False
+            # this will give us a random direction +/- 1 square, or no move
+            d = libtcod.random_get_int(None,0,8)
+            v = Position( d%3-1, d//3-1 )
+            self.move(v)
 
-        if len(next_move):
-            self.move_to(next_move[0])
+        # otherwise chase player
+        else:
+            # move towards them
+            next_move = self.map.get_path(self.pos,p.pos,1)
+
+            if len(next_move):
+                self.move_to(next_move[0])
 
         # find monster
         m = self.map.find_nearest(self,Monster)

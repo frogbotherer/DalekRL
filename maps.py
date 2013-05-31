@@ -158,8 +158,8 @@ class DalekMap(Map):
         # put an impassable box in the middle
         for i in range(1,self.size.x-1):
             for j in range(1,self.size.y-1):
-                if i in range(int(self.size.x/4),int(self.size.x*3/4)+1) and j in range(int(self.size.y/4),int(self.size.y*3/4)+1):
-                    if i in (int(self.size.x/4),int(self.size.x*3/4)) or j in (int(self.size.y/4),int(self.size.y*3/4)):
+                if i in range(self.size.x//4,self.size.x*3//4+1) and j in range(self.size.y//4,self.size.y*3//4+1):
+                    if i in (self.size.x//4,self.size.x*3//4) or j in (self.size.y//4,self.size.y*3//4):
                         self.add(Wall(Position(i,j)))
                     else:
                         pass
