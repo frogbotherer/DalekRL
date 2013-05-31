@@ -16,6 +16,10 @@ SCREEN_SIZE = Position(80,50)
 LIMIT_FPS = 30
 RANDOM_SEED = 1999
 
+# for now
+if len(sys.argv)>1 and len(sys.argv[1])>0:
+    RANDOM_SEED=int(sys.argv[1])
+
 # init window
 font = os.path.join(b'resources', b'consolas10x10_gs_tc.png')
 libtcod.console_set_custom_font(font, libtcod.FONT_TYPE_GREYSCALE | libtcod.FONT_LAYOUT_TCOD)
