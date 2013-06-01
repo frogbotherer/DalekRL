@@ -2,7 +2,22 @@
 
 import libtcodpy as libtcod
 
-from interfaces import UI
+class UI:
+    ui_elements = []
+    def __init__(self):
+        self.ui_elements.append(self)
+        self.is_visible = False
+        self.timeout = 0.0
+
+    def __del__(self):
+        self.ui_elements.remove(self)
+
+    def draw_all(timeout):
+        for e in UI.ui_elements:
+            if e.is_visible:
+                if e.timeout==0.0 or e.timeout>timeout:
+                    e.draw()
+
 
 class Message(UI):
     def __init__(self, pos, text, centred=False):
@@ -50,9 +65,9 @@ class HBar(Bar):
         s = " " * self.size
         if self.show_numerator:
             if self.show_denominator:
-                s = ("%s/%s"%(self.value,self.max_value)).center(self.size)
+                s = ("%d/%d"%(self.value,self.max_value)).center(self.size)
             else:
-                s = ("%s"%(self.value)).center(self.size)
+                s = ("%d"%(self.value)).center(self.size)
         if self.text is not None:
             s = "%s %s"%(self.text,s)
 

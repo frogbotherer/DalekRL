@@ -1,1 +1,3 @@
-todo
+python3 DalekRL.py
+
+uses libtcod 1.5.2

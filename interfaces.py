@@ -4,6 +4,7 @@ import libtcodpy as libtcod
 from math import hypot
 
 from errors import InvalidMoveError
+from ui import Message
 
 class Position:
     def __init__(self,x,y):
@@ -86,22 +87,6 @@ class Mappable:
         libtcod.console_put_char(0, self.pos.x, self.pos.y, ' ', libtcod.BKGND_NONE)
 
 
-
-class UI:
-    ui_elements = []
-    def __init__(self):
-        self.ui_elements.append(self)
-        self.is_visible = False
-
-    def __del__(self):
-        self.ui_elements.remove(self)
-
-    def draw_all():
-        for e in UI.ui_elements:
-            if e.is_visible:
-                e.draw()
-
-
 class Traversable:
     def __init__(self, walk_cost=0.0):
         # 0.0 => can't traverse
@@ -144,3 +129,24 @@ class Activatable:
 
     def activate(self):
         raise NotImplementedError("%s can't be activated"%self.__classname__)
+
+class Talker:
+    def __init__(self,phrases,probability=0.05):
+        self.__phrases = phrases
+        self.__probability = probability
+        self.is_talking = False
+        self.__chat = Message(None, "", True)
+        self.__chat.is_visible = False
+        self.__chat.timeout = 2.0
+
+    def talk(self):
+        if self.is_talking:
+            self.__chat.is_visible = False
+            self.is_talking = False
+
+        elif libtcod.random_get_float(None,0.0,1.0)<self.__probability:
+            self.__chat.pos = self.pos-(0,1)
+            self.__chat.text = self.__phrases[libtcod.random_get_int(None,0,len(self.__phrases)-1)]
+            self.is_talking = True
+            self.__chat.is_visible = True
+    

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import libtcodpy as libtcod
-from interfaces import Mappable, Position, Activatable, Activator, CountUp
+from interfaces import Mappable, Position, Activatable, Activator, CountUp, Talker
 from items import HandTeleport
 from errors import GameOverError, InvalidMoveError
 from ui import HBar, Message
@@ -18,12 +18,11 @@ class Monster (Mappable):
 
 from tangling import Tanglable
 
-class Dalek (Monster,Tanglable):
+class Dalek (Monster,Tanglable,Talker):
     def __init__(self,pos=None):
         Monster.__init__(self,pos,'D',libtcod.red)
         Tanglable.__init__(self,5)
-        self.chatter = ['**EXTERMINATE**','**DESTROY**']
-        self.is_talking = None
+        Talker.__init__(self,['**EXTERMINATE**','**DESTROY**'],0.05)
 
     def take_turn(self):
         # sanity checks
@@ -67,18 +66,8 @@ class Dalek (Monster,Tanglable):
         if self.pos == m.pos:
             self.tangle(m)
 
-
         # chatter
-        if self.is_talking is None:
-            if libtcod.random_get_int(None,1,10)>9:
-                self.is_talking = Message(self.pos-(0,1),
-                                          self.chatter[libtcod.random_get_int(None,0,len(self.chatter)-1)],
-                                          True)
-                self.is_talking.is_visible = True
-        elif self.is_talking.is_visible:
-            self.is_talking.is_visible = False
-        else:
-            self.is_talking = None
+        self.talk()
 
 
 
@@ -134,6 +123,7 @@ class Stairs(Monster,CountUp,Tanglable):
 
         self.bar = HBar(Position(pos.x-2,pos.y-1),5,libtcod.light_blue,libtcod.darkest_grey)
         self.bar.max_value = self.count_to-1
+        self.bar.timeout = 5.0
 
     def take_turn(self):
         if self.pos == self.map.player.pos:

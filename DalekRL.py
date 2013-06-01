@@ -8,12 +8,13 @@ import sys
 import libtcodpy as libtcod
 
 # our imports
-from interfaces import Position, UI
+from interfaces import Position
+from ui import UI
 from maps import DalekMap
 from errors import InvalidMoveError
 
 SCREEN_SIZE = Position(80,50)
-LIMIT_FPS = 30
+LIMIT_FPS = 10
 RANDOM_SEED = 1999
 
 # for now
@@ -49,27 +50,44 @@ KEYMAP = {
     'q': sys.exit,
 }
 
+
 def handle_keys():
-    key = None
-    while not ( key and key.pressed and chr(key.c) in KEYMAP ):
-        key = libtcod.console_wait_for_keypress(True)
-    KEYMAP.get(chr(key.c))()
+    MAX_TIMEOUT = 5
+    k = libtcod.Key()
+    m = libtcod.Mouse()
 
-# main loop
-while not libtcod.console_is_window_closed():
+    for t in range(LIMIT_FPS*MAX_TIMEOUT):
+        if t%5 == 0:
+            redraw_screen(t/LIMIT_FPS)
 
+        ev = libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS, k, m)
+        if ev and k and k.pressed and chr(k.c) in KEYMAP:
+            return KEYMAP.get(chr(k.c))()
+
+    # redraw screen after first second after keypress
+    redraw_screen(MAX_TIMEOUT)
+
+    while True:
+        k = libtcod.console_wait_for_keypress(True)
+        if k and k.pressed and chr(k.c) in KEYMAP:
+            return KEYMAP.get(chr(k.c))()
+
+def redraw_screen(t):
     # draw and flush screen
     map.draw()
     player.draw_ui(Position(0,SCREEN_SIZE.y-3))
-    UI.draw_all()
+    UI.draw_all(t)
     libtcod.console_flush()
     
     # clear screen
     #map.cls()
     libtcod.console_clear(0)
-    
+
+# main loop
+while not libtcod.console_is_window_closed():
+
     try:
-        # handle player input
+        # handle player input (and redraw screen)
         handle_keys()
     except InvalidMoveError:
         print("You can't move like that")
