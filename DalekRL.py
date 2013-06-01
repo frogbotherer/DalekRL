@@ -60,6 +60,7 @@ while not libtcod.console_is_window_closed():
 
     # draw and flush screen
     map.draw()
+    player.draw_ui(Position(0,SCREEN_SIZE.y-3))
     UI.draw_all()
     libtcod.console_flush()
     

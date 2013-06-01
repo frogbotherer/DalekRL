@@ -114,9 +114,9 @@ class Traversable:
 
 class CountUp:
     """things that count up (e.g. multi-turn stairs traversal)"""
-    def __init__(self,count_to):
+    def __init__(self,count_to,c=0):
         self.count_to = count_to
-        self.count    = 0
+        self.count    = c
 
     def inc(self):
         if self.full():
@@ -124,8 +124,8 @@ class CountUp:
         self.count += 1
         return self.full()
 
-    def reset(self):
-        self.count = 0
+    def reset(self,c=0):
+        self.count = c
 
     def full(self):
         return self.count == self.count_to

@@ -19,7 +19,7 @@ class Message(UI):
 
 
 class Bar(UI):
-    def __init__(self, pos, size, fgcolours, bgcolour, show_numerator=True, show_denominator=False):
+    def __init__(self, pos, size, fgcolours, bgcolour, show_numerator=True, show_denominator=False, text=None):
         UI.__init__(self)
         self.pos = pos
         self.size = size
@@ -30,6 +30,7 @@ class Bar(UI):
 
         self.show_numerator = show_numerator
         self.show_denominator = show_denominator
+        self.text = text
 
         self.value = 0
         self.max_value = 0
@@ -52,6 +53,8 @@ class HBar(Bar):
                 s = ("%s/%s"%(self.value,self.max_value)).center(self.size)
             else:
                 s = ("%s"%(self.value)).center(self.size)
+        if self.text is not None:
+            s = "%s %s"%(self.text,s)
 
         # draw bar
         fv = self.value/self.max_value

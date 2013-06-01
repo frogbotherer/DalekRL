@@ -80,6 +80,9 @@ class Dalek (Monster,Tanglable):
         else:
             self.is_talking = None
 
+
+
+
 # put here for now
 class Player (Mappable,Activator):
     def __init__(self,pos):
@@ -93,6 +96,14 @@ class Player (Mappable,Activator):
         assert isinstance(self.items[slot],Activatable)
         
         return self.items[slot].activate()
+
+    def draw_ui(self,pos,max_size=80):
+        for i in range(len(self.items)):
+            libtcod.console_print(0, pos.x, pos.y+i, "%d."%(i+1))
+            if self.items[i] is None:
+                libtcod.console_print(0, pos.x+3, pos.y+i, "--- Nothing ---")
+            else:
+                self.items[i].draw_ui(pos+(3,i), 40)
 
 
     def move_n(self):
