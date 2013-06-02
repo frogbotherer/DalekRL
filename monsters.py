@@ -35,6 +35,10 @@ class Dalek (Monster,Tanglable,Talker):
         # find player (needed in a moment)
         p = self.map.find_nearest(self,Player)
 
+        # if already on the player square(!), stop
+        if self.pos == p.pos:
+            raise GameOverError("Caught!")
+
         # if recently tangled, move randomly
         if self.recently_tangled:
             self.recently_tangled = False
@@ -57,7 +61,7 @@ class Dalek (Monster,Tanglable,Talker):
 
         # if on player square: lose
         if self.pos == p.pos:
-            raise GameOverError("Game Over")
+            raise GameOverError("Caught!")
 
         # find monster
         m = self.map.find_nearest(self,Monster)
@@ -77,6 +81,9 @@ class Player (Mappable,Activator):
     def __init__(self,pos):
         Mappable.__init__(self,pos,'@',libtcod.white)
         self.items = [HandTeleport(self,10),None,None]
+
+    def __str__(self):
+        return "Player at %s" % self.pos
 
     def use_item(self,slot):
         assert slot<len(self.items), "Using undefined item slot"
