@@ -5,7 +5,7 @@ from interfaces import Mappable, Traversable, Transparent
 
 class Tile(Mappable,Traversable,Transparent):
     def __init__(self, pos, symbol, colour, walk_cost=0.0, transparency=0.0):
-        Mappable.__init__(self,pos,symbol,colour)
+        Mappable.__init__(self,pos,symbol,colour,remains_in_place=True)
         Traversable.__init__(self,walk_cost)
         Transparent.__init__(self,transparency)
 

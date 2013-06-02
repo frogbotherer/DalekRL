@@ -45,17 +45,21 @@ class Position:
 class Mappable:
     """Can appear on the map"""
 
-    def __init__(self, pos, symbol, colour):
+    def __init__(self, pos, symbol, colour, remains_in_place=False):
         self.map = None
         self.pos = pos
+        self.last_known_pos = pos
         self.symbol = symbol
         self.colour = colour
+        self.remains_in_place = remains_in_place
         self.is_visible = True
+        self.has_been_seen = False
 
     ##
     # movement
     def move(self, delta):
         """move by a delta"""
+        assert not self.remains_in_place, "trying to move immovable object %s" % self
         # test whether movement is valid
         if not self.map is None and self.map.is_blocked(self.pos+delta):
             raise InvalidMoveError( "Can't move %s by %s"%(self,delta) )
@@ -64,6 +68,7 @@ class Mappable:
  
     def move_to(self, pos):
         """move by an absolute"""
+        assert not self.remains_in_place, "trying to move immovable object %s" % self
         # test whether movement is valid
         if not self.map is None and self.map.is_blocked(pos):
             raise InvalidMoveError( "Can't move %s to %s"%(self,pos) )
@@ -75,12 +80,14 @@ class Mappable:
     def draw(self):
         if not self.is_visible:
             return
+        colour = self.colour
         if not self.map.can_see(self.pos):
-            # TODO render previously-seen objects out of FOV differently to never-seen objects
-            return
-        #set the color and then draw the character that represents this object at its position
-        libtcod.console_set_default_foreground(0, self.colour)
-        libtcod.console_put_char(0, self.pos.x, self.pos.y, self.symbol, libtcod.BKGND_NONE)
+            if self.has_been_seen and self.remains_in_place:
+                colour = libtcod.darkest_grey
+            else:
+                return
+        libtcod.console_put_char_ex(0, self.pos.x, self.pos.y, self.symbol, colour, libtcod.BKGND_NONE)
+        self.has_been_seen = True
  
 #    def clear(self):
 #        if not self.is_visible: # this probably needs to be cleverer
