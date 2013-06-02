@@ -45,11 +45,11 @@ class Tangle(Monster):
             self.__dogpile.append(monster)
             # create reference to tangle
             monster.tangled_with = self
-            # hide monster
-            monster.is_visible = False
             # get rid of monster chat if applicable
             if isinstance(monster,Talker) and monster.is_talking:
                 monster.talk() # this clears chat and sets is_talking to False
+            # hide monster
+            monster.is_visible = False
             # increment tangle counter
             self.tangle_counter += monster.tangle_turns
 

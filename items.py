@@ -20,7 +20,7 @@ class CoolDownItem(Item, CountUp):
     def __init__(self,owner,count_to):
         Item.__init__(self,owner)
         CountUp.__init__(self,count_to)
-        self.bar = HBar(None, None, libtcod.red, libtcod.dark_grey, True, False, str(self))
+        self.bar = HBar(None, None, libtcod.red, libtcod.dark_grey, True, False, str(self), str.ljust)
         self.bar.is_visible = False
 
     def take_turn(self):

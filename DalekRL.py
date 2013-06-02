@@ -67,10 +67,14 @@ def handle_keys():
     # redraw screen after first second after keypress
     redraw_screen(MAX_TIMEOUT)
 
+    # call this before going into while loop to make sure no keypresses get dropped
+    ev = libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS, k, m)
+
     while True:
-        k = libtcod.console_wait_for_keypress(True)
         if k and k.pressed and chr(k.c) in KEYMAP:
             return KEYMAP.get(chr(k.c))()
+        k = libtcod.console_wait_for_keypress(True)
+
 
 def redraw_screen(t):
     # draw and flush screen

@@ -34,7 +34,7 @@ class Message(UI):
 
 
 class Bar(UI):
-    def __init__(self, pos, size, fgcolours, bgcolour, show_numerator=True, show_denominator=False, text=None):
+    def __init__(self, pos, size, fgcolours, bgcolour, show_numerator=True, show_denominator=False, text=None, text_align=str.center):
         UI.__init__(self)
         self.pos = pos
         self.size = size
@@ -46,6 +46,7 @@ class Bar(UI):
         self.show_numerator = show_numerator
         self.show_denominator = show_denominator
         self.text = text
+        self.text_align = text_align
 
         self.value = 0
         self.max_value = 0
@@ -62,14 +63,15 @@ class HBar(Bar):
         assert len(self.percentiles)==len(self.fgcolours), "HBar not configured correctly"
 
         # calculate text
-        s = " " * self.size
+        s = ""
         if self.show_numerator:
             if self.show_denominator:
-                s = ("%d/%d"%(self.value,self.max_value)).center(self.size)
+                s = "%d/%d"%(self.value,self.max_value)
             else:
-                s = ("%d"%(self.value)).center(self.size)
+                s = "%d"%(self.value)
         if self.text is not None:
             s = "%s %s"%(self.text,s)
+        s = self.text_align(s,self.size)
 
         # draw bar
         fv = self.value/self.max_value
