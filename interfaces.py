@@ -75,16 +75,19 @@ class Mappable:
     def draw(self):
         if not self.is_visible:
             return
+        if not self.map.can_see(self.pos):
+            # TODO render previously-seen objects out of FOV differently to never-seen objects
+            return
         #set the color and then draw the character that represents this object at its position
         libtcod.console_set_default_foreground(0, self.colour)
         libtcod.console_put_char(0, self.pos.x, self.pos.y, self.symbol, libtcod.BKGND_NONE)
  
-    def clear(self):
-        if not self.is_visible: # this probably needs to be cleverer
-            return
-
-        #erase the character that represents this object
-        libtcod.console_put_char(0, self.pos.x, self.pos.y, ' ', libtcod.BKGND_NONE)
+#    def clear(self):
+#        if not self.is_visible: # this probably needs to be cleverer
+#            return
+#
+#        #erase the character that represents this object
+#        libtcod.console_put_char(0, self.pos.x, self.pos.y, ' ', libtcod.BKGND_NONE)
 
 
 class Traversable:
@@ -95,6 +98,15 @@ class Traversable:
 
     def blocks_movement(self):
         return self.walk_cost == 0.0
+
+class Transparent:
+    def __init__(self, transparency=0.0):
+        # 0.0 => completely opaque
+        # 1.0 => completely transparent
+        self.transparency = transparency
+
+    def blocks_light(self):
+        return self.transparency == 0.0
 
 
 class CountUp:

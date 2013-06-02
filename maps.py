@@ -3,7 +3,7 @@
 import libtcodpy as libtcod
 
 from monsters import Monster, Player, Dalek, Stairs
-from interfaces import Mappable, Position, Traversable
+from interfaces import Mappable, Position, Traversable, Transparent
 from items import Item
 from tiles import Tile, Wall, Floor
 
@@ -25,7 +25,7 @@ class Map:
         self.size = size
         self.__tcod_map = libtcod.map_new( self.size.x, self.size.y )
         self.__tcod_pathfinder = None
-        
+
     def __get_layer_from_obj(self, obj):
         for l in self.__layer_order:
             if isinstance(obj, l):
@@ -104,19 +104,26 @@ class Map:
             for d in self.__layers[layer]:
                 d.draw()
 
-    def cls(self):
-        """clear the map"""
-        for layer in self.__layer_order:
-            for d in self.__layers[layer]:
-                d.clear()
+#    def cls(self):
+#        """clear the map"""
+#        for layer in self.__layer_order:
+#            for d in self.__layers[layer]:
+#                d.clear()
 
     def recalculate_paths(self):
         libtcod.map_clear(self.__tcod_map)
         for o in self.__layers[Tile]:
-            if isinstance(o,Traversable) and o.walk_cost>0.0:
-                libtcod.map_set_properties(self.__tcod_map,o.pos.x,o.pos.y,True,not o.blocks_movement())
+            is_walkable = (isinstance(o,Traversable) and not o.blocks_movement())
+            is_transparent = (isinstance(o,Transparent) and not o.blocks_light())
+            libtcod.map_set_properties(self.__tcod_map,o.pos.x,o.pos.y,is_transparent,is_walkable)
         #self.__tcod_pathfinder = libtcod.path_new_using_map(self.__tcod_map)
         self.__tcod_pathfinder = libtcod.dijkstra_new(self.__tcod_map)
+
+    def prepare_fov(self, pos, radius=0):
+        libtcod.map_compute_fov(self.__tcod_map, pos.x, pos.y, radius, True, libtcod.FOV_BASIC)
+
+    def can_see(self, pos):
+        return libtcod.map_is_in_fov(self.__tcod_map, pos.x, pos.y)
 
     def get_path(self,from_pos,to_pos,steps=None):
         """gets array of Position objects from from_pos to to_pos. set steps to limit number of objects to return"""
@@ -185,3 +192,6 @@ class DalekMap(Map):
 
         # calculate path information
         self.recalculate_paths()
+
+        # calculate player's initial fov
+        self.prepare_fov(self.player.pos)

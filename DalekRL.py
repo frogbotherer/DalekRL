@@ -86,12 +86,14 @@ def redraw_screen(t):
 # main loop
 while not libtcod.console_is_window_closed():
 
+    # this should all belong in player.take_turn, I think :P
     try:
         # handle player input (and redraw screen)
         handle_keys()
     except InvalidMoveError:
         print("You can't move like that")
         continue
+    player.map.prepare_fov(player.pos)
 
     # items
     for i in map.items + player.items:

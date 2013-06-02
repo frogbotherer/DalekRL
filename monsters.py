@@ -55,12 +55,12 @@ class Dalek (Monster,Tanglable,Talker):
             if len(next_move):
                 self.move_to(next_move[0])
 
-        # find monster
-        m = self.map.find_nearest(self,Monster)
-
         # if on player square: lose
         if self.pos == p.pos:
             raise GameOverError("Game Over")
+
+        # find monster
+        m = self.map.find_nearest(self,Monster)
 
         # if on monster square: tangle
         if self.pos == m.pos:
