@@ -28,6 +28,7 @@ class Tanglable:
 
 
 from monsters import Monster
+from interfaces import Talker
 
 class Tangle(Monster):
 
@@ -46,6 +47,9 @@ class Tangle(Monster):
             monster.tangled_with = self
             # hide monster
             monster.is_visible = False
+            # get rid of monster chat if applicable
+            if isinstance(monster,Talker) and monster.is_talking:
+                monster.talk() # this clears chat and sets is_talking to False
             # increment tangle counter
             self.tangle_counter += monster.tangle_turns
 
