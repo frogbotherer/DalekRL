@@ -100,11 +100,11 @@ while not libtcod.console_is_window_closed():
     player.map.prepare_fov(player.pos)
 
     # items
-    for i in map.items + player.items:
+    for i in map.get_items() + player.items:
         if not i is None:
             i.take_turn()
 
     # monster movement
-    for m in map.monsters:
+    for m in map.get_monsters():
         m.take_turn()
 

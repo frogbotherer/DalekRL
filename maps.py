@@ -7,18 +7,18 @@ from interfaces import Mappable, Position, Traversable, Transparent
 from items import Item
 from tiles import Tile, Wall, Floor
 
+from functools import reduce
+
 class Map:
     __layer_order = [Tile,Item,Monster,Player]
 
     def __init__(self, seed, size):
         self.player = None
-        self.monsters = []
-        self.items = []
         self.__layers = {
-            Player: [],
-            Monster: self.monsters,
-            Item: self.items,
-            Tile: [],
+            Player: {},
+            Monster: {},
+            Item: {},
+            Tile: {},
             }
         self.map_rng = libtcod.random_new_from_seed(seed)
         self.rng = libtcod.random_get_instance()
@@ -37,7 +37,7 @@ class Map:
         assert isinstance(obj,Mappable), "%s cannot appear on map"%obj
         if layer is None:
             layer = self.__get_layer_from_obj(obj)
-        self.__layers[layer].append(obj)
+        self.__layers[layer].setdefault(obj.pos,[]).append(obj)
         obj.map = self
 
     def remove(self, obj, layer=None):
@@ -45,29 +45,50 @@ class Map:
         assert isinstance(obj,Mappable), "%s cannot appear on map"%obj
         if layer is None:
             layer = self.__get_layer_from_obj(obj)
-        self.__layers[layer].remove(obj)
+
+        assert obj.pos in self.__layers[layer].keys(), "%s not found at %s in layer %s"%(obj,obj.pos,layer)
+
+        self.__layers[layer][obj.pos].remove(obj)
         obj.map = None
+
+    def move(self, obj, pos, layer=None):
+        """move object on map"""
+        assert isinstance(obj,Mappable), "%s cannot appear on map"%obj
+        if layer is None:
+            layer = self.__get_layer_from_obj(obj)
+
+        assert obj.pos in self.__layers[layer].keys(), "%s not found at %s in layer %s"%(obj,obj.pos,layer)
+
+        # move obj reference
+        self.__layers[layer][obj.pos].remove(obj)
+        self.__layers[layer].setdefault(pos,[]).append(obj)
+
+        # update obj position
+        obj.pos = pos
 
     def find_nearest(self, obj, layer):
         """find nearest thing in layer to obj"""
         r = 10000000 # safely larger than the map
         ro = None
-        for o in self.__layers[layer]:
-            if obj is o or not obj.is_visible:
-                continue
-            d = obj.pos.distance_to(o.pos)
-            if d<r:
-                r  = d
-                ro = o
+        for ol in self.__layers[layer].values():
+            for o in ol:
+                if obj is o or not obj.is_visible:
+                    continue
+                d = obj.pos.distance_to(o.pos)
+                if d<r:
+                    r  = d
+                    ro = o
         return ro
 
     def find_random_clear(self,from_map_seed=False):
         """find random clear cell in map"""
-        occupied = map( lambda o: o.pos, 
-                        self.__layers[Player]
-                         + self.__layers[Monster]
-                         + list(filter(lambda t: t.blocks_movement(), self.__layers[Tile]))
-                        )
+#        occupied = map( lambda o: o.pos,
+#                        self.__layers[Player]
+#                         + self.__layers[Monster]
+#                         + list(filter(lambda t: t.blocks_movement(), self.__layers[Tile]))
+#                        )
+        occupied = list(self.__layers[Player].keys()) + list(self.__layers[Monster].keys()) \
+                 + [t[0] for t in self.__layers[Tile].items() if t[1][0].blocks_movement()]
         rng = self.rng
         if from_map_seed:
             rng = self.map_rng
@@ -77,14 +98,14 @@ class Map:
                 return p
 
     def find_at_pos(self, pos, layer=None):
-        # TODO: this is stunningly inefficient; the map should be keyed by position
         layers = [layer]
         if layer is None:
             layers = self.__layer_order
+
         for l in layers:
-            for o in self.__layers[l]:
-                if o.pos == pos:
-                    return o
+            if pos in self.__layers[l].keys():
+                return self.__layers[l][pos][0]
+
         return None
 
     def get_walk_cost(self, pos):
@@ -101,8 +122,9 @@ class Map:
     def draw(self):
         """draw the map"""
         for layer in self.__layer_order:
-            for d in self.__layers[layer]:
-                d.draw()
+            for d in self.__layers[layer].values():
+                for o in d:
+                    o.draw()
 
 #    def cls(self):
 #        """clear the map"""
@@ -112,10 +134,11 @@ class Map:
 
     def recalculate_paths(self):
         libtcod.map_clear(self.__tcod_map)
-        for o in self.__layers[Tile]:
-            is_walkable = (isinstance(o,Traversable) and not o.blocks_movement())
-            is_transparent = (isinstance(o,Transparent) and not o.blocks_light())
-            libtcod.map_set_properties(self.__tcod_map,o.pos.x,o.pos.y,is_transparent,is_walkable)
+        for ol in self.__layers[Tile].values():
+            for o in ol:
+                is_walkable = (isinstance(o,Traversable) and not o.blocks_movement())
+                is_transparent = (isinstance(o,Transparent) and not o.blocks_light())
+                libtcod.map_set_properties(self.__tcod_map,o.pos.x,o.pos.y,is_transparent,is_walkable)
         #self.__tcod_pathfinder = libtcod.path_new_using_map(self.__tcod_map)
         self.__tcod_pathfinder = libtcod.dijkstra_new(self.__tcod_map)
 
@@ -145,6 +168,12 @@ class Map:
     def __del__(self):
         #libtcod.path_delete(self.__tcod_pathfinder)
         libtcod.dijkstra_delete(self.__tcod_pathfinder)
+
+    def get_monsters(self):
+        return reduce( lambda a,b: a+b, self.__layers[Monster].values(), [] )
+
+    def get_items(self):
+        return reduce( lambda a,b: a+b, self.__layers[Item].values(), [] )
 
     def generate(self):
         raise NotImplementedError

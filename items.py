@@ -50,7 +50,6 @@ class HandTeleport(CoolDownItem):
         if not CoolDownItem.activate(self):
             return False
 
-        p = self.owner.map.find_random_clear()
-        self.owner.pos = p
+        self.owner.move_to(self.owner.map.find_random_clear())
         return True
 

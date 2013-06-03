@@ -11,9 +11,6 @@ class Monster_State:
     def __init__(self,monster):
         self.monster = monster
 
-    def get_next_state(self):
-        raise NotImplementedError
-
     def get_move(self):
         raise NotImplementedError
 
@@ -107,8 +104,7 @@ class Dalek (Monster,Tanglable,Talker):
 
         p = self.map.player
 
-        # NB. this is all wrong!
-        #     should be:
+        # TODO: refactor as follows??
         # self.state = self.state.get_next_state()
         # self.move_to( self.state.get_move() )
 

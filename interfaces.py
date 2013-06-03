@@ -11,6 +11,9 @@ class Position:
         self.x = x
         self.y = y
 
+    def __hash__(self):
+        return hash((self.x,self.y))
+
     def __add__(self,other):
         if isinstance(other,tuple):
             return Position(self.x + other[0], self.y + other[1])
@@ -64,7 +67,7 @@ class Mappable:
         if not self.map is None and self.map.is_blocked(self.pos+delta):
             raise InvalidMoveError( "Can't move %s by %s"%(self,delta) )
             
-        self.pos += delta
+        self.map.move(self, self.pos + delta)
  
     def move_to(self, pos):
         """move by an absolute"""
@@ -72,12 +75,14 @@ class Mappable:
         # test whether movement is valid
         if not self.map is None and self.map.is_blocked(pos):
             raise InvalidMoveError( "Can't move %s to %s"%(self,pos) )
-        self.pos = pos
+
+        self.map.move(self, pos)
 
 
     ##
     # drawing
     def draw(self):
+        # NB. this gets called a lot!
         if not self.is_visible:
             return
         colour = self.colour
