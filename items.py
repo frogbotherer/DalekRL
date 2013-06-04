@@ -29,7 +29,7 @@ class Item(Carryable, Activatable, Mappable):
         pass
 
     def random(rng,pos):
-        return Tangler(pos,3)
+        return Tangler(pos,libtcod.random_get_int_mean(rng,1,2,4))
 
 class CoolDownItem(Item, CountUp):
     def __init__(self,owner,count_to):
