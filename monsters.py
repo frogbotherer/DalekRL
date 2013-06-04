@@ -25,6 +25,8 @@ class Monster (Mappable):
     def __str__(self):
         return "%s at %s" %(self.__class__.__name__,self.pos)
 
+    def random(rng,pos):
+        return Dalek(pos)
 
 from tangling import Tanglable
 
@@ -157,7 +159,7 @@ class Dalek (Monster,Tanglable,Talker):
 
 
 # put here for now
-from items import HandTeleport, Tangler
+from items import Item, HandTeleport, Tangler
 class Player (Mappable,Activator):
     def __init__(self,pos):
         Mappable.__init__(self,pos,'@',libtcod.white)
@@ -182,6 +184,14 @@ class Player (Mappable,Activator):
             else:
                 self.items[i].draw_ui(pos+(3,i), 40)
 
+    def pickup(self,i):
+        assert isinstance(i,Item), "Can't pick up a %s"%i
+        if not None in self.items:
+            # prompt to drop something; drop it
+            raise TodoError
+        self.items[self.items.index(None)] = i
+        self.map.remove(i)
+        i.owner = self
 
     def move_n(self):
         self.move( (0,-1) )
@@ -205,6 +215,10 @@ class Player (Mappable,Activator):
         self.use_item(1)
     def use_item3(self):
         self.use_item(2)
+    def interact(self):
+        i = self.map.find_at_pos(self.pos,Item)
+        if not i is None:
+            self.pickup(i)
 
 
 class Stairs(Monster,CountUp,Tanglable):

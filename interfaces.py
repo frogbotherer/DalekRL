@@ -94,13 +94,6 @@ class Mappable:
         libtcod.console_put_char_ex(0, self.pos.x, self.pos.y, self.symbol, colour, libtcod.BKGND_NONE)
         self.has_been_seen = True
  
-#    def clear(self):
-#        if not self.is_visible: # this probably needs to be cleverer
-#            return
-#
-#        #erase the character that represents this object
-#        libtcod.console_put_char(0, self.pos.x, self.pos.y, ' ', libtcod.BKGND_NONE)
-
 
 class Traversable:
     def __init__(self, walk_cost=0.0):
@@ -148,7 +141,7 @@ class Activator:
 
 class Activatable:
     def __init__(self,owner):
-        assert isinstance(owner,Activator), "%s can't activate %s"%(owner,self.__classname__)
+        assert isinstance(owner,Activator) or owner is None, "%s can't activate %s"%(owner,self)
         self.owner = owner
 
     def activate(self):

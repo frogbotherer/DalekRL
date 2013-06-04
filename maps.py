@@ -2,7 +2,7 @@
 
 import libtcodpy as libtcod
 
-from monsters import Monster, Player, Dalek, Stairs
+from monsters import Monster, Player, Stairs
 from interfaces import Mappable, Position, Traversable, Transparent
 from items import Item
 from tiles import Tile, Wall, Floor
@@ -80,13 +80,13 @@ class Map:
                     ro = o
         return ro
 
-    def find_random_clear(self,from_map_seed=False):
+    def find_random_clear(self,rng=None):
         """find random clear cell in map"""
+        if rng is None:
+            rng = self.rng
         occupied = list(self.__layers[Player].keys()) + list(self.__layers[Monster].keys()) \
                  + [t[0] for t in self.__layers[Tile].items() if t[1][0].blocks_movement()]
-        rng = self.rng
-        if from_map_seed:
-            rng = self.map_rng
+
         while 1:
             p = Position(libtcod.random_get_int(rng,0,self.size.x-1),libtcod.random_get_int(rng,0,self.size.y-1))
             if not p in occupied and not self.is_blocked(p):
@@ -120,12 +120,6 @@ class Map:
             for d in self.__layers[layer].values():
                 for o in d:
                     o.draw()
-
-#    def cls(self):
-#        """clear the map"""
-#        for layer in self.__layer_order:
-#            for d in self.__layers[layer]:
-#                d.clear()
 
     def recalculate_paths(self):
         libtcod.map_clear(self.__tcod_map)
@@ -203,16 +197,21 @@ class DalekMap(Map):
                     self.add(Floor(Position(i,j)))
 
         # place stairs
-        self.add(Stairs(self.find_random_clear(True)))
+        self.add(Stairs(self.find_random_clear(self.map_rng)))
 
         # place player
-        self.player = Player(self.find_random_clear(True))
+        self.player = Player(self.find_random_clear(self.map_rng))
         self.add(self.player)
 
         # place daleks
         for i in range(0,10):
-            d = Dalek(self.find_random_clear(True))
+            d = Monster.random(self.map_rng,self.find_random_clear(self.map_rng))
             self.add(d)
+
+        # place some items
+        for i in range(0,3):
+            i = Item.random(self.map_rng,self.find_random_clear(self.map_rng))
+            self.add(i)
 
         # calculate path information
         self.recalculate_paths()

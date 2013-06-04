@@ -9,3 +9,6 @@ class GameOverError(DalekError):
 
 class InvalidMoveError(DalekError):
     pass
+
+class TodoError(DalekError):
+    pass

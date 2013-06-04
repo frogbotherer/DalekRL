@@ -2,12 +2,25 @@
 
 import libtcodpy as libtcod
 
-from interfaces import Carryable, Activatable, CountUp
+from interfaces import Carryable, Activatable, Activator, CountUp, Mappable
 from ui import HBar, Message
 
-class Item(Carryable, Activatable):
+class Item(Carryable, Activatable, Mappable):
+    def __init__(self, owner):
+        pos = None
+        if not isinstance(owner, Activator):
+            pos   = owner
+            owner = None
+        Mappable.__init__(self,pos,'!',libtcod.green)
+        Activatable.__init__(self,owner)
+        if pos is None:
+            self.is_visible = False
+
     def __str__(self):
-        return "%s held by %s"%(self.__class__.__name__,self.owner)
+        if self.owner is None:
+            return "%s at %s"%(self.__class__.__name__,self.pos)
+        else:
+            return "%s held by %s"%(self.__class__.__name__,self.owner)
 
     def take_turn(self):
         pass
@@ -15,12 +28,14 @@ class Item(Carryable, Activatable):
     def draw_ui(self,pos,max_width=40):
         pass
 
+    def random(rng,pos):
+        return Tangler(pos,3)
 
 class CoolDownItem(Item, CountUp):
     def __init__(self,owner,count_to):
         Item.__init__(self,owner)
         CountUp.__init__(self,count_to)
-        self.bar = HBar(None, None, libtcod.red, libtcod.dark_grey, True, False, str(self), str.ljust)
+        self.bar = HBar(None, None, libtcod.dark_green, libtcod.dark_grey, True, False, str(self), str.ljust)
         self.bar.is_visible = False
 
     def take_turn(self):

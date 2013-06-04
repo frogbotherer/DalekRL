@@ -50,6 +50,7 @@ KEYMAP = {
     '2': player.use_item2,
     '3': player.use_item3,
     'q': sys.exit,
+    ' ': player.interact,
 }
 
 
