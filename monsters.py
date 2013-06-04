@@ -2,7 +2,6 @@
 
 import libtcodpy as libtcod
 from interfaces import Mappable, Position, Activatable, Activator, CountUp, Talker
-from items import HandTeleport
 from errors import GameOverError, InvalidMoveError
 from ui import HBar, Message
 
@@ -158,10 +157,11 @@ class Dalek (Monster,Tanglable,Talker):
 
 
 # put here for now
+from items import HandTeleport, Tangler
 class Player (Mappable,Activator):
     def __init__(self,pos):
         Mappable.__init__(self,pos,'@',libtcod.white)
-        self.items = [HandTeleport(self,10),None,None]
+        self.items = [HandTeleport(self,10),Tangler(self,3),None]
 
     def __str__(self):
         return "Player at %s" % self.pos
@@ -201,6 +201,10 @@ class Player (Mappable,Activator):
         self.move( (-1,1) )
     def use_item1(self):
         self.use_item(0)
+    def use_item2(self):
+        self.use_item(1)
+    def use_item3(self):
+        self.use_item(2)
 
 
 class Stairs(Monster,CountUp,Tanglable):
@@ -227,4 +231,3 @@ class Stairs(Monster,CountUp,Tanglable):
             self.reset()
 
 
-    

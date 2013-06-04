@@ -52,7 +52,7 @@ class Map:
         obj.map = None
 
     def move(self, obj, pos, layer=None):
-        """move object on map"""
+        """move object on map. NB. setting a Mappable's pos directly will break stuff"""
         assert isinstance(obj,Mappable), "%s cannot appear on map"%obj
         if layer is None:
             layer = self.__get_layer_from_obj(obj)
@@ -82,11 +82,6 @@ class Map:
 
     def find_random_clear(self,from_map_seed=False):
         """find random clear cell in map"""
-#        occupied = map( lambda o: o.pos,
-#                        self.__layers[Player]
-#                         + self.__layers[Monster]
-#                         + list(filter(lambda t: t.blocks_movement(), self.__layers[Tile]))
-#                        )
         occupied = list(self.__layers[Player].keys()) + list(self.__layers[Monster].keys()) \
                  + [t[0] for t in self.__layers[Tile].items() if t[1][0].blocks_movement()]
         rng = self.rng

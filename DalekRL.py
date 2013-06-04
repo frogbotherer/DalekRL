@@ -47,6 +47,8 @@ KEYMAP = {
     'n': player.move_se,
     '.': do_nothing,
     '1': player.use_item1,
+    '2': player.use_item2,
+    '3': player.use_item3,
     'q': sys.exit,
 }
 
@@ -86,6 +88,7 @@ def redraw_screen(t):
     # clear screen
     #map.cls()
     libtcod.console_clear(0)
+
 
 # main loop
 while not libtcod.console_is_window_closed():

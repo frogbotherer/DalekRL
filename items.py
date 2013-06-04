@@ -42,6 +42,29 @@ class CoolDownItem(Item, CountUp):
         self.bar.is_visible = True
 
 
+class LimitedUsesItem(Item):
+    def __init__(self,owner,uses):
+        Item.__init__(self,owner)
+        self.max_uses = uses
+        self.uses = uses
+        self.bar = HBar(None, None, libtcod.red, libtcod.dark_grey, True, False, str(self), str.ljust)
+        self.bar.is_visible = False
+
+    def draw_ui(self,pos,max_width=40):
+        self.bar.pos = pos
+        self.bar.size = max_width
+        self.bar.value = self.uses
+        self.bar.max_value = self.max_uses
+        self.bar.is_visible = True
+
+    def activate(self):
+        if self.uses == 0:
+            return False
+
+        self.uses -= 1
+        return True
+
+
 class HandTeleport(CoolDownItem):
     def __str__(self):
         return "Hand Teleport"
@@ -53,3 +76,20 @@ class HandTeleport(CoolDownItem):
         self.owner.move_to(self.owner.map.find_random_clear())
         return True
 
+
+from tangling import Tanglable, Tangle
+from monsters import Monster
+
+class Tangler(LimitedUsesItem):
+    def __str__(self):
+        return "Tangler"
+
+    def activate(self):
+        # TODO: make this find the nearest untangled tanglable
+        m = self.owner.map.find_nearest(self.owner,Monster)
+        if isinstance(m, Tanglable) and not m.is_tangled() and LimitedUsesItem.activate(self):
+            t = Tangle()
+            t.add(m)
+            return True
+
+        return False
