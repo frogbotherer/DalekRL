@@ -28,8 +28,19 @@ class Item(Carryable, Activatable, Mappable):
     def draw_ui(self,pos,max_width=40):
         pass
 
+    def drop_at(self,pos):
+        self.owner = None
+        self.pos = pos
+        self.is_visible = True
+
+    def take_by(self,owner):
+        self.owner = owner
+        self.pos = None
+        self.is_visible = False
+
     def random(rng,pos):
         return Tangler(pos,libtcod.random_get_int_mean(rng,1,2,4))
+
 
 class CoolDownItem(Item, CountUp):
     def __init__(self,owner,count_to):
@@ -56,6 +67,14 @@ class CoolDownItem(Item, CountUp):
         self.bar.max_value = self.count_to
         self.bar.is_visible = True
 
+    def drop_at(self,pos):
+        Item.drop_at(self,pos)
+        self.bar.is_visible = False
+
+    def take_by(self,owner):
+        Item.take_by(self,owner)
+        self.bar.is_visible = True
+
 
 class LimitedUsesItem(Item):
     def __init__(self,owner,uses):
@@ -78,6 +97,14 @@ class LimitedUsesItem(Item):
 
         self.uses -= 1
         return True
+
+    def drop_at(self,pos):
+        Item.drop_at(self,pos)
+        self.bar.is_visible = False
+
+    def take_by(self,owner):
+        Item.take_by(self,owner)
+        self.bar.is_visible = True
 
 
 class HandTeleport(CoolDownItem):

@@ -2,8 +2,8 @@
 
 import libtcodpy as libtcod
 from interfaces import Mappable, Position, Activatable, Activator, CountUp, Talker
-from errors import GameOverError, InvalidMoveError
-from ui import HBar, Message
+from errors import GameOverError, InvalidMoveError, TodoError
+from ui import HBar, Message, Menu
 
 
 class Monster_State:
@@ -186,12 +186,58 @@ class Player (Mappable,Activator):
 
     def pickup(self,i):
         assert isinstance(i,Item), "Can't pick up a %s"%i
+
+        item_index = None
         if not None in self.items:
             # prompt to drop something; drop it
-            raise TodoError
-        self.items[self.items.index(None)] = i
+
+            ###
+            # prompt code [TODO: refactor me!]
+            xu = self.map.size.x//4
+            yu = self.map.size.y//4
+            b = Menu( Position(xu,yu), Position(xu*2,yu*2), title="Pick up" )
+            b.add('x',str(i))
+            b.add_spacer()
+            for idx in range(len(self.items)):
+                v = self.items[idx]
+                b.add('%d'%(idx+1),str(v))
+            b.is_visible = True
+            while 1:
+                b.draw()
+                libtcod.console_flush()
+                k = libtcod.console_wait_for_keypress(True)
+                if k and k.pressed and k.c:
+                    c = chr(k.c)
+                    if   c == 'x':
+                        break
+                    elif c == '1':
+                        item_index = 0
+                        break
+                    elif c == '2':
+                        item_index = 1
+                        break
+                    elif c == '3':
+                        item_index = 2
+                        break
+                    elif c == 'j':
+                        b.sel_prev()
+                    elif c == 'k':
+                        b.sel_next()
+                    elif c == ' ':
+                        if b.sel_index() != 0:
+                            item_index = b.sel_index()-1
+                        break
+            b.is_visible = False
+            del b
+            if item_index is None:
+                return
+            self.items[item_index].drop_at(self.pos)
+            self.map.add(self.items[item_index])
+        else:
+            item_index = self.items.index(None)
+        self.items[item_index] = i
         self.map.remove(i)
-        i.owner = self
+        i.take_by(self)
 
     def move_n(self):
         self.move( (0,-1) )
