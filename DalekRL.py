@@ -11,7 +11,7 @@ import libtcodpy as libtcod
 from interfaces import Position
 from ui import UI
 from maps import Map
-from errors import InvalidMoveError
+from errors import InvalidMoveError, GameOverError
 
 SCREEN_SIZE = Position(80,50)
 LIMIT_FPS = 10
@@ -108,7 +108,31 @@ while not libtcod.console_is_window_closed():
         if not i is None:
             i.take_turn()
 
-    # monster movement
-    for m in map.get_monsters():
-        m.take_turn()
-
+    try:
+        # monster movement
+        for m in map.get_monsters():
+            m.take_turn()
+    except GameOverError:
+        print("Game Over")
+        #del map
+        #del player
+        RANDOM_SEED += 3
+        map = Map.random(RANDOM_SEED,SCREEN_SIZE-(0,4))
+        map.generate()
+        player = map.player
+        KEYMAP = {
+            'k': player.move_n,
+            'j': player.move_s,
+            'h': player.move_w,
+            'l': player.move_e,
+            'y': player.move_nw,
+            'u': player.move_ne,
+            'b': player.move_sw,
+            'n': player.move_se,
+            '.': do_nothing,
+            '1': player.use_item1,
+            '2': player.use_item2,
+            '3': player.use_item3,
+            'q': sys.exit,
+            ' ': player.interact,
+            }

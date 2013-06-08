@@ -147,7 +147,6 @@ class Dalek (Monster,Tanglable,Talker):
 
         # if on player square: lose
         if self.pos == p.pos:
-            print("%s %s"%(self,self.state))
             raise GameOverError("Caught!")
 
         # find monster

@@ -275,16 +275,20 @@ class TypeAMap(Map):
                 'W': {'opposite':'E','clockwise':'N','anticlockwise':'S','adjacent':['N','S']},
                 }
 
-    CORRIDOR_NUM_BENDS  = 3
-    CORRIDOR_LENGTH_VAR = [0.7,1.3]
-    SANITY_LIMIT        = 10
+    CORRIDOR_MAX_BENDS  = 3
+    CORRIDOR_LENGTH_VAR = [0.7,1.1]
+    CORRIDOR_MAX_MINOR  = 6
+    CORRIDOR_MINOR_LEN  = 40
+    CORRIDOR_MINOR_BEND = 1
+    CORRIDOR_MIN_LENGTH = 5
+    SANITY_LIMIT        = 100
 
     def __init__(self, seed, size):
         Map.__init__(self, seed, size)
         self._map = [ [0 for y in range(size.y)] for x in range(size.x) ]
 
     class _ME:
-        def __init__(self,tile_id,pos,size):
+        def __init__(self,tile_id,pos,size,opos=None,direction=None,length=None):
             if not isinstance(pos,Position):
                 pos = Position(pos)
             if not isinstance(size,Position):
@@ -292,6 +296,10 @@ class TypeAMap(Map):
             self.tile_id = tile_id
             self.pos = pos
             self.size = size
+            # for corridors
+            self.opos = opos
+            self.direction = direction
+            self.length = length
 
         def commit(self,m):
             for x in range(self.size.x):
@@ -374,8 +382,9 @@ class TypeAMap(Map):
         else:
             assert False, "_gen_get_edge_tile called with invalid edge %s" % edge
 
-    def _gen_corridor_seg(self, pos, direction, length, width=1):
+    def _gen_corridor_seg(self, opos, direction, length, width=1):
         size = None
+        pos  = Position(opos.x,opos.y)
         if   direction == 'N':
             # adjust pos to top-left
             pos -= Position( 0, length-width )
@@ -389,14 +398,13 @@ class TypeAMap(Map):
             size = Position( length, width )
         else:
             assert False, "_gen_corridor_seg called with invalid direction %s" % direction
-        return self._ME(TypeAMap.CORRIDOR, pos, size)
+        return self._ME(TypeAMap.CORRIDOR, pos, size, opos, direction, length)
 
-    def _gen_corridor(self, length, width):
+    def _gen_corridor(self, pos, direction, length, width, bendiness):
         c_segs    = []
         len_used  = 0
-        direction = self._gen_get_compass_dir()
-        curr_pos  = self._gen_get_edge_tile( self._gen_get_compass_opposite(direction), 1, 4 )
-        num_bends = libtcod.random_get_int(self.map_rng, 1, self.CORRIDOR_NUM_BENDS)
+        curr_pos  = pos
+        num_bends = libtcod.random_get_int(self.map_rng, 0, bendiness)
 
         sanity = 0
         while len_used < length:
@@ -407,14 +415,16 @@ class TypeAMap(Map):
             len_wanted = int(libtcod.random_get_float(self.map_rng,self.CORRIDOR_LENGTH_VAR[0],self.CORRIDOR_LENGTH_VAR[1]) * (length)/(1+num_bends))
             if len_wanted + len_used > length:
                 len_wanted = length - len_used
+            if len_wanted < self.CORRIDOR_MIN_LENGTH:
+                len_wanted = self.CORRIDOR_MIN_LENGTH
             len_avail = self._gen_get_available_dist(curr_pos,direction)
 
-            print("iter: %d; pos: %s; dir: %s; used: %d; wanted %d; avail: %d"%(sanity,curr_pos,direction,len_used,len_wanted,len_avail))
             if len_avail > len_wanted+1:
                 s = self._gen_corridor_seg( curr_pos, direction, len_wanted, width )
                 c_segs.append( s )
                 len_used += len_wanted
                 curr_pos += self._gen_pos_from_dir( direction, len_wanted-1 )
+                print("iter: %d; pos: %s; dir: %s; used: %d; wanted %d; avail: %d"%(sanity,curr_pos,direction,len_used,len_wanted,len_avail))
 
             # turn towards area with space to draw what we want
             direction = self._gen_get_compass_turn( direction )
@@ -435,14 +445,33 @@ class TypeAMap(Map):
         #    * choose corridor width
         #    * choose number of corridor bends (1-4, depending on sites)
         #    * plot corridor
-        corridors += self._gen_corridor( self.size.x, 2 )
+        print (" -- MAIN CORRIDOR --")
+        d = self._gen_get_compass_dir()
+        corridors += self._gen_corridor( self._gen_get_edge_tile( self._gen_get_compass_opposite(d), 1, 4 ),
+                                         d,
+                                         self.size.x+self.size.y//2,
+                                         2,
+                                         self.CORRIDOR_MAX_BENDS )
 
         # * calculate allowance for intersecting corridors (1-5)
         # * consume allowance: 1 for 1 tile width; 2 for 2 tile width, multiplied by 1 for short corridor, 2 for long
-        #    * choose random intersect on main corridor
         #    * choose random length and termination points
         #    * choose random number of bends
         #    * plot corridor
+        main_corridor_marker = len(corridors)-1
+        for i in range(libtcod.random_get_int(self.map_rng,self.CORRIDOR_MAX_MINOR//2,self.CORRIDOR_MAX_MINOR)):
+            # * choose random intersect on main corridor
+            c = corridors[ libtcod.random_get_int(self.map_rng,0,main_corridor_marker) ]
+            if libtcod.random_get_int(self.map_rng,1,10) > 8:
+                c = corridors[ libtcod.random_get_int(self.map_rng,0,len(corridors)-1) ]
+            print(" -- INTERSECTING CORRIDOR %d (FROM SEG %d) -- "%(i,corridors.index(c)))
+            intersect = c.opos + self._gen_pos_from_dir( c.direction, libtcod.random_get_int(self.map_rng,0,c.length-1) )
+            corridors += self._gen_corridor( intersect,
+                                             self._gen_get_compass_turn(c.direction),
+                                             libtcod.random_get_int(self.map_rng,self.CORRIDOR_MINOR_LEN//2,self.CORRIDOR_MINOR_LEN),
+                                             1,
+                                             self.CORRIDOR_MINOR_BEND )
+
         # * commit corridors to map
         for c in corridors:
             c.commit(self._map)
@@ -519,6 +548,16 @@ class TypeAMap(Map):
         # * use pathing to prove map traversable
         # * for tile in empty tiles:
         #    * if tile adjoins one walkable tile, it is a wall tile
+
+        # place daleks
+        for i in range(0,8):
+            d = Monster.random(self.map_rng,self.find_random_clear(self.map_rng))
+            self.add(d)
+
+        # place some items
+        for i in range(0,4):
+            i = Item.random(self.map_rng,self.find_random_clear(self.map_rng))
+            self.add(i)
 
         self._gen_add_key_elements()
         self._gen_finish()
