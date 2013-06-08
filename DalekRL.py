@@ -10,7 +10,7 @@ import libtcodpy as libtcod
 # our imports
 from interfaces import Position
 from ui import UI
-from maps import DalekMap
+from maps import Map
 from errors import InvalidMoveError
 
 SCREEN_SIZE = Position(80,50)
@@ -28,7 +28,7 @@ libtcod.console_init_root(SCREEN_SIZE.x, SCREEN_SIZE.y, b'DalekRL')
 libtcod.sys_set_fps(LIMIT_FPS)
 
 # generate default map
-map = DalekMap(RANDOM_SEED,SCREEN_SIZE-(0,4))
+map = Map.random(RANDOM_SEED,SCREEN_SIZE-(0,4))
 map.generate()
 assert not map.player is None
 player = map.player

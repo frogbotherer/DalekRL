@@ -47,6 +47,10 @@ class MS_SeekingPlayer(Monster_State):
         self.player_last_pos = Position(p.pos.x,p.pos.y)
 
         if len(next_move):
+            if not self.monster.pos.distance_to(next_move[0])<2:
+                next_move = [self.monster.pos]#self.monster.map.get_path(self.monster.pos,p.pos)
+                print ("BAD MOVE BY %s" % self.monster)
+            assert self.monster.pos.distance_to(next_move[0])<2, "Illegal move by %s to %s"%(self.monster,next_move[0])
             return next_move[0]
         else:
             assert False, "Can't chase player!"
@@ -143,6 +147,7 @@ class Dalek (Monster,Tanglable,Talker):
 
         # if on player square: lose
         if self.pos == p.pos:
+            print("%s %s"%(self,self.state))
             raise GameOverError("Caught!")
 
         # find monster

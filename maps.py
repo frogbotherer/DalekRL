@@ -6,6 +6,7 @@ from monsters import Monster, Player, Stairs
 from interfaces import Mappable, Position, Traversable, Transparent
 from items import Item
 from tiles import Tile, Wall, Floor
+from errors import TodoError
 
 from functools import reduce
 
@@ -167,11 +168,7 @@ class Map:
     def generate(self):
         raise NotImplementedError
 
-    
-
-class DalekMap(Map):
-
-    def generate(self):
+    def _gen_draw_map_edges(self):
         # place map edges
         for i in range(0,self.size.x):
             self.add(Wall(Position(i,0)))
@@ -179,6 +176,54 @@ class DalekMap(Map):
         for i in range(1,self.size.y-1):
             self.add(Wall(Position(0,i)))
             self.add(Wall(Position(self.size.x-1,i)))
+
+    def _gen_add_key_elements(self):
+        # place stairs
+        self.add(Stairs(self.find_random_clear(self.map_rng)))
+
+        # place player
+        self.player = Player(self.find_random_clear(self.map_rng))
+        self.add(self.player)
+
+    def _gen_finish(self):
+        # calculate path information
+        self.recalculate_paths()
+
+        # calculate player's initial fov
+        self.prepare_fov(self.player.pos)
+
+    def random(seed,size):
+        #return EmptyMap(seed,size)
+        #return DalekMap(seed,size)
+        return TypeAMap(seed,size)
+
+class EmptyMap(Map):
+    def generate(self):
+        self._gen_draw_map_edges()
+
+        # fill with floor
+        for i in range(1,self.size.x-1):
+            for j in range(1,self.size.y-1):
+                self.add(Floor(Position(i,j)))
+
+        # place daleks
+        for i in range(0,20):
+            d = Monster.random(self.map_rng,self.find_random_clear(self.map_rng))
+            self.add(d)
+
+        # place some items
+        for i in range(0,3):
+            i = Item.random(self.map_rng,self.find_random_clear(self.map_rng))
+            self.add(i)
+
+        self._gen_add_key_elements()
+        self._gen_finish()
+
+
+class DalekMap(Map):
+
+    def generate(self):
+        self._gen_draw_map_edges()
 
         # put floor in
         # put a randomly-sized impassable box in the middle
@@ -196,13 +241,6 @@ class DalekMap(Map):
                 else:
                     self.add(Floor(Position(i,j)))
 
-        # place stairs
-        self.add(Stairs(self.find_random_clear(self.map_rng)))
-
-        # place player
-        self.player = Player(self.find_random_clear(self.map_rng))
-        self.add(self.player)
-
         # place daleks
         for i in range(0,10):
             d = Monster.random(self.map_rng,self.find_random_clear(self.map_rng))
@@ -213,8 +251,282 @@ class DalekMap(Map):
             i = Item.random(self.map_rng,self.find_random_clear(self.map_rng))
             self.add(i)
 
-        # calculate path information
-        self.recalculate_paths()
+        self._gen_add_key_elements()
+        self._gen_finish()
 
-        # calculate player's initial fov
-        self.prepare_fov(self.player.pos)
+
+class TypeAMap(Map):
+    """Map Layout:
+     * corridors of 1 and 2 tile width
+     * adjoining rooms with multiple exits and interconnects
+     * sub-partitioned rooms
+     * 80-90% of map space used
+    """
+
+    EMPTY    = 0x0
+    CORRIDOR = 0x1
+    ROOM     = 0x2
+    WALL     = 0x4
+    DOOR     = 0x8
+
+    COMPASS = { 'N': {'opposite':'S','clockwise':'E','anticlockwise':'W','adjacent':['W','E']},
+                'S': {'opposite':'N','clockwise':'W','anticlockwise':'E','adjacent':['W','E']},
+                'E': {'opposite':'W','clockwise':'S','anticlockwise':'N','adjacent':['N','S']},
+                'W': {'opposite':'E','clockwise':'N','anticlockwise':'S','adjacent':['N','S']},
+                }
+
+    CORRIDOR_NUM_BENDS  = 3
+    CORRIDOR_LENGTH_VAR = [0.7,1.3]
+    SANITY_LIMIT        = 10
+
+    def __init__(self, seed, size):
+        Map.__init__(self, seed, size)
+        self._map = [ [0 for y in range(size.y)] for x in range(size.x) ]
+
+    class _ME:
+        def __init__(self,tile_id,pos,size):
+            if not isinstance(pos,Position):
+                pos = Position(pos)
+            if not isinstance(size,Position):
+                size = Position(size)
+            self.tile_id = tile_id
+            self.pos = pos
+            self.size = size
+
+        def commit(self,m):
+            for x in range(self.size.x):
+                for y in range(self.size.y):
+                    m[x+self.pos.x][y+self.pos.y] = self.tile_id
+
+    def _gen_get_compass_dir(self):
+        return ['N','S','E','W'][ libtcod.random_get_int(self.map_rng,0,3) ]
+    def _gen_get_compass_turn(self,current_direction):
+        return TypeAMap.COMPASS[current_direction]['adjacent'][ libtcod.random_get_int(self.map_rng,0,1) ]
+    def _gen_get_compass_opposite(self,current_direction):
+        return TypeAMap.COMPASS[current_direction]['opposite']
+
+    def _gen_get_dir_to_closest_edge(self,pos):
+        half_x = self.size.x//2
+        half_y = self.size.y//2
+        if pos.x < half_x:
+            if pos.y < half_y:
+                # NW quad
+                if pos.x > pos.y:
+                    return 'N'
+                else:
+                    return 'W'
+            else:
+                # SW quad
+                if pos.x > self.size.y-pos.y:
+                    return 'S'
+                else:
+                    return 'W'
+        else:
+            if pos.y < half_y:
+                # NE quad
+                if self.size.x-pos.x > pos.y:
+                    return 'N'
+                else:
+                    return 'E'
+            else:
+                # SE quad
+                if pos.x > pos.y:
+                    return 'E'
+                else:
+                    return 'S'
+    def _gen_get_dir_to_furthest_edge(self,pos):
+        return self._gen_compass_get_opposite( self._gen_get_dir_and_dist_to_closest_edge(self,pos) )
+
+    def _gen_get_available_dist(self,pos,direction):
+        if   direction == 'N':
+            return pos.y
+        elif direction == 'S':
+            return self.size.y-pos.y
+        elif direction == 'E':
+            return self.size.x-pos.x
+        elif direction == 'W':
+            return pos.x
+        else:
+            assert False, "_gen_get_available_dist called with bad direction %s"%direction
+
+    def _gen_pos_from_dir(self, direction, distance):
+        if   direction == 'N':
+            return Position(0,-distance)
+        elif direction == 'S':
+            return Position(0,distance)
+        elif direction == 'E':
+            return Position(distance,0)
+        elif direction == 'W':
+            return Position(-distance,0)
+        else:
+            assert False, "_gen_pos_from_dir called with bad direction %s" % direction
+
+    def _gen_get_edge_tile(self, edge, border_min=0, border_max=2):
+        """Random unoccupied Position() within <border_min/_max> tiles of map edge <edge>"""
+        if   edge == 'N':
+            return Position( libtcod.random_get_int(self.map_rng,border_min,self.size.x-border_min), libtcod.random_get_int(self.map_rng,border_min,border_max) )
+        elif edge == 'S':
+            return Position( libtcod.random_get_int(self.map_rng,border_min,self.size.x-border_min), self.size.y-libtcod.random_get_int(self.map_rng,border_min,border_max) )
+        elif edge == 'W':
+            return Position( libtcod.random_get_int(self.map_rng,border_min,border_max), libtcod.random_get_int(self.map_rng,border_min,self.size.y-border_min) )
+        elif edge == 'E':
+            return Position( self.size.x-libtcod.random_get_int(self.map_rng,border_min,border_max), libtcod.random_get_int(self.map_rng,border_min,self.size.y-border_min) )
+        else:
+            assert False, "_gen_get_edge_tile called with invalid edge %s" % edge
+
+    def _gen_corridor_seg(self, pos, direction, length, width=1):
+        size = None
+        if   direction == 'N':
+            # adjust pos to top-left
+            pos -= Position( 0, length-width )
+            size = Position( width, length )
+        elif direction == 'S':
+            size = Position( width, length )
+        elif direction == 'E':
+            size = Position( length, width )
+        elif direction == 'W':
+            pos -= Position( length-width, 0 )
+            size = Position( length, width )
+        else:
+            assert False, "_gen_corridor_seg called with invalid direction %s" % direction
+        return self._ME(TypeAMap.CORRIDOR, pos, size)
+
+    def _gen_corridor(self, length, width):
+        c_segs    = []
+        len_used  = 0
+        direction = self._gen_get_compass_dir()
+        curr_pos  = self._gen_get_edge_tile( self._gen_get_compass_opposite(direction), 1, 4 )
+        num_bends = libtcod.random_get_int(self.map_rng, 1, self.CORRIDOR_NUM_BENDS)
+
+        sanity = 0
+        while len_used < length:
+            sanity += 1
+            if sanity > self.SANITY_LIMIT:
+                assert False, "sanity hit whilst routing corridor"
+                break
+            len_wanted = int(libtcod.random_get_float(self.map_rng,self.CORRIDOR_LENGTH_VAR[0],self.CORRIDOR_LENGTH_VAR[1]) * (length)/(1+num_bends))
+            if len_wanted + len_used > length:
+                len_wanted = length - len_used
+            len_avail = self._gen_get_available_dist(curr_pos,direction)
+
+            print("iter: %d; pos: %s; dir: %s; used: %d; wanted %d; avail: %d"%(sanity,curr_pos,direction,len_used,len_wanted,len_avail))
+            if len_avail > len_wanted+1:
+                s = self._gen_corridor_seg( curr_pos, direction, len_wanted, width )
+                c_segs.append( s )
+                len_used += len_wanted
+                curr_pos += self._gen_pos_from_dir( direction, len_wanted-1 )
+
+            # turn towards area with space to draw what we want
+            direction = self._gen_get_compass_turn( direction )
+            o = self._gen_get_compass_opposite( direction )
+            if self._gen_get_available_dist( curr_pos, direction ) < self._gen_get_available_dist( curr_pos, o ):
+                direction = o
+
+        return c_segs
+
+    def generate(self):
+        self._gen_draw_map_edges()
+        # * corridors and rooms include just walkable tiles
+        corridors = []
+        rooms = []
+        # * route one corridor across most of map
+        #    * choose random site near one edge of map
+        #    * choose random site near far edge of map
+        #    * choose corridor width
+        #    * choose number of corridor bends (1-4, depending on sites)
+        #    * plot corridor
+        corridors += self._gen_corridor( self.size.x, 2 )
+
+        # * calculate allowance for intersecting corridors (1-5)
+        # * consume allowance: 1 for 1 tile width; 2 for 2 tile width, multiplied by 1 for short corridor, 2 for long
+        #    * choose random intersect on main corridor
+        #    * choose random length and termination points
+        #    * choose random number of bends
+        #    * plot corridor
+        # * commit corridors to map
+        for c in corridors:
+            c.commit(self._map)
+        # * for each remaining unplotted tile
+        #    * calculate largest square that can be made without overlapping a corridor+1 tile
+        #    * if square size > threshold or (>0 and random chance):
+        #       * if square overlaps another one
+        #          * if this square size > that square size
+        #             * remove that square
+        #          * else continue
+        #       * save square
+        # [* may need to repeat this loop 2-3 times, making squares permanent at each point]
+        # * for each square larger than threshold:
+        #    * if random chance succeeds:
+        #        * sub-divide with partitions
+        # * create doors at intersects
+        # * use pathing to prove map traversable
+        # * populate Map object from _map
+        for x in range(1,len(self._map)-1):
+            for y in range(1,len(self._map[0])-1):
+                t = self._map[x][y]
+                if   t & self.CORRIDOR:
+                    self.add(Floor(Position(x,y)))
+                elif t & self.ROOM:
+                    raise TodoError
+                elif t & self.WALL:
+                    self.add(Wall(Position(x,y)))
+                elif t & self.DOOR:
+                    raise TodoError
+                elif t == 0:
+                    # * if tile adjoins one walkable tile, it is a wall tile
+                    if self._map[x-1][y-1] > 0 or \
+                       self._map[x][y-1] > 0 or \
+                       self._map[x+1][y-1] > 0 or \
+                       self._map[x-1][y] > 0 or \
+                       self._map[x][y] > 0 or \
+                       self._map[x+1][y] > 0 or \
+                       self._map[x-1][y+1] > 0 or \
+                       self._map[x][y+1] > 0 or \
+                       self._map[x+1][y+1] > 0:
+                        self.add(Wall(Position(x,y)))
+                else:
+                    assert False, "Invalid _map data"
+
+
+
+        #####  PSEUDO-CODE  #########################################
+        # * corridors and rooms include just walkable tiles
+        # * route one corridor across most of map
+        #    * choose random site near one edge of map
+        #    * choose random site near far edge of map
+        #    * choose corridor width
+        #    * choose number of corridor bends (1-4, depending on sites)
+        #    * plot corridor
+        # * calculate allowance for intersecting corridors (1-5)
+        # * consume allowance: 1 for 1 tile width; 2 for 2 tile width, multiplied by 1 for short corridor, 2 for long
+        #    * choose random intersect on main corridor
+        #    * choose random length and termination points
+        #    * choose random number of bends
+        #    * plot corridor
+        # * for each remaining unplotted tile
+        #    * calculate largest square that can be made without overlapping a corridor+1 tile
+        #    * if square size > threshold or (>0 and random chance):
+        #       * if square overlaps another one
+        #          * if this square size > that square size
+        #             * remove that square
+        #          * else continue
+        #       * save square
+        # [* may need to repeat this loop 2-3 times, making squares permanent at each point]
+        # * for each square larger than threshold:
+        #    * if random chance succeeds:
+        #        * sub-divide with partitions
+        # * create doors at intersects
+        # * use pathing to prove map traversable
+        # * for tile in empty tiles:
+        #    * if tile adjoins one walkable tile, it is a wall tile
+
+        self._gen_add_key_elements()
+        self._gen_finish()
+
+class TypeBMap(Map):
+    """Map
+     * use B-tree algorithm to create cell-shaped rooms with 1 tile gap between them
+     * populate gaps with corridors
+     * spawn doors
+    """
+    pass
