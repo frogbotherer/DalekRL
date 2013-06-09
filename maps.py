@@ -284,6 +284,7 @@ class TypeAMap(Map):
     CORRIDOR_MINOR_FREQ = 6
     CORRIDOR_MINOR_STEP = 4
     CORRIDOR_MIN_LENGTH = 5
+    REJECT_COVERAGE_PC  = 0.6
     SANITY_LIMIT        = 100
 
     def __init__(self, seed, size):
@@ -515,6 +516,7 @@ class TypeAMap(Map):
         return c_segs
 
     def generate(self):
+
         self._gen_draw_map_edges()
         # * corridors and rooms include just walkable tiles
         corridors = []
@@ -588,6 +590,18 @@ class TypeAMap(Map):
                                              self.CORRIDOR_MINOR_BEND )
 
             used_len += delta_len
+
+        # * if corridors don't give reasonable coverage, give up and start again
+        coverage_tl_pos = Position(self.size.x,self.size.y)
+        coverage_br_pos = Position(0,0)
+        for c in corridors:
+            if c.pos < coverage_tl_pos:
+                coverage_tl_pos = c.pos
+            if c.pos+c.size > coverage_br_pos:
+                coverage_br_pos = c.pos+c.size
+        if coverage_tl_pos.distance_to(coverage_br_pos) < Position(0,0).distance_to(self.size)*self.REJECT_COVERAGE_PC:
+            print("Rejecting map !!!")
+            return self.generate()
 
         # * commit corridors to map
         for c in corridors:
