@@ -369,6 +369,21 @@ class TypeAMap(Map):
         else:
             assert False, "_gen_pos_from_dir called with bad direction %s" % direction
 
+    def _gen_dir_from_pos(self, pos_from, pos_to=None):
+        if pos_to is None:
+            pos_to = self.map.size
+        v = pos_to - pos_from
+        length = v.x
+        direction = 'E'
+        if v.x < 0:
+            direction = 'W'
+        if abs(v.y) > abs(v.x):
+            length = v.y
+            direction = 'S'
+            if v.y < 0:
+                direction = 'N'
+        return (direction,length)
+
     def _gen_get_edge_tile(self, edge, border_min=0, border_max=2):
         """Random unoccupied Position() within <border_min/_max> tiles of map edge <edge>"""
         if   edge == 'N':
@@ -400,7 +415,39 @@ class TypeAMap(Map):
             assert False, "_gen_corridor_seg called with invalid direction %s" % direction
         return self._ME(TypeAMap.CORRIDOR, pos, size, opos, direction, length)
 
-    def _gen_corridor(self, pos, direction, length, width, bendiness):
+
+    def _gen_corridor_to_area(self, pos, direction, edge, width, bendiness=3):
+        c_segs = []
+        curr_pos = pos
+        num_bends = libtcod.random_get_int(self.map_rng, 1, bendiness)
+
+        sanity = 0
+
+        terminating_pos = self._gen_get_edge_tile(edge, self.CORRIDOR_MIN_LENGTH+width+1, self.CORRIDOR_MIN_LENGTH+width+6)
+
+        while bendiness > 0:
+            if   bendiness == 1:
+                # get as close to terminating pos as possible
+                d, l = self._gen_dir_from_pos( curr_pos, terminating_pos )
+                c_segs.append( self._gen_corridor_seg( curr_pos, d, l, width ) )
+                
+            elif bendiness == 2:
+                # get on same long or lat as terminating pos
+                v = terminating_pos - curr_pos
+                l = abs(v.x)
+                if direction in ['N','S']:
+                    l = abs(v.y)
+                c_segs.append( self._gen_corridor_seg( curr_pos, direction, l, width ) )
+                
+            else:
+                # travel random distance in current direction, then turn
+                c_segs.append( self._gen_corridor_seg( curr_pos, direction, libtcod.random_get_int(self.map_rng,self.CORRIDOR_MIN_LENGTH+width+1,self._gen_get_available_dist(curr_pos,direction)), width ) )
+                direction = self._gen_get_compass_turn(direction)
+            bendiness -= 1
+
+        return c_segs
+
+    def _gen_corridor_wriggle(self, pos, direction, length, width, bendiness):
         c_segs    = []
         len_used  = 0
         curr_pos  = pos
@@ -429,7 +476,8 @@ class TypeAMap(Map):
             # turn towards area with space to draw what we want
             direction = self._gen_get_compass_turn( direction )
             o = self._gen_get_compass_opposite( direction )
-            if self._gen_get_available_dist( curr_pos, direction ) < self._gen_get_available_dist( curr_pos, o ):
+            #if self._gen_get_available_dist( curr_pos, direction ) < self._gen_get_available_dist( curr_pos, o ):
+            if self._gen_get_available_dist( curr_pos, direction ) < self.CORRIDOR_MIN_LENGTH+width+1:
                 direction = o
 
         return c_segs
@@ -447,9 +495,10 @@ class TypeAMap(Map):
         #    * plot corridor
         print (" -- MAIN CORRIDOR --")
         d = self._gen_get_compass_dir()
-        corridors += self._gen_corridor( self._gen_get_edge_tile( self._gen_get_compass_opposite(d), 1, 4 ),
+        o = self._gen_get_compass_opposite(d)
+        corridors += self._gen_corridor_to_area( self._gen_get_edge_tile( o, 1, 4 ),
                                          d,
-                                         self.size.x+self.size.y//2,
+                                         o,
                                          2,
                                          self.CORRIDOR_MAX_BENDS )
 
@@ -459,15 +508,21 @@ class TypeAMap(Map):
         #    * choose random number of bends
         #    * plot corridor
         main_corridor_marker = len(corridors)-1
-        for i in range(libtcod.random_get_int(self.map_rng,self.CORRIDOR_MAX_MINOR//2,self.CORRIDOR_MAX_MINOR)):
-            # * choose random intersect on main corridor
-            c = corridors[ libtcod.random_get_int(self.map_rng,0,main_corridor_marker) ]
-            if libtcod.random_get_int(self.map_rng,1,10) > 8:
-                c = corridors[ libtcod.random_get_int(self.map_rng,0,len(corridors)-1) ]
+        for i in range(main_corridor_marker+1):
+            c = corridors[i]
+            # * choose random intersect on each segment of main corridor
             print(" -- INTERSECTING CORRIDOR %d (FROM SEG %d) -- "%(i,corridors.index(c)))
             intersect = c.opos + self._gen_pos_from_dir( c.direction, libtcod.random_get_int(self.map_rng,0,c.length-1) )
-            corridors += self._gen_corridor( intersect,
-                                             self._gen_get_compass_turn(c.direction),
+            d = self._gen_get_compass_turn(c.direction)
+            corridors += self._gen_corridor_wriggle( intersect,
+                                             d,
+                                             libtcod.random_get_int(self.map_rng,self.CORRIDOR_MINOR_LEN//2,self.CORRIDOR_MINOR_LEN),
+                                             1,
+                                             self.CORRIDOR_MINOR_BEND )
+            intersect = c.opos + self._gen_pos_from_dir( c.direction, libtcod.random_get_int(self.map_rng,0,c.length-1) )
+            d = self._gen_get_compass_opposite(d)
+            corridors += self._gen_corridor_wriggle( intersect,
+                                             d,
                                              libtcod.random_get_int(self.map_rng,self.CORRIDOR_MINOR_LEN//2,self.CORRIDOR_MINOR_LEN),
                                              1,
                                              self.CORRIDOR_MINOR_BEND )

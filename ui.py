@@ -18,6 +18,9 @@ class UI:
                 if e.timeout==0.0 or e.timeout>timeout:
                     e.draw()
 
+    def clear_all():
+        for e in UI.ui_elements:
+            del e
 
 class Message(UI):
     def __init__(self, pos, text, centred=False):

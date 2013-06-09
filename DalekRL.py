@@ -120,6 +120,7 @@ while not libtcod.console_is_window_closed():
         map = Map.random(RANDOM_SEED,SCREEN_SIZE-(0,4))
         map.generate()
         player = map.player
+        UI.clear_all()
         KEYMAP = {
             'k': player.move_n,
             'j': player.move_s,
