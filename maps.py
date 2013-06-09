@@ -411,14 +411,14 @@ class TypeAMap(Map):
         pos  = Position(opos.x,opos.y)
         if   direction == 'N':
             # adjust pos to top-left
-            pos -= Position( 0, length )
+            pos -= Position( 0, length-width )
             size = Position( width, length )
         elif direction == 'S':
             size = Position( width, length )
         elif direction == 'E':
             size = Position( length, width )
         elif direction == 'W':
-            pos -= Position( length, 0 )
+            pos -= Position( length-width, 0 )
             size = Position( length, width )
         else:
             assert False, "_gen_corridor_seg called with invalid direction %s" % direction
