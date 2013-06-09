@@ -276,11 +276,13 @@ class TypeAMap(Map):
                 'W': {'opposite':'E','clockwise':'N','anticlockwise':'S','adjacent':['N','S']},
                 }
 
-    CORRIDOR_MAX_BENDS  = 3
-    CORRIDOR_LENGTH_VAR = [0.7,1.1]
+    CORRIDOR_MAX_BENDS  = 4
+    CORRIDOR_LENGTH_VAR = [0.8,1.3]
     CORRIDOR_MAX_MINOR  = 6
-    CORRIDOR_MINOR_LEN  = 40
+    CORRIDOR_MINOR_LEN  = 60
     CORRIDOR_MINOR_BEND = 1
+    CORRIDOR_MINOR_FREQ = 6
+    CORRIDOR_MINOR_STEP = 4
     CORRIDOR_MIN_LENGTH = 5
     SANITY_LIMIT        = 100
 
@@ -378,6 +380,7 @@ class TypeAMap(Map):
         if pos_to is None:
             pos_to = self.map.size
         v = pos_to - pos_from
+
         length = abs(v.x)
         direction = 'E'
         if v.x < 0:
@@ -387,6 +390,7 @@ class TypeAMap(Map):
             direction = 'S'
             if v.y < 0:
                 direction = 'N'
+
         return (direction,length)
 
     def _gen_get_edge_tile(self, edge, border_min=0, border_max=2):
@@ -424,25 +428,34 @@ class TypeAMap(Map):
     def _gen_corridor_to_area(self, pos, direction, edge, width, bendiness=3):
         c_segs = []
         curr_pos = pos
-        num_bends = libtcod.random_get_int(self.map_rng, 1, bendiness)
+        num_bends = libtcod.random_get_int(self.map_rng, 2, bendiness)
 
         sanity = 0
 
         terminating_pos = self._gen_get_edge_tile(edge, self.CORRIDOR_MIN_LENGTH+width+1, self.CORRIDOR_MIN_LENGTH+width+6)
+        while curr_pos.distance_to(terminating_pos) < self.CORRIDOR_MIN_LENGTH*5:
+            sanity += 1
+            if sanity > self.SANITY_LIMIT:
+                break
+            terminating_pos = self._gen_get_edge_tile(edge, self.CORRIDOR_MIN_LENGTH+width+1, self.CORRIDOR_MIN_LENGTH+width+6)
 
-        while bendiness > 0 and curr_pos.distance_to(terminating_pos) > width+1:
-            if   bendiness == 1:
+        while num_bends > 0 and curr_pos.distance_to(terminating_pos) > width+1:
+            if   num_bends == 1:
                 # get as close to terminating pos as possible
                 d, l = self._gen_dir_from_pos( curr_pos, terminating_pos )
                 c_segs.append( self._gen_corridor_seg( curr_pos, d, l, width ) )
-                print("Bend 1 (last): pos %s, target %s, dir %s, len %d"%(curr_pos,terminating_pos,d,1))
+                print("Bend 1 (last): pos %s, target %s, dir %s, len %d"%(curr_pos,terminating_pos,d,l))
 
-            elif bendiness == 2:
+            elif num_bends == 2:
                 # get on same long or lat as terminating pos
                 v = terminating_pos - curr_pos
                 l = abs(v.x)
                 if direction in ['N','S']:
                     l = abs(v.y)
+                if l > self._gen_get_available_dist(curr_pos,direction):
+                    direction = self._gen_get_compass_opposite(direction)
+                if l > self._gen_get_available_dist(curr_pos,direction): # still!
+                    l = self._gen_get_available_dist(curr_pos,direction) - self.CORRIDOR_MIN_LENGTH - width
                 c_segs.append( self._gen_corridor_seg( curr_pos, direction, l, width ) )
                 print("Bend 2 (pen.): pos %s, target %s, dir %s, len %d"%(curr_pos,terminating_pos,direction,l))
 
@@ -451,13 +464,13 @@ class TypeAMap(Map):
                 c_segs.append( self._gen_corridor_seg( curr_pos, direction, libtcod.random_get_int(self.map_rng,self.CORRIDOR_MIN_LENGTH+width+1,self._gen_get_available_dist(curr_pos,direction)-self.CORRIDOR_MIN_LENGTH-width), width ) )
                 print("Bend >2 (first): pos %s, target %s, dir %s, len %d"%(curr_pos,terminating_pos,direction,c_segs[-1].length))
                 direction = self._gen_get_compass_turn(direction)
-            bendiness -= 1
+            num_bends -= 1
             curr_pos += self._gen_pos_from_dir( c_segs[-1].direction, c_segs[-1].length-1 )
-#            # correct for N/W fencepost problem
-#            if   c_segs[-1].direction == 'N':
-#                curr_pos -= (0,width)
-#            elif c_segs[-1].direction == 'W':
-#                curr_pos -= (width,0)
+            # correct for N/W fencepost problem
+            if   c_segs[-1].direction == 'N':
+                curr_pos -= (0,width-1)
+            elif c_segs[-1].direction == 'W':
+                curr_pos -= (width-1,0)
 
         return c_segs
 
@@ -471,7 +484,7 @@ class TypeAMap(Map):
         while len_used < length:
             sanity += 1
             if sanity > self.SANITY_LIMIT:
-                assert False, "sanity hit whilst routing corridor"
+                #assert False, "sanity hit whilst routing corridor"
                 break
             len_wanted = int(libtcod.random_get_float(self.map_rng,self.CORRIDOR_LENGTH_VAR[0],self.CORRIDOR_LENGTH_VAR[1]) * (length)/(1+num_bends))
             if len_wanted + len_used > length:
@@ -486,11 +499,11 @@ class TypeAMap(Map):
                 len_used += len_wanted
                 curr_pos += self._gen_pos_from_dir( direction, len_wanted-1 )
                 print("iter: %d; pos: %s; dir: %s; used: %d; wanted %d; avail: %d"%(sanity,curr_pos,direction,len_used,len_wanted,len_avail))
- #               # correct for N/W fencepost problem
- #               if   direction == 'N':
- #                   curr_pos -= (0,width)
- #               elif direction == 'W':
- #                   curr_pos -= (width,0)
+                # correct for N/W fencepost problem
+                if   direction == 'N':
+                    curr_pos -= (0,width-1)
+                elif direction == 'W':
+                    curr_pos -= (width-1,0)
 
             # turn towards area with space to draw what we want
             direction = self._gen_get_compass_turn( direction )
@@ -526,25 +539,55 @@ class TypeAMap(Map):
         #    * choose random length and termination points
         #    * choose random number of bends
         #    * plot corridor
-        main_corridor_marker = len(corridors)-1
-        for i in range(main_corridor_marker+1):
-            c = corridors[i]
-            # * choose random intersect on each segment of main corridor
-            print(" -- INTERSECTING CORRIDOR %d (FROM SEG %d) -- "%(i,corridors.index(c)))
-            intersect = c.opos + self._gen_pos_from_dir( c.direction, libtcod.random_get_int(self.map_rng,0,c.length-1) )
+#        main_corridor_marker = len(corridors)-1
+#        for i in range(main_corridor_marker+1):
+#            c = corridors[i]
+#            # * choose random intersect on each segment of main corridor
+#            print(" -- INTERSECTING CORRIDOR %d (FROM SEG %d) -- "%(i,corridors.index(c)))
+#            intersect = c.opos + self._gen_pos_from_dir( c.direction, libtcod.random_get_int(self.map_rng,0,c.length-1) )
+#            d = self._gen_get_compass_turn(c.direction)
+#            corridors += self._gen_corridor_wriggle( intersect,
+#                                             d,
+#                                             libtcod.random_get_int(self.map_rng,self.CORRIDOR_MINOR_LEN//2,self.CORRIDOR_MINOR_LEN),
+#                                             1,
+#                                             self.CORRIDOR_MINOR_BEND )
+#            intersect = c.opos + self._gen_pos_from_dir( c.direction, libtcod.random_get_int(self.map_rng,0,c.length-1) )
+#            d = self._gen_get_compass_opposite(d)
+#            corridors += self._gen_corridor_wriggle( intersect,
+#                                             d,
+#                                             libtcod.random_get_int(self.map_rng,self.CORRIDOR_MINOR_LEN//2,self.CORRIDOR_MINOR_LEN),
+#                                             1,
+#                                             self.CORRIDOR_MINOR_BEND )
+        main_len = reduce(lambda a,b: a+b.length,corridors,0)
+        used_len = 0; index_len = 0
+        c_idx = 0
+        sanity = 0
+        while used_len < main_len:
+            sanity += 1
+            if sanity > self.SANITY_LIMIT:
+                assert False, "broke sanity trying to add wriggle corridors"
+                break
+            delta_len = libtcod.random_get_int(self.map_rng,0,self.CORRIDOR_MINOR_FREQ)*self.CORRIDOR_MINOR_STEP
+            index_len += delta_len
+            while index_len > corridors[c_idx].length:
+                index_len -= corridors[c_idx].length
+                c_idx += 1
+                if c_idx == len(corridors):
+                    # put wriggle corridor at end of last part of main
+                    c_idx -= 1
+                    index_len = corridors[c_idx].length
+            c = corridors[c_idx]
+            intersect = c.opos + self._gen_pos_from_dir( c.direction, index_len )
             d = self._gen_get_compass_turn(c.direction)
+            print("%d/%d %d/%d from %s %s for %d = %s"%(used_len,main_len,index_len,c.length,c.opos,c.direction,index_len,intersect))
+
             corridors += self._gen_corridor_wriggle( intersect,
                                              d,
                                              libtcod.random_get_int(self.map_rng,self.CORRIDOR_MINOR_LEN//2,self.CORRIDOR_MINOR_LEN),
                                              1,
                                              self.CORRIDOR_MINOR_BEND )
-            intersect = c.opos + self._gen_pos_from_dir( c.direction, libtcod.random_get_int(self.map_rng,0,c.length-1) )
-            d = self._gen_get_compass_opposite(d)
-            corridors += self._gen_corridor_wriggle( intersect,
-                                             d,
-                                             libtcod.random_get_int(self.map_rng,self.CORRIDOR_MINOR_LEN//2,self.CORRIDOR_MINOR_LEN),
-                                             1,
-                                             self.CORRIDOR_MINOR_BEND )
+
+            used_len += delta_len
 
         # * commit corridors to map
         for c in corridors:
