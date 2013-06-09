@@ -378,12 +378,12 @@ class TypeAMap(Map):
         if pos_to is None:
             pos_to = self.map.size
         v = pos_to - pos_from
-        length = v.x
+        length = abs(v.x)
         direction = 'E'
         if v.x < 0:
             direction = 'W'
         if abs(v.y) > abs(v.x):
-            length = v.y
+            length = abs(v.y)
             direction = 'S'
             if v.y < 0:
                 direction = 'N'
@@ -448,16 +448,16 @@ class TypeAMap(Map):
 
             else:
                 # travel random distance in current direction, then turn
-                c_segs.append( self._gen_corridor_seg( curr_pos, direction, libtcod.random_get_int(self.map_rng,self.CORRIDOR_MIN_LENGTH+width+1,self._gen_get_available_dist(curr_pos,direction)), width ) )
+                c_segs.append( self._gen_corridor_seg( curr_pos, direction, libtcod.random_get_int(self.map_rng,self.CORRIDOR_MIN_LENGTH+width+1,self._gen_get_available_dist(curr_pos,direction)-self.CORRIDOR_MIN_LENGTH-width), width ) )
                 print("Bend >2 (first): pos %s, target %s, dir %s, len %d"%(curr_pos,terminating_pos,direction,c_segs[-1].length))
                 direction = self._gen_get_compass_turn(direction)
             bendiness -= 1
             curr_pos += self._gen_pos_from_dir( c_segs[-1].direction, c_segs[-1].length-1 )
-            # correct for N/W fencepost problem
-            if   c_segs[-1].direction == 'N':
-                curr_pos -= (0,1)
-            elif c_segs[-1].direction == 'W':
-                curr_pos -= (1,0)
+#            # correct for N/W fencepost problem
+#            if   c_segs[-1].direction == 'N':
+#                curr_pos -= (0,width)
+#            elif c_segs[-1].direction == 'W':
+#                curr_pos -= (width,0)
 
         return c_segs
 
@@ -486,11 +486,11 @@ class TypeAMap(Map):
                 len_used += len_wanted
                 curr_pos += self._gen_pos_from_dir( direction, len_wanted-1 )
                 print("iter: %d; pos: %s; dir: %s; used: %d; wanted %d; avail: %d"%(sanity,curr_pos,direction,len_used,len_wanted,len_avail))
-                # correct for N/W fencepost problem
-                if   direction == 'N':
-                    curr_pos -= (0,1)
-                elif direction == 'W':
-                    curr_pos -= (1,0)
+ #               # correct for N/W fencepost problem
+ #               if   direction == 'N':
+ #                   curr_pos -= (0,width)
+ #               elif direction == 'W':
+ #                   curr_pos -= (width,0)
 
             # turn towards area with space to draw what we want
             direction = self._gen_get_compass_turn( direction )
