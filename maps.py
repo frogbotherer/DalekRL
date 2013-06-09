@@ -193,6 +193,7 @@ class Map:
         self.prepare_fov(self.player.pos)
 
     def random(seed,size):
+        print(" -- MAP SEED %d --" %seed)
         #return EmptyMap(seed,size)
         #return DalekMap(seed,size)
         return TypeAMap(seed,size)
@@ -301,7 +302,11 @@ class TypeAMap(Map):
             self.direction = direction
             self.length = length
 
+        def __str__(self):
+            return "Internal map element %d at %s, size %s. pos=%s, dir=%s, len=%d"%(self.tile_id,self.pos,self.size,self.opos,self.direction,self.length)
+
         def commit(self,m):
+            assert self.pos.x+self.size.x < len(m) and self.pos.y+self.size.y < len(m[0]), "Can't commit %s to grid size (%d,%d)"%(self,len(m),len(m[0]))
             for x in range(self.size.x):
                 for y in range(self.size.y):
                     m[x+self.pos.x][y+self.pos.y] = self.tile_id
@@ -402,14 +407,14 @@ class TypeAMap(Map):
         pos  = Position(opos.x,opos.y)
         if   direction == 'N':
             # adjust pos to top-left
-            pos -= Position( 0, length-width )
+            pos -= Position( 0, length )
             size = Position( width, length )
         elif direction == 'S':
             size = Position( width, length )
         elif direction == 'E':
             size = Position( length, width )
         elif direction == 'W':
-            pos -= Position( length-width, 0 )
+            pos -= Position( length, 0 )
             size = Position( length, width )
         else:
             assert False, "_gen_corridor_seg called with invalid direction %s" % direction
@@ -425,12 +430,13 @@ class TypeAMap(Map):
 
         terminating_pos = self._gen_get_edge_tile(edge, self.CORRIDOR_MIN_LENGTH+width+1, self.CORRIDOR_MIN_LENGTH+width+6)
 
-        while bendiness > 0:
+        while bendiness > 0 and curr_pos.distance_to(terminating_pos) > width+1:
             if   bendiness == 1:
                 # get as close to terminating pos as possible
                 d, l = self._gen_dir_from_pos( curr_pos, terminating_pos )
                 c_segs.append( self._gen_corridor_seg( curr_pos, d, l, width ) )
-                
+                print("Bend 1 (last): pos %s, target %s, dir %s, len %d"%(curr_pos,terminating_pos,d,1))
+
             elif bendiness == 2:
                 # get on same long or lat as terminating pos
                 v = terminating_pos - curr_pos
@@ -438,12 +444,20 @@ class TypeAMap(Map):
                 if direction in ['N','S']:
                     l = abs(v.y)
                 c_segs.append( self._gen_corridor_seg( curr_pos, direction, l, width ) )
-                
+                print("Bend 2 (pen.): pos %s, target %s, dir %s, len %d"%(curr_pos,terminating_pos,direction,l))
+
             else:
                 # travel random distance in current direction, then turn
                 c_segs.append( self._gen_corridor_seg( curr_pos, direction, libtcod.random_get_int(self.map_rng,self.CORRIDOR_MIN_LENGTH+width+1,self._gen_get_available_dist(curr_pos,direction)), width ) )
+                print("Bend >2 (first): pos %s, target %s, dir %s, len %d"%(curr_pos,terminating_pos,direction,c_segs[-1].length))
                 direction = self._gen_get_compass_turn(direction)
             bendiness -= 1
+            curr_pos += self._gen_pos_from_dir( c_segs[-1].direction, c_segs[-1].length-1 )
+            # correct for N/W fencepost problem
+            if   c_segs[-1].direction == 'N':
+                curr_pos -= (0,1)
+            elif c_segs[-1].direction == 'W':
+                curr_pos -= (1,0)
 
         return c_segs
 
@@ -472,6 +486,11 @@ class TypeAMap(Map):
                 len_used += len_wanted
                 curr_pos += self._gen_pos_from_dir( direction, len_wanted-1 )
                 print("iter: %d; pos: %s; dir: %s; used: %d; wanted %d; avail: %d"%(sanity,curr_pos,direction,len_used,len_wanted,len_avail))
+                # correct for N/W fencepost problem
+                if   direction == 'N':
+                    curr_pos -= (0,1)
+                elif direction == 'W':
+                    curr_pos -= (1,0)
 
             # turn towards area with space to draw what we want
             direction = self._gen_get_compass_turn( direction )

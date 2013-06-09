@@ -96,7 +96,12 @@ class Dalek (Monster,Tanglable,Talker):
     def __init__(self,pos=None):
         Monster.__init__(self,pos,'D',libtcod.red)
         Tanglable.__init__(self,5)
-        Talker.__init__(self,['**EXTERMINATE**','**DESTROY**'],0.05)
+        Talker.__init__(self,{
+                MS_RecentlyTangled: ['** BZZZT **'],
+                MS_SeekingPlayer: ['** EXTERMINATE! **','** DESTROY! **','** HALT! **'],
+                MS_InvestigateSpot: ['** HUNTING **','** I WILL FIND YOU **'],
+                MS_Patrolling: ['** BEEP BOOP **','** BOOP BEEP **']
+                },0.05)
         
 
     def take_turn(self):
@@ -131,8 +136,12 @@ class Dalek (Monster,Tanglable,Talker):
         elif isinstance(self.state,MS_SeekingPlayer):
             self.state = MS_InvestigateSpot(self,self.state.player_last_pos)
 
-        elif isinstance(self.state,MS_InvestigateSpot) and self.pos == self.state.destination_pos:
-            self.state = MS_Patrolling(self)
+        # otherwise if investigating
+        elif isinstance(self.state,MS_InvestigateSpot):
+            # ... change state if got to spot without finding player
+            if self.pos == self.state.destination_pos:
+                # TODO: this means bots will give up chase just before rounding a corner :(
+                self.state = MS_Patrolling(self)
 
         # otherwise patrol
         else:
@@ -157,7 +166,7 @@ class Dalek (Monster,Tanglable,Talker):
             self.tangle(m)
 
         # chatter
-        self.talk()
+        self.talk(self.state.__class__)
 
 
 

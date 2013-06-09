@@ -20,6 +20,7 @@ class UI:
 
     def clear_all():
         for e in UI.ui_elements:
+            e.is_visible = False
             del e
 
 class Message(UI):
