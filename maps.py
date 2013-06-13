@@ -398,13 +398,13 @@ class TypeAMap(Map):
     def _gen_get_edge_tile(self, edge, border_min=0, border_max=2):
         """Random unoccupied Position() within <border_min/_max> tiles of map edge <edge>"""
         if   edge == 'N':
-            return Position( libtcod.random_get_int(self.map_rng,border_min,self.size.x-border_min), libtcod.random_get_int(self.map_rng,border_min,border_max) )
+            return Position( libtcod.random_get_int(self.map_rng,border_min,self.size.x-border_min-1), libtcod.random_get_int(self.map_rng,border_min,border_max) )
         elif edge == 'S':
-            return Position( libtcod.random_get_int(self.map_rng,border_min,self.size.x-border_min), self.size.y-libtcod.random_get_int(self.map_rng,border_min,border_max) )
+            return Position( libtcod.random_get_int(self.map_rng,border_min,self.size.x-border_min-1), self.size.y-libtcod.random_get_int(self.map_rng,border_min,border_max)-1 )
         elif edge == 'W':
-            return Position( libtcod.random_get_int(self.map_rng,border_min,border_max), libtcod.random_get_int(self.map_rng,border_min,self.size.y-border_min) )
+            return Position( libtcod.random_get_int(self.map_rng,border_min,border_max), libtcod.random_get_int(self.map_rng,border_min,self.size.y-border_min-1) )
         elif edge == 'E':
-            return Position( self.size.x-libtcod.random_get_int(self.map_rng,border_min,border_max), libtcod.random_get_int(self.map_rng,border_min,self.size.y-border_min) )
+            return Position( self.size.x-libtcod.random_get_int(self.map_rng,border_min,border_max), libtcod.random_get_int(self.map_rng,border_min,self.size.y-border_min-1) )
         else:
             assert False, "_gen_get_edge_tile called with invalid edge %s" % edge
 
@@ -413,14 +413,14 @@ class TypeAMap(Map):
         pos  = Position(opos.x,opos.y)
         if   direction == 'N':
             # adjust pos to top-left
-            pos -= Position( width-1, length )
+            pos -= Position( 0, length )
             size = Position( width, length )
         elif direction == 'S':
             size = Position( width, length )
         elif direction == 'E':
             size = Position( length, width )
         elif direction == 'W':
-            pos -= Position( length, width-1 )
+            pos -= Position( length, 0 )
             size = Position( length, width )
         else:
             assert False, "_gen_corridor_seg called with invalid direction %s" % direction
@@ -482,7 +482,6 @@ class TypeAMap(Map):
         return c_segs
 
     def _gen_corridor_wriggle(self, pos, direction, length, width, bendiness):
-        return []
         c_segs    = []
         len_used  = 0
         curr_pos  = pos
@@ -505,13 +504,13 @@ class TypeAMap(Map):
                 s = self._gen_corridor_seg( curr_pos, direction, len_wanted, width )
                 c_segs.append( s )
                 len_used += len_wanted
-                curr_pos += self._gen_pos_from_dir( direction, len_wanted-1 )
+                curr_pos += self._gen_pos_from_dir( direction, len_wanted )
                 print("iter: %d; pos: %s; dir: %s; used: %d; wanted %d; avail: %d"%(sanity,curr_pos,direction,len_used,len_wanted,len_avail))
                 # correct for N/W fencepost problem
-                if   direction == 'N':
-                    curr_pos -= (0,width-1)
-                elif direction == 'W':
-                    curr_pos -= (width-1,0)
+                #if   direction == 'N':
+                #    curr_pos -= (0,width-1)
+                #elif direction == 'W':
+                #    curr_pos -= (width-1,0)
 
             # turn towards area with space to draw what we want
             direction = self._gen_get_compass_turn( direction )
