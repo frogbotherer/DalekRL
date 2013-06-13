@@ -310,6 +310,7 @@ class TypeAMap(Map):
 
         def commit(self,m):
             assert self.pos.x+self.size.x < len(m) and self.pos.y+self.size.y < len(m[0]), "Can't commit %s to grid size (%d,%d)"%(self,len(m),len(m[0]))
+            print(".commit %s to grid size (%d,%d)"%(self,len(m),len(m[0])))
             for x in range(self.size.x):
                 for y in range(self.size.y):
                     m[x+self.pos.x][y+self.pos.y] = self.tile_id
@@ -412,14 +413,14 @@ class TypeAMap(Map):
         pos  = Position(opos.x,opos.y)
         if   direction == 'N':
             # adjust pos to top-left
-            pos -= Position( 0, length-width )
+            pos -= Position( width-1, length )
             size = Position( width, length )
         elif direction == 'S':
             size = Position( width, length )
         elif direction == 'E':
             size = Position( length, width )
         elif direction == 'W':
-            pos -= Position( length-width, 0 )
+            pos -= Position( length, width-1 )
             size = Position( length, width )
         else:
             assert False, "_gen_corridor_seg called with invalid direction %s" % direction
@@ -462,20 +463,26 @@ class TypeAMap(Map):
 
             else:
                 # travel random distance in current direction, then turn
+                l_min = self._gen_get_available_dist(curr_pos,direction)-self.CORRIDOR_MIN_LENGTH-width
+                if l_min>self.CORRIDOR_MIN_LENGTH+width+1:
+                    l_min = self.CORRIDOR_MIN_LENGTH+width+1
+                elif l_min <= 0:
+                    direction = self._gen_get_compass_opposite(direction)
                 c_segs.append( self._gen_corridor_seg( curr_pos, direction, libtcod.random_get_int(self.map_rng,self.CORRIDOR_MIN_LENGTH+width+1,self._gen_get_available_dist(curr_pos,direction)-self.CORRIDOR_MIN_LENGTH-width), width ) )
                 print("Bend >2 (first): pos %s, target %s, dir %s, len %d"%(curr_pos,terminating_pos,direction,c_segs[-1].length))
                 direction = self._gen_get_compass_turn(direction)
             num_bends -= 1
-            curr_pos += self._gen_pos_from_dir( c_segs[-1].direction, c_segs[-1].length-1 )
+            curr_pos += self._gen_pos_from_dir( c_segs[-1].direction, c_segs[-1].length )
             # correct for N/W fencepost problem
-            if   c_segs[-1].direction == 'N':
-                curr_pos -= (0,width-1)
-            elif c_segs[-1].direction == 'W':
-                curr_pos -= (width-1,0)
+            #if   c_segs[-1].direction == 'N':
+            #    curr_pos -= (0,width)
+            #elif c_segs[-1].direction == 'W':
+            #    curr_pos -= (width,0)
 
         return c_segs
 
     def _gen_corridor_wriggle(self, pos, direction, length, width, bendiness):
+        return []
         c_segs    = []
         len_used  = 0
         curr_pos  = pos
@@ -530,7 +537,7 @@ class TypeAMap(Map):
         print (" -- MAIN CORRIDOR --")
         d = self._gen_get_compass_dir()
         o = self._gen_get_compass_opposite(d)
-        corridors += self._gen_corridor_to_area( self._gen_get_edge_tile( o, 1, 4 ),
+        corridors += self._gen_corridor_to_area( self._gen_get_edge_tile( o, 2, 4 ),
                                          d,
                                          o,
                                          2,
