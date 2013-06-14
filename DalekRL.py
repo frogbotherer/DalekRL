@@ -104,6 +104,7 @@ while not libtcod.console_is_window_closed():
     player.map.prepare_fov(player.pos)
 
     # items
+    # TODO: make taking turns an interface and use initiative to decide order; statics to collect turn-takers
     for i in map.get_items() + player.items:
         if not i is None:
             i.take_turn()

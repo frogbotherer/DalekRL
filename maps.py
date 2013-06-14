@@ -411,9 +411,15 @@ class TypeAMap(Map):
     def _gen_corridor_seg(self, opos, direction, length, width=1):
         size = None
         if direction == 'N':
-            opos += (0,width)
+            if opos.y+width >= self.size.y:
+                length -= width
+            else:
+                opos += (0,width)
         elif direction == 'W':
-            opos += (width,0)
+            if opos.x+width >= self.size.x:
+                length -= width
+            else:
+                opos += (width,0)
         pos  = Position(opos.x,opos.y)
         if   direction == 'N':
             # adjust pos to top-left
