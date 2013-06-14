@@ -2,10 +2,10 @@
 
 import libtcodpy as libtcod
 
-from interfaces import Carryable, Activatable, Activator, CountUp, Mappable
+from interfaces import Carryable, Activatable, Activator, CountUp, Mappable, TurnTaker
 from ui import HBar, Message
 
-class Item(Carryable, Activatable, Mappable):
+class Item(Carryable, Activatable, Mappable, TurnTaker):
     def __init__(self, owner):
         pos = None
         if not isinstance(owner, Activator):
@@ -13,6 +13,7 @@ class Item(Carryable, Activatable, Mappable):
             owner = None
         Mappable.__init__(self,pos,'!',libtcod.green)
         Activatable.__init__(self,owner)
+        TurnTaker.__init__(self,100)
         if pos is None:
             self.is_visible = False
 
@@ -21,9 +22,6 @@ class Item(Carryable, Activatable, Mappable):
             return "%s at %s"%(self.__class__.__name__,self.pos)
         else:
             return "%s held by %s"%(self.__class__.__name__,self.owner)
-
-    def take_turn(self):
-        pass
 
     def draw_ui(self,pos,max_width=40):
         pass
@@ -106,6 +104,8 @@ class LimitedUsesItem(Item):
         Item.take_by(self,owner)
         self.bar.is_visible = True
 
+    def take_turn(self):
+        pass # probably
 
 class HandTeleport(CoolDownItem):
     def __str__(self):

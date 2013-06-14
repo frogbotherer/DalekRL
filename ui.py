@@ -5,12 +5,12 @@ import libtcodpy as libtcod
 class UI:
     ui_elements = []
     def __init__(self):
-        self.ui_elements.append(self)
+        UI.ui_elements.append(self)
         self.is_visible = False
         self.timeout = 0.0
 
     def __del__(self):
-        self.ui_elements.remove(self)
+        UI.ui_elements.remove(self)
 
     def draw_all(timeout):
         for e in UI.ui_elements:
@@ -22,6 +22,8 @@ class UI:
         for e in UI.ui_elements:
             e.is_visible = False
             del e
+            #UI.ui_elements.remove(e)
+        UI.ui_elements = []
 
 class Message(UI):
     def __init__(self, pos, text, centred=False):

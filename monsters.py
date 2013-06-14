@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import libtcodpy as libtcod
-from interfaces import Mappable, Position, Activatable, Activator, CountUp, Talker
+from interfaces import Mappable, Position, Activatable, Activator, CountUp, Talker, TurnTaker
 from errors import GameOverError, InvalidMoveError, TodoError
 from ui import HBar, Message, Menu
 
@@ -14,13 +14,11 @@ class Monster_State:
         raise NotImplementedError
 
 
-class Monster (Mappable):
+class Monster (Mappable, TurnTaker):
     def __init__(self,pos,symbol,colour):
         self.state = None
         Mappable.__init__(self,pos,symbol,colour)
-
-    def take_turn(self):
-        pass
+        TurnTaker.__init__(self,10)
 
     def __str__(self):
         return "%s at %s" %(self.__class__.__name__,self.pos)

@@ -94,6 +94,31 @@ class Mappable:
         libtcod.console_put_char_ex(0, self.pos.x, self.pos.y, self.symbol, colour, libtcod.BKGND_NONE)
         self.has_been_seen = True
  
+class TurnTaker:
+    turn_takers = []
+
+    def __init__(self, initiative):
+        """Lowest initiative goes first"""
+        self.initiative = initiative
+        # might be a faster way to do this
+        TurnTaker.turn_takers.append(self)
+        TurnTaker.turn_takers.sort( key = lambda x: x.initiative )
+
+    def __del__(self):
+        TurnTaker.turn_takers.remove(self)
+
+    def take_turn(self):
+        raise NotImplementedError
+
+    def take_all_turns():
+        for t in TurnTaker.turn_takers:
+            t.take_turn()
+
+    def clear_all():
+        for t in TurnTaker.turn_takers:
+            #TurnTaker.turn_takers.remove(t)
+            del t
+        TurnTaker.turn_takers = []
 
 class Traversable:
     def __init__(self, walk_cost=0.0):

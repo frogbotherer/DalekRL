@@ -483,11 +483,6 @@ class TypeAMap(Map):
                 direction = self._gen_get_compass_turn(direction)
             num_bends -= 1
             curr_pos += self._gen_pos_from_dir( c_segs[-1].direction, c_segs[-1].length )
-            # correct for N/W fencepost problem
-            #if   c_segs[-1].direction == 'N':
-            #    curr_pos -= (0,width)
-            #elif c_segs[-1].direction == 'W':
-            #    curr_pos -= (width,0)
 
         return c_segs
 
@@ -516,11 +511,6 @@ class TypeAMap(Map):
                 len_used += len_wanted
                 curr_pos += self._gen_pos_from_dir( direction, len_wanted )
                 print("iter: %d; pos: %s; dir: %s; used: %d; wanted %d; avail: %d"%(sanity,curr_pos,direction,len_used,len_wanted,len_avail))
-                # correct for N/W fencepost problem
-                #if   direction == 'N':
-                #    curr_pos -= (0,width-1)
-                #elif direction == 'W':
-                #    curr_pos -= (width-1,0)
 
             # turn towards area with space to draw what we want
             direction = self._gen_get_compass_turn( direction )
@@ -557,25 +547,6 @@ class TypeAMap(Map):
         #    * choose random length and termination points
         #    * choose random number of bends
         #    * plot corridor
-#        main_corridor_marker = len(corridors)-1
-#        for i in range(main_corridor_marker+1):
-#            c = corridors[i]
-#            # * choose random intersect on each segment of main corridor
-#            print(" -- INTERSECTING CORRIDOR %d (FROM SEG %d) -- "%(i,corridors.index(c)))
-#            intersect = c.opos + self._gen_pos_from_dir( c.direction, libtcod.random_get_int(self.map_rng,0,c.length-1) )
-#            d = self._gen_get_compass_turn(c.direction)
-#            corridors += self._gen_corridor_wriggle( intersect,
-#                                             d,
-#                                             libtcod.random_get_int(self.map_rng,self.CORRIDOR_MINOR_LEN//2,self.CORRIDOR_MINOR_LEN),
-#                                             1,
-#                                             self.CORRIDOR_MINOR_BEND )
-#            intersect = c.opos + self._gen_pos_from_dir( c.direction, libtcod.random_get_int(self.map_rng,0,c.length-1) )
-#            d = self._gen_get_compass_opposite(d)
-#            corridors += self._gen_corridor_wriggle( intersect,
-#                                             d,
-#                                             libtcod.random_get_int(self.map_rng,self.CORRIDOR_MINOR_LEN//2,self.CORRIDOR_MINOR_LEN),
-#                                             1,
-#                                             self.CORRIDOR_MINOR_BEND )
         main_len = reduce(lambda a,b: a+b.length,corridors,0)
         used_len = 0; index_len = 0
         c_idx = 0
@@ -622,14 +593,9 @@ class TypeAMap(Map):
         # * commit corridors to map
         for c in corridors:
             c.commit(self._map)
-        # * for each remaining unplotted tile
-        #    * calculate largest square that can be made without overlapping a corridor+1 tile
-        #    * if square size > threshold or (>0 and random chance):
-        #       * if square overlaps another one
-        #          * if this square size > that square size
-        #             * remove that square
-        #          * else continue
-        #       * save square
+
+        # * randomly pick empty tiles and grow rooms until they touch corridors
+
         # [* may need to repeat this loop 2-3 times, making squares permanent at each point]
         # * for each square larger than threshold:
         #    * if random chance succeeds:

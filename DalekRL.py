@@ -8,7 +8,7 @@ import sys
 import libtcodpy as libtcod
 
 # our imports
-from interfaces import Position
+from interfaces import Position, TurnTaker
 from ui import UI
 from maps import Map
 from errors import InvalidMoveError, GameOverError
@@ -105,23 +105,25 @@ while not libtcod.console_is_window_closed():
 
     # items
     # TODO: make taking turns an interface and use initiative to decide order; statics to collect turn-takers
-    for i in map.get_items() + player.items:
-        if not i is None:
-            i.take_turn()
+#    for i in map.get_items() + player.items:
+#        if not i is None:
+#            i.take_turn()
 
     try:
-        # monster movement
-        for m in map.get_monsters():
-            m.take_turn()
+#        # monster movement
+#        for m in map.get_monsters():
+#            m.take_turn()
+        TurnTaker.take_all_turns()
     except GameOverError:
         print("Game Over")
         #del map
         #del player
         RANDOM_SEED += 3
+        UI.clear_all()
+        TurnTaker.clear_all()
         map = Map.random(RANDOM_SEED,SCREEN_SIZE-(0,4))
         map.generate()
         player = map.player
-        UI.clear_all()
         KEYMAP = {
             'k': player.move_n,
             'j': player.move_s,
