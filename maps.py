@@ -321,6 +321,10 @@ class TypeAMap(Map):
         return TypeAMap.COMPASS[current_direction]['adjacent'][ libtcod.random_get_int(self.map_rng,0,1) ]
     def _gen_get_compass_opposite(self,current_direction):
         return TypeAMap.COMPASS[current_direction]['opposite']
+    def _gen_get_compass_left(self,current_direction):
+        return TypeAMap.COMPASS[current_direction]['anticlockwise']
+    def _gen_get_compass_right(self,current_direction):
+        return TypeAMap.COMPASS[current_direction]['clockwise']
 
     def _gen_get_dir_to_closest_edge(self,pos):
         half_x = self.size.x//2
@@ -397,16 +401,151 @@ class TypeAMap(Map):
 
     def _gen_get_edge_tile(self, edge, border_min=0, border_max=2):
         """Random unoccupied Position() within <border_min/_max> tiles of map edge <edge>"""
+        p = None
         if   edge == 'N':
-            return Position( libtcod.random_get_int(self.map_rng,border_min,self.size.x-border_min-1), libtcod.random_get_int(self.map_rng,border_min,border_max) )
+            p = Position( libtcod.random_get_int(self.map_rng,border_min,self.size.x-border_min-1), libtcod.random_get_int(self.map_rng,border_min,border_max) )
         elif edge == 'S':
-            return Position( libtcod.random_get_int(self.map_rng,border_min,self.size.x-border_min-1), self.size.y-libtcod.random_get_int(self.map_rng,border_min,border_max)-1 )
+            p = Position( libtcod.random_get_int(self.map_rng,border_min,self.size.x-border_min-1), self.size.y-libtcod.random_get_int(self.map_rng,border_min,border_max)-1 )
         elif edge == 'W':
-            return Position( libtcod.random_get_int(self.map_rng,border_min,border_max), libtcod.random_get_int(self.map_rng,border_min,self.size.y-border_min-1) )
+            p = Position( libtcod.random_get_int(self.map_rng,border_min,border_max), libtcod.random_get_int(self.map_rng,border_min,self.size.y-border_min-1) )
         elif edge == 'E':
-            return Position( self.size.x-libtcod.random_get_int(self.map_rng,border_min,border_max), libtcod.random_get_int(self.map_rng,border_min,self.size.y-border_min-1) )
+            p = Position( self.size.x-libtcod.random_get_int(self.map_rng,border_min,border_max), libtcod.random_get_int(self.map_rng,border_min,self.size.y-border_min-1) )
         else:
             assert False, "_gen_get_edge_tile called with invalid edge %s" % edge
+
+        if self._map[p.x][p.y] == 0:
+            return p
+        else:
+            return self._gen_get_edge_tile(edge, border_min, border_max)
+
+    def _gen_get_centre_tile(self, border=0):
+        """Random unoccupied Position()"""
+        x = libtcod.random_get_int(self.map_rng,border,self.size.x-border-1)
+        y = libtcod.random_get_int(self.map_rng,border,self.size.y-border-1)
+        if self._map[x][y] == 0:
+            return Position(x,y)
+        else:
+            return self._gen_get_centre_tile(border)
+
+    def _gen_room(self, opos):
+        """Make a room, spiralling out from <pos>. Uses _map to identify collisions with corridors and other features"""
+        # 6
+        # 6455555     x = 1
+        # 6423335     while 1:
+        # 642^135         go x in direction d
+        # 6422135         go x in clockwise from d
+        # 6444435         x++
+        # 6666665         d = opposite(d)
+        #
+        
+        #  55.......       .......
+        #  53333       86N5555579
+        #  53114       86n3114s79
+        #  53^24       86n3^24s79
+        #  52224       86n2224s79
+        #  44444       8644444s79
+        #              8666666s79 
+        #              8888888879
+        #                         
+
+        # no N/S bound set, increment N/S step every other turn
+        # one N/S bound set, increment N/S step every 4th turn
+        # both N/S bounds set, don't increment
+        # no E/W bound set, increment E/W step every other turn
+        # one E/W bound set, increment E/W step every 4th turn
+        # both E/W bounds set, don't increment
+
+
+
+        #    ''          ''        4ee''          ''             ''             ''      
+        #   3ccc        3ccc       4           N              NeeeE          NeeeE     
+        #   31a4'''     31a4'''    4    '''    4    '''       4    '''           4'''  
+        #'  3^24  '  '  3^24  '  ' 4 ^    '  ' 4 x    '     ' 4 x    '     '   x 4  '  
+        #   bb24  '     bb2S  '    ddddS  '    ddddS  '           S  '     fWffffS  '  
+        #  ''dd4       ''          ''          ''             ''             ''        
+        #                              
+        #               S           S          NS             NSE
+
+        # sanity
+        if self._map[opos.x][opos.y] > 0:
+            return []
+
+        direction = 'N' # always go clockwise starting N
+        length    = 0
+        pos       = Position(opos.x,opos.y)
+        size      = Position(0,0)
+        bounds    = {'N':0, 'S':0, 'E':0, 'W':0}
+        r_segs    = []
+        sanity    = 0
+
+        while min(bounds.values())==0:
+            sanity += 1
+            if sanity > self.SANITY_LIMIT:
+                assert False, "Sanity limits hit in room gen"
+            if direction in ['N','S']:
+                if bounds[direction] == 0:
+                    size.y += 1
+                    length = size.y
+                else:
+                    length = abs(bounds[direction]-pos.y)-1
+            else:
+                if bounds[direction] == 0:
+                    size.x += 1
+                    length = size.x
+                else:
+                    length = abs(bounds[direction]-pos.x)-1
+            target_pos = pos + self._gen_pos_from_dir( direction, length )
+
+            print(" [] %s %d at %s towards %s"%(direction,length,pos,target_pos))
+
+            x_range = range(pos.x,target_pos.x+1)
+            if pos.x>target_pos.x:
+                x_range = range(target_pos.x,pos.x+1)
+            y_range = range(pos.y,target_pos.y+1)
+            if pos.y>target_pos.y:
+                y_range = range(target_pos.y,pos.y+1)
+
+            found = False
+            for x in x_range:
+                for y in y_range:
+                    if self._map[x][y] > 0:
+                        if x == target_pos.x and y == target_pos.y:
+                            # hit at end of edge; don't need to rewind direction
+                            target_pos -= self._gen_pos_from_dir( direction, 1 )
+                            print("    end hit %d at (%d,%d) size=%s; target now %s"%(self._map[x][y],x,y,size,target_pos))
+
+                        else:
+                            # collision with a corridor or another room
+                            #  * turn back anti-clockwise
+                            direction = self._gen_get_compass_left(direction)
+                            #  * move back one square from pos
+                            target_pos = pos - self._gen_pos_from_dir( direction, 1 )
+
+                            if direction in ['N','S']:
+                                size.y -= 1
+                            else:
+                                size.x -= 1
+
+                            print("    hit %d at (%d,%d) size=%s; target now %s"%(self._map[x][y],x,y,size,target_pos))
+
+                        #  * record this position as the bound for this direction
+                        if direction in ['N','S']:
+                            bounds[direction] = y
+                        else:
+                            bounds[direction] = x
+                        #  * continue
+                        found = True
+                        break
+                if found:
+                    break
+
+            direction = self._gen_get_compass_right(direction)
+            pos = target_pos
+
+        print ("Room starting at %s is %s"%(opos,bounds))
+
+        return r_segs
+
 
     def _gen_corridor_seg(self, opos, direction, length, width=1):
         size = None
@@ -595,6 +734,7 @@ class TypeAMap(Map):
             c.commit(self._map)
 
         # * randomly pick empty tiles and grow rooms until they touch corridors
+        rooms += self._gen_room( self._gen_get_centre_tile(3) )
 
         # [* may need to repeat this loop 2-3 times, making squares permanent at each point]
         # * for each square larger than threshold:
