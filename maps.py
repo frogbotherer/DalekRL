@@ -549,7 +549,7 @@ class TypeAMap(Map):
 
         print ("Room starting at %s is %s"%(opos,bounds))
 
-        return self._ME(TypeAMap.ROOM, Position(bounds['W'],bounds['N']), size, opos)
+        return self._ME(TypeAMap.ROOM, Position(bounds['W']+1,bounds['N']+1), size, opos)
 
 
     def _gen_corridor_seg(self, opos, direction, length, width=1):
@@ -668,11 +668,11 @@ class TypeAMap(Map):
     def generate(self):
 
         # map boundaries
-        self._gen_draw_map_edges()
+        #self._gen_draw_map_edges()
         self._ME(TypeAMap.WALL, Position(0,0), Position(self.size.x-1,1)).commit(self._map)
         self._ME(TypeAMap.WALL, Position(0,0), Position(1,self.size.y-1)).commit(self._map)
-        self._ME(TypeAMap.WALL, Position(self.size.x-1,0), Position(1,self.size.y-1)).commit(self._map)
-        self._ME(TypeAMap.WALL, Position(0,self.size.y-1), Position(self.size.x-1,1)).commit(self._map)
+        self._ME(TypeAMap.WALL, Position(self.size.x-1,0), Position(1,self.size.y)).commit(self._map)
+        self._ME(TypeAMap.WALL, Position(0,self.size.y-1), Position(self.size.x,1)).commit(self._map)
 
         # * corridors and rooms include just walkable tiles
         corridors = []
@@ -757,8 +757,8 @@ class TypeAMap(Map):
         # * create doors at intersects
         # * use pathing to prove map traversable
         # * populate Map object from _map
-        for x in range(1,len(self._map)-1):
-            for y in range(1,len(self._map[0])-1):
+        for x in range(len(self._map)):
+            for y in range(len(self._map[0])):
                 t = self._map[x][y]
                 if   t & self.CORRIDOR:
                     self.add(Floor(Position(x,y)))
@@ -769,17 +769,18 @@ class TypeAMap(Map):
                 elif t & self.DOOR:
                     raise TodoError
                 elif t == 0:
-                    # * if tile adjoins one walkable tile, it is a wall tile
-                    if self._map[x-1][y-1] > 0 or \
-                       self._map[x][y-1] > 0 or \
-                       self._map[x+1][y-1] > 0 or \
-                       self._map[x-1][y] > 0 or \
-                       self._map[x][y] > 0 or \
-                       self._map[x+1][y] > 0 or \
-                       self._map[x-1][y+1] > 0 or \
-                       self._map[x][y+1] > 0 or \
-                       self._map[x+1][y+1] > 0:
-                        self.add(Wall(Position(x,y)))
+                    if x>0 and y>0 and x<self.size.x-1 and y<self.size.y-1:
+                        # * if tile adjoins one walkable tile, it is a wall tile
+                        if self._map[x-1][y-1] > 0 or \
+                           self._map[x][y-1] > 0 or \
+                           self._map[x+1][y-1] > 0 or \
+                           self._map[x-1][y] > 0 or \
+                           self._map[x][y] > 0 or \
+                           self._map[x+1][y] > 0 or \
+                           self._map[x-1][y+1] > 0 or \
+                           self._map[x][y+1] > 0 or \
+                           self._map[x+1][y+1] > 0:
+                            self.add(Wall(Position(x,y)))
                 else:
                     assert False, "Invalid _map data"
 
