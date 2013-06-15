@@ -306,13 +306,18 @@ class TypeAMap(Map):
             self.length = length
 
         def __str__(self):
-            return "Internal map element %d at %s, size %s. pos=%s, dir=%s, len=%d"%(self.tile_id,self.pos,self.size,self.opos,self.direction,self.length)
+            if self.direction is None:
+                return "Internal map element %d at %s, size %s. pos=%s"%(self.tile_id,self.pos,self.size,self.opos)
+                pass
+            else:
+                return "Internal map element %d at %s, size %s. pos=%s, dir=%s, len=%d"%(self.tile_id,self.pos,self.size,self.opos,self.direction,self.length)
 
         def commit(self,m):
-            assert self.pos.x+self.size.x < len(m) and self.pos.y+self.size.y < len(m[0]), "Can't commit %s to grid size (%d,%d)"%(self,len(m),len(m[0]))
+            assert self.pos.x+self.size.x <= len(m) and self.pos.y+self.size.y <= len(m[0]), "Can't commit %s to grid size (%d,%d)"%(self,len(m),len(m[0]))
             print(".commit %s to grid size (%d,%d)"%(self,len(m),len(m[0])))
             for x in range(self.size.x):
                 for y in range(self.size.y):
+                    #print(" ... (%d,%d) = %d"%(x+self.pos.x,y+self.pos.y,self.tile_id))
                     m[x+self.pos.x][y+self.pos.y] = self.tile_id
 
     def _gen_get_compass_dir(self):
@@ -544,7 +549,7 @@ class TypeAMap(Map):
 
         print ("Room starting at %s is %s"%(opos,bounds))
 
-        return r_segs
+        return self._ME(TypeAMap.ROOM, Position(bounds['W'],bounds['N']), size, opos)
 
 
     def _gen_corridor_seg(self, opos, direction, length, width=1):
@@ -662,7 +667,13 @@ class TypeAMap(Map):
 
     def generate(self):
 
+        # map boundaries
         self._gen_draw_map_edges()
+        self._ME(TypeAMap.WALL, Position(0,0), Position(self.size.x-1,1)).commit(self._map)
+        self._ME(TypeAMap.WALL, Position(0,0), Position(1,self.size.y-1)).commit(self._map)
+        self._ME(TypeAMap.WALL, Position(self.size.x-1,0), Position(1,self.size.y-1)).commit(self._map)
+        self._ME(TypeAMap.WALL, Position(0,self.size.y-1), Position(self.size.x-1,1)).commit(self._map)
+
         # * corridors and rooms include just walkable tiles
         corridors = []
         rooms = []
@@ -734,7 +745,10 @@ class TypeAMap(Map):
             c.commit(self._map)
 
         # * randomly pick empty tiles and grow rooms until they touch corridors
-        rooms += self._gen_room( self._gen_get_centre_tile(3) )
+        rooms.append( self._gen_room( self._gen_get_centre_tile(3) ) )
+
+        for r in rooms:
+            r.commit(self._map)
 
         # [* may need to repeat this loop 2-3 times, making squares permanent at each point]
         # * for each square larger than threshold:
@@ -749,7 +763,7 @@ class TypeAMap(Map):
                 if   t & self.CORRIDOR:
                     self.add(Floor(Position(x,y)))
                 elif t & self.ROOM:
-                    raise TodoError
+                    self.add(Floor(Position(x,y)))
                 elif t & self.WALL:
                     self.add(Wall(Position(x,y)))
                 elif t & self.DOOR:
