@@ -5,7 +5,7 @@ import libtcodpy as libtcod
 from monsters import Monster, Player, Stairs
 from interfaces import Mappable, Position, Traversable, Transparent
 from items import Item
-from tiles import Tile, Wall, Floor
+from tiles import Tile, Wall, Floor, Door
 from errors import TodoError
 
 from functools import reduce
@@ -494,7 +494,7 @@ class TypeAMap(Map):
 
         # sanity
         if self._map[opos.x][opos.y] > 0:
-            return None
+            return []
 
         direction = 'N' # always go clockwise starting N
         length    = 0
@@ -546,6 +546,9 @@ class TypeAMap(Map):
                                 break
                             print("    end hit %d at (%d,%d) size=%s; target now %s"%(self._map[x][y],x,y,size,target_pos))
 
+                            #  * put a door at collision point
+                            r_segs.append(self._ME(TypeAMap.DOOR, target_pos+self._gen_pos_from_dir( self._gen_get_compass_right(direction), 1 ), Position(1,1), Position(x,y)))
+
                         elif bounds[self._gen_get_compass_left(direction)] != self.BOUNDARY_UNSET:
                             target_pos -= self._gen_pos_from_dir( direction, 1 )
                             print("        hit %d ignored at (%d,%d) size=%s; target now %s"%(self._map[x][y],x,y,size,target_pos))
@@ -569,12 +572,16 @@ class TypeAMap(Map):
 
                             print("        hit %d at (%d,%d) size=%s; target now %s"%(self._map[x][y],x,y,size,target_pos))
 
+                            #  * put a door at collision point
+                            r_segs.append(self._ME(TypeAMap.DOOR, Position(x,y)-self._gen_pos_from_dir(direction,1), Position(1,1), Position(x,y)))
+
                         #  * record this position as the bound for this direction
                         if direction in ['N','S']:
                             bounds[direction] = y
                         else:
                             bounds[direction] = x
                         print("        bounds = %s" % bounds)
+
                         #  * continue
                         found = True
                         break
@@ -585,13 +592,16 @@ class TypeAMap(Map):
             pos = target_pos
 
         print ("Room starting at %s is %s"%(opos,bounds))
+        tl = Position(bounds['W']+2,bounds['N']+2)
+        br = Position(bounds['E']-1,bounds['S']-1)
+        r_segs.append(self._ME(TypeAMap.ROOM, tl, br-tl, opos))
 
         if size.x < self.ROOM_MIN_WIDTH or size.y < self.ROOM_MIN_WIDTH:
-            return None
+            return []
         if size.x*size.y > self.ROOM_MAX_AREA:
-            return None
+            return []
 
-        return self._ME(TypeAMap.ROOM, Position(bounds['W']+2,bounds['N']+2), size-(2,2), opos)
+        return r_segs
 
 
     def _gen_corridor_seg(self, opos, direction, length, width=1):
@@ -790,10 +800,11 @@ class TypeAMap(Map):
         room_count = 0
         while room_count < libtcod.random_get_int(self.map_rng,self.MIN_ROOMS,self.MAX_ROOMS):
             r = self._gen_room( self._gen_get_centre_tile(3) )
-            if not r is None:
-                rooms.append(r)
+            if len(r) > 0:
                 room_count += 1
-                r.commit(self._map) # prevents rooms from overlapping as much
+                rooms += r
+                for ri in r:
+                    ri.commit(self._map) # prevents rooms from overlapping as much
 
         # [* may need to repeat this loop 2-3 times, making squares permanent at each point]
         # * for each square larger than threshold:
@@ -812,7 +823,13 @@ class TypeAMap(Map):
                 elif t & self.WALL:
                     self.add(Wall(Position(x,y)))
                 elif t & self.DOOR:
-                    raise TodoError
+                    # only draw door if exactly two tiles in compass directions are walkable
+                    m = (self._map[x][y-1],self._map[x][y+1],self._map[x-1][y],self._map[x+1][y])
+                    if reduce( lambda a,b: a+b, [1 for i in m if i&(self.CORRIDOR|self.ROOM)>0], 0 ) == 2:
+                        self.add(Floor(Position(x,y)))
+                        self.add(Door(Position(x,y)))
+                    else:
+                        self.add(Wall(Position(x,y)))
                 elif t == 0:
                     if x>0 and y>0 and x<self.size.x-1 and y<self.size.y-1:
                         # * if tile adjoins one walkable tile, it is a wall tile

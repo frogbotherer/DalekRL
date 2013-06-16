@@ -24,3 +24,7 @@ class Floor(Tile):
 class Glass(Tile):
     def __init__(self, pos):
         Tile.__init__(self, pos, '0', libtcod.light_grey, 0.0, 1.0)
+
+class Door(Tile):
+    def __init__(self, pos):
+        Tile.__init__(self, pos, '+', libtcod.light_grey, 1.0, 0.0)
