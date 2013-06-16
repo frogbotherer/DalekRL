@@ -284,8 +284,14 @@ class TypeAMap(Map):
     CORRIDOR_MINOR_FREQ = 6
     CORRIDOR_MINOR_STEP = 4
     CORRIDOR_MIN_LENGTH = 5
+    MIN_ROOMS           = 4
+    MAX_ROOMS           = 12
+    ROOM_MIN_WIDTH      = 4
+    ROOM_MAX_AREA       = 80*15 # i.e. approx 1/3rd of screen area
+    ROOM_BOUNDARY_STOP  = [1.0,0.8,0.6,0.5]
     REJECT_COVERAGE_PC  = 0.6
     SANITY_LIMIT        = 100
+    BOUNDARY_UNSET      = -1
 
     def __init__(self, seed, size):
         Map.__init__(self, seed, size)
@@ -460,8 +466,6 @@ class TypeAMap(Map):
         # one E/W bound set, increment E/W step every 4th turn
         # both E/W bounds set, don't increment
 
-
-
         #    ''          ''        4ee''          ''             ''             ''      
         #   3ccc        3ccc       4           N              NeeeE          NeeeE     
         #   31a4'''     31a4'''    4    '''    4    '''       4    '''           4'''  
@@ -471,30 +475,47 @@ class TypeAMap(Map):
         #                              
         #               S           S          NS             NSE
 
+        #        '''''                      '         '                                
+        #          ||Neeeeegi              3c!         '                               
+        #          ||531a45||              31a'      Ncc!                              
+        #         '||53^245||              3^2 '     3^2 '                             
+        #         |||5bb245||              bb2  '    bb2  '                            
+        #         jhffffffS||                                                          
+        #         '''''                                                                
+
+        #                                                                              
+        #           '             3cEc                                                 
+        #        3cEc'            31a4  '                                              
+        #        31a'             3^24 '                                               
+        #        3^2              bb24'                                                
+        #        bb2                 !                                                 
+        #                           '                                                  
+
+
         # sanity
         if self._map[opos.x][opos.y] > 0:
-            return []
+            return None
 
         direction = 'N' # always go clockwise starting N
         length    = 0
         pos       = Position(opos.x,opos.y)
         size      = Position(0,0)
-        bounds    = {'N':0, 'S':0, 'E':0, 'W':0}
+        bounds    = {'N':self.BOUNDARY_UNSET, 'S':self.BOUNDARY_UNSET, 'E':self.BOUNDARY_UNSET, 'W':self.BOUNDARY_UNSET}
         r_segs    = []
         sanity    = 0
 
-        while min(bounds.values())==0:
+        while min(bounds.values())==self.BOUNDARY_UNSET:
             sanity += 1
-            if sanity > self.SANITY_LIMIT:
+            if sanity > self.SANITY_LIMIT*10:
                 assert False, "Sanity limits hit in room gen"
             if direction in ['N','S']:
-                if bounds[direction] == 0:
+                if bounds[direction] == self.BOUNDARY_UNSET:
                     size.y += 1
                     length = size.y
                 else:
                     length = abs(bounds[direction]-pos.y)-1
             else:
-                if bounds[direction] == 0:
+                if bounds[direction] == self.BOUNDARY_UNSET:
                     size.x += 1
                     length = size.x
                 else:
@@ -514,10 +535,25 @@ class TypeAMap(Map):
             for x in x_range:
                 for y in y_range:
                     if self._map[x][y] > 0:
-                        if x == target_pos.x and y == target_pos.y:
+                        if (x == target_pos.x and y == target_pos.y):
                             # hit at end of edge; don't need to rewind direction
                             target_pos -= self._gen_pos_from_dir( direction, 1 )
+                            
+                            # if we've already hit this edge, don't reset boundary
+                            if bounds[direction] != self.BOUNDARY_UNSET:
+                                print("    end hit %d ignored at (%d,%d) size=%s; target now %s"%(self._map[x][y],x,y,size,target_pos))
+                                found = True
+                                break
                             print("    end hit %d at (%d,%d) size=%s; target now %s"%(self._map[x][y],x,y,size,target_pos))
+
+                        elif bounds[self._gen_get_compass_left(direction)] != self.BOUNDARY_UNSET:
+                            target_pos -= self._gen_pos_from_dir( direction, 1 )
+                            print("        hit %d ignored at (%d,%d) size=%s; target now %s"%(self._map[x][y],x,y,size,target_pos))
+
+                            if bounds[direction] != self.BOUNDARY_UNSET:
+                                found = True
+                                break
+                            print("        substituting for current dir!")
 
                         else:
                             # collision with a corridor or another room
@@ -531,13 +567,14 @@ class TypeAMap(Map):
                             else:
                                 size.x -= 1
 
-                            print("    hit %d at (%d,%d) size=%s; target now %s"%(self._map[x][y],x,y,size,target_pos))
+                            print("        hit %d at (%d,%d) size=%s; target now %s"%(self._map[x][y],x,y,size,target_pos))
 
                         #  * record this position as the bound for this direction
                         if direction in ['N','S']:
                             bounds[direction] = y
                         else:
                             bounds[direction] = x
+                        print("        bounds = %s" % bounds)
                         #  * continue
                         found = True
                         break
@@ -549,7 +586,12 @@ class TypeAMap(Map):
 
         print ("Room starting at %s is %s"%(opos,bounds))
 
-        return self._ME(TypeAMap.ROOM, Position(bounds['W']+1,bounds['N']+1), size, opos)
+        if size.x < self.ROOM_MIN_WIDTH or size.y < self.ROOM_MIN_WIDTH:
+            return None
+        if size.x*size.y > self.ROOM_MAX_AREA:
+            return None
+
+        return self._ME(TypeAMap.ROOM, Position(bounds['W']+2,bounds['N']+2), size-(2,2), opos)
 
 
     def _gen_corridor_seg(self, opos, direction, length, width=1):
@@ -745,10 +787,13 @@ class TypeAMap(Map):
             c.commit(self._map)
 
         # * randomly pick empty tiles and grow rooms until they touch corridors
-        rooms.append( self._gen_room( self._gen_get_centre_tile(3) ) )
-
-        for r in rooms:
-            r.commit(self._map)
+        room_count = 0
+        while room_count < libtcod.random_get_int(self.map_rng,self.MIN_ROOMS,self.MAX_ROOMS):
+            r = self._gen_room( self._gen_get_centre_tile(3) )
+            if not r is None:
+                rooms.append(r)
+                room_count += 1
+                r.commit(self._map) # prevents rooms from overlapping as much
 
         # [* may need to repeat this loop 2-3 times, making squares permanent at each point]
         # * for each square larger than threshold:
