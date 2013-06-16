@@ -62,12 +62,7 @@ class Mappable:
     # movement
     def move(self, delta):
         """move by a delta"""
-        assert not self.remains_in_place, "trying to move immovable object %s" % self
-        # test whether movement is valid
-        if not self.map is None and self.map.is_blocked(self.pos+delta):
-            raise InvalidMoveError( "Can't move %s by %s"%(self,delta) )
-            
-        self.map.move(self, self.pos + delta)
+        return self.move_to(self.pos+delta)
  
     def move_to(self, pos):
         """move by an absolute"""
@@ -77,7 +72,6 @@ class Mappable:
             raise InvalidMoveError( "Can't move %s to %s"%(self,pos) )
 
         self.map.move(self, pos)
-
 
     ##
     # drawing
@@ -89,11 +83,12 @@ class Mappable:
         if not self.map.can_see(self.pos):
             if self.has_been_seen and self.remains_in_place:
                 colour = libtcod.darkest_grey
-#            else:
-#                return
+            else:
+                return
         libtcod.console_put_char_ex(0, self.pos.x, self.pos.y, self.symbol, colour, libtcod.BKGND_NONE)
         self.has_been_seen = True
- 
+
+
 class TurnTaker:
     turn_takers = []
 
@@ -125,6 +120,9 @@ class Traversable:
         # 0.0 => can't traverse
         # 1.0 => traverse with no penalty
         self.walk_cost = walk_cost
+
+    def try_movement(self,obj):
+        return True
 
     def blocks_movement(self):
         return self.walk_cost == 0.0

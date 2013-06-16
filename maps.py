@@ -55,6 +55,14 @@ class Map:
     def move(self, obj, pos, layer=None):
         """move object on map. NB. setting a Mappable's pos directly will break stuff"""
         assert isinstance(obj,Mappable), "%s cannot appear on map"%obj
+
+        # check that we can move to pos
+        dests = self.find_all_at_pos(pos,Tile) # probably just Tiles
+        for dest in dests:
+            if isinstance(dest,Traversable):
+                if not dest.try_movement(obj):
+                    return # perhaps raise IllegalMoveError
+
         if layer is None:
             layer = self.__get_layer_from_obj(obj)
 
@@ -104,6 +112,16 @@ class Map:
 
         return None
 
+    def find_all_at_pos(self, pos, layer=None):
+        layers = [layer]
+        if layer is None:
+            layers = self.__layer_order
+        r = []
+        for l in layers:
+            if pos in self.__layers[l].keys():
+                r += self.__layers[l][pos]
+        return r
+
     def get_walk_cost(self, pos):
         obj = self.find_at_pos(pos,Tile)
         if isinstance(obj,Traversable):
@@ -113,7 +131,11 @@ class Map:
             return 0.0
 
     def is_blocked(self, pos):
-        return self.get_walk_cost(pos) == 0.0
+        obj = self.find_at_pos(pos,Tile)
+        if isinstance(obj,Traversable):
+            return obj.blocks_movement()
+        else:
+            return True
 
     def draw(self):
         """draw the map"""
@@ -155,9 +177,13 @@ class Map:
 
         return p
 
-    def __del__(self):
+    def close(self):
         #libtcod.path_delete(self.__tcod_pathfinder)
         libtcod.dijkstra_delete(self.__tcod_pathfinder)
+        libtcod.map_delete(self.__tcod_map)
+
+    def __del__(self):
+        self.close()
 
     def get_monsters(self):
         return reduce( lambda a,b: a+b, self.__layers[Monster].values(), [] )
@@ -287,9 +313,10 @@ class TypeAMap(Map):
     MIN_ROOMS           = 4
     MAX_ROOMS           = 12
     ROOM_MIN_WIDTH      = 4
-    ROOM_MAX_AREA       = 80*15 # i.e. approx 1/3rd of screen area
+    ROOM_MAX_AREA       = 80*14 # i.e. approx 1/3rd of screen area
     ROOM_BOUNDARY_STOP  = [1.0,0.8,0.6,0.5]
     REJECT_COVERAGE_PC  = 0.6
+    REJECT_COVERAGE_SQ  = 0.8
     SANITY_LIMIT        = 100
     BOUNDARY_UNSET      = -1
 
@@ -594,7 +621,8 @@ class TypeAMap(Map):
         print ("Room starting at %s is %s"%(opos,bounds))
         tl = Position(bounds['W']+2,bounds['N']+2)
         br = Position(bounds['E']-1,bounds['S']-1)
-        r_segs.append(self._ME(TypeAMap.ROOM, tl, br-tl, opos))
+        size = br - tl
+        r_segs.append(self._ME(TypeAMap.ROOM, tl, size, opos))
 
         if size.x < self.ROOM_MIN_WIDTH or size.y < self.ROOM_MIN_WIDTH:
             return []
@@ -724,10 +752,14 @@ class TypeAMap(Map):
 
         # map boundaries
         #self._gen_draw_map_edges()
-        self._ME(TypeAMap.WALL, Position(0,0), Position(self.size.x-1,1)).commit(self._map)
-        self._ME(TypeAMap.WALL, Position(0,0), Position(1,self.size.y-1)).commit(self._map)
-        self._ME(TypeAMap.WALL, Position(self.size.x-1,0), Position(1,self.size.y)).commit(self._map)
-        self._ME(TypeAMap.WALL, Position(0,self.size.y-1), Position(self.size.x,1)).commit(self._map)
+        edges = [
+            self._ME(TypeAMap.WALL, Position(0,0), Position(self.size.x-1,1)),
+            self._ME(TypeAMap.WALL, Position(0,0), Position(1,self.size.y-1)),
+            self._ME(TypeAMap.WALL, Position(self.size.x-1,0), Position(1,self.size.y)),
+            self._ME(TypeAMap.WALL, Position(0,self.size.y-1), Position(self.size.x,1))
+            ]
+        for e in edges:
+            e.commit(self._map)
 
         # * corridors and rooms include just walkable tiles
         corridors = []
@@ -809,6 +841,10 @@ class TypeAMap(Map):
                 for ri in r:
                     ri.commit(self._map) # prevents rooms from overlapping as much
 
+        # put edges back
+        for e in edges:
+            e.commit(self._map)
+
         # [* may need to repeat this loop 2-3 times, making squares permanent at each point]
         # * for each square larger than threshold:
         #    * if random chance succeeds:
@@ -816,6 +852,7 @@ class TypeAMap(Map):
         # * create doors at intersects
         # * use pathing to prove map traversable
         # * populate Map object from _map
+        misses = 0
         for x in range(len(self._map)):
             for y in range(len(self._map[0])):
                 t = self._map[x][y]
@@ -829,9 +866,13 @@ class TypeAMap(Map):
                     # only draw door if exactly two tiles in compass directions are walkable
                     m_ns = 0; m_ew = 0
                     if y>0 and y<self.size.y-1:
-                        m_ns = (self._map[x][y-1]|self._map[x][y+1])&(self.CORRIDOR|self.ROOM)
+                        if (self._map[x][y-1]&(self.CORRIDOR|self.ROOM)) > 0 \
+                                and (self._map[x][y+1]&(self.CORRIDOR|self.ROOM)) > 0:
+                            m_ns = 1
                     if x>0 and x<self.size.x-1:
-                        m_ew = (self._map[x-1][y]|self._map[x+1][y])&(self.CORRIDOR|self.ROOM)
+                        if (self._map[x-1][y]&(self.CORRIDOR|self.ROOM)) > 0 \
+                                and (self._map[x+1][y]&(self.CORRIDOR|self.ROOM)) > 0:
+                            m_ew = 1
                     if (m_ns > 0 and m_ew == 0) or (m_ns == 0 and m_ew > 0):
                         self.add(Floor(Position(x,y)))
                         self.add(Door(Position(x,y)))
@@ -852,9 +893,13 @@ class TypeAMap(Map):
                            self._map[x][y+1] > 0 or \
                            self._map[x+1][y+1] > 0:
                             self.add(Wall(Position(x,y)))
+                    else:
+                        misses += 1
                 else:
                     assert False, "Invalid _map data"
 
+        if 1.0 - (misses/(self.size.x*self.size.y)) < self.REJECT_COVERAGE_SQ:
+            return self.generate()
 
 
         #####  PSEUDO-CODE  #########################################

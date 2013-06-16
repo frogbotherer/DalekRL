@@ -21,7 +21,7 @@ player = None
 
 # for now
 if len(sys.argv)>1 and len(sys.argv[1])>0:
-    RANDOM_SEED=int(sys.argv[1])
+    RANDOM_SEED=int(sys.argv[1])-3
 
 # init window
 font = os.path.join(b'resources', b'consolas10x10_gs_tc.png')
@@ -38,7 +38,9 @@ def reset():
     global SCREEN_SIZE, RANDOM_SEED, MAP, KEYMAP, player
 
     print("Game Over")
-    del MAP
+    if not MAP is None:
+        MAP.close()
+        del MAP
     #del player
     RANDOM_SEED += 3
     UI.clear_all()
