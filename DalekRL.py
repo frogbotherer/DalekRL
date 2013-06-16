@@ -16,6 +16,8 @@ from errors import InvalidMoveError, GameOverError
 SCREEN_SIZE = Position(80,50)
 LIMIT_FPS = 10
 RANDOM_SEED = 1999
+MAP = None
+player = None
 
 # for now
 if len(sys.argv)>1 and len(sys.argv[1])>0:
@@ -27,32 +29,42 @@ libtcod.console_set_custom_font(font, libtcod.FONT_TYPE_GREYSCALE | libtcod.FONT
 libtcod.console_init_root(SCREEN_SIZE.x, SCREEN_SIZE.y, b'DalekRL')
 libtcod.sys_set_fps(LIMIT_FPS)
 
-# generate default map
-map = Map.random(RANDOM_SEED,SCREEN_SIZE-(0,4))
-map.generate()
-assert not map.player is None
-player = map.player
 
-# handle input
 def do_nothing():
     pass
-KEYMAP = {
-    'k': player.move_n,
-    'j': player.move_s, 
-    'h': player.move_w, 
-    'l': player.move_e,
-    'y': player.move_nw,
-    'u': player.move_ne,
-    'b': player.move_sw,
-    'n': player.move_se,
-    '.': do_nothing,
-    '1': player.use_item1,
-    '2': player.use_item2,
-    '3': player.use_item3,
-    'q': sys.exit,
-    ' ': player.interact,
-}
 
+
+def reset():
+    global SCREEN_SIZE, RANDOM_SEED, MAP, KEYMAP, player
+
+    print("Game Over")
+    del MAP
+    #del player
+    RANDOM_SEED += 3
+    UI.clear_all()
+    TurnTaker.clear_all()
+    MAP = Map.random(RANDOM_SEED,SCREEN_SIZE-(0,4))
+    MAP.generate()
+    player = MAP.player
+    KEYMAP = {
+        'k': player.move_n,
+        'j': player.move_s,
+        'h': player.move_w,
+        'l': player.move_e,
+        'y': player.move_nw,
+        'u': player.move_ne,
+        'b': player.move_sw,
+        'n': player.move_se,
+        '.': do_nothing,
+        '1': player.use_item1,
+        '2': player.use_item2,
+        '3': player.use_item3,
+        'q': sys.exit,
+        'r': reset,
+        ' ': player.interact,
+        }
+
+# handle input
 
 def handle_keys():
     MAX_TIMEOUT = 5
@@ -81,7 +93,7 @@ def handle_keys():
 
 def redraw_screen(t):
     # draw and flush screen
-    map.draw()
+    MAP.draw()
     player.draw_ui(Position(0,SCREEN_SIZE.y-3))
     UI.draw_all(t)
     libtcod.console_flush()
@@ -92,6 +104,7 @@ def redraw_screen(t):
 
 
 # main loop
+reset()
 while not libtcod.console_is_window_closed():
 
     # this should all belong in player.take_turn, I think :P
@@ -103,40 +116,10 @@ while not libtcod.console_is_window_closed():
         continue
     player.map.prepare_fov(player.pos)
 
-    # items
-    # TODO: make taking turns an interface and use initiative to decide order; statics to collect turn-takers
-#    for i in map.get_items() + player.items:
-#        if not i is None:
-#            i.take_turn()
-
     try:
-#        # monster movement
-#        for m in map.get_monsters():
-#            m.take_turn()
+        # monster movement and items
         TurnTaker.take_all_turns()
     except GameOverError:
-        print("Game Over")
-        #del map
-        #del player
-        RANDOM_SEED += 3
-        UI.clear_all()
-        TurnTaker.clear_all()
-        map = Map.random(RANDOM_SEED,SCREEN_SIZE-(0,4))
-        map.generate()
-        player = map.player
-        KEYMAP = {
-            'k': player.move_n,
-            'j': player.move_s,
-            'h': player.move_w,
-            'l': player.move_e,
-            'y': player.move_nw,
-            'u': player.move_ne,
-            'b': player.move_sw,
-            'n': player.move_se,
-            '.': do_nothing,
-            '1': player.use_item1,
-            '2': player.use_item2,
-            '3': player.use_item3,
-            'q': sys.exit,
-            ' ': player.interact,
-            }
+        reset()
+
+

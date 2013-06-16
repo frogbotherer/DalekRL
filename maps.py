@@ -295,7 +295,7 @@ class TypeAMap(Map):
 
     def __init__(self, seed, size):
         Map.__init__(self, seed, size)
-        self._map = [ [0 for y in range(size.y)] for x in range(size.x) ]
+        self._map = [[]]
 
     class _ME:
         def __init__(self,tile_id,pos,size,opos=None,direction=None,length=None):
@@ -556,8 +556,8 @@ class TypeAMap(Map):
                             if bounds[direction] != self.BOUNDARY_UNSET:
                                 found = True
                                 break
-                            print("        substituting for current dir!")
-
+                            print("        substituting for current dir! %s"%direction)
+                            target_pos -= self._gen_pos_from_dir( direction, 1 )
                         else:
                             # collision with a corridor or another room
                             #  * turn back anti-clockwise
@@ -719,6 +719,9 @@ class TypeAMap(Map):
 
     def generate(self):
 
+        # reset internal map structure
+        self._map = [ [0 for y in range(self.size.y)] for x in range(self.size.x) ]
+
         # map boundaries
         #self._gen_draw_map_edges()
         self._ME(TypeAMap.WALL, Position(0,0), Position(self.size.x-1,1)).commit(self._map)
@@ -824,12 +827,18 @@ class TypeAMap(Map):
                     self.add(Wall(Position(x,y)))
                 elif t & self.DOOR:
                     # only draw door if exactly two tiles in compass directions are walkable
-                    m = (self._map[x][y-1],self._map[x][y+1],self._map[x-1][y],self._map[x+1][y])
-                    if reduce( lambda a,b: a+b, [1 for i in m if i&(self.CORRIDOR|self.ROOM)>0], 0 ) == 2:
+                    m_ns = 0; m_ew = 0
+                    if y>0 and y<self.size.y-1:
+                        m_ns = (self._map[x][y-1]|self._map[x][y+1])&(self.CORRIDOR|self.ROOM)
+                    if x>0 and x<self.size.x-1:
+                        m_ew = (self._map[x-1][y]|self._map[x+1][y])&(self.CORRIDOR|self.ROOM)
+                    if (m_ns > 0 and m_ew == 0) or (m_ns == 0 and m_ew > 0):
                         self.add(Floor(Position(x,y)))
                         self.add(Door(Position(x,y)))
-                    else:
+                    elif m_ns == 0 and m_ew == 0:
                         self.add(Wall(Position(x,y)))
+                    else:
+                        self.add(Floor(Position(x,y)))
                 elif t == 0:
                     if x>0 and y>0 and x<self.size.x-1 and y<self.size.y-1:
                         # * if tile adjoins one walkable tile, it is a wall tile
