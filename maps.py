@@ -2,10 +2,10 @@
 
 import libtcodpy as libtcod
 
-from monsters import Monster, Player, Stairs
+from monsters import Monster, Player#, Stairs
 from interfaces import Mappable, Position, Traversable, Transparent
 from items import Item
-from tiles import Tile, Wall, Floor, Door
+from tiles import Tile, Wall, Floor, Door, Stairs
 from errors import TodoError
 
 from functools import reduce

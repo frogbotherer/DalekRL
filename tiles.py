@@ -2,6 +2,7 @@
 
 import libtcodpy as libtcod
 from interfaces import Mappable, Traversable, Transparent, TurnTaker, CountUp, Position
+from errors import GameOverError
 from ui import HBar
 
 class Tile(Mappable,Traversable,Transparent):
@@ -18,9 +19,35 @@ class Floor(Tile):
     def __init__(self, pos):
         Tile.__init__(self, pos, '.', libtcod.dark_grey, 1.0, 1.0)
 
-#class Stairs(Tile):
-#    def __init__(self, pos):
-#        Tile.__init__(self, pos, '<', libtcod.grey, 1.0)
+
+class Stairs(Tile,CountUp,TurnTaker):
+    def __init__(self, pos):
+        Tile.__init__(self, pos, '<', libtcod.grey, 1.0, 1.0)
+        CountUp.__init__(self, 11)
+        TurnTaker.__init__(self, 0)
+        #Tanglable.__init__(self, 10)
+
+        self.bar = HBar(Position(pos.x-2,pos.y-1),5,libtcod.light_blue,libtcod.darkest_grey)
+        self.bar.max_value = self.count_to-1
+        self.bar.timeout = 5.0
+
+    def take_turn(self):
+
+        if self.pos == self.map.player.pos:
+            if self.count == 0:
+                self.bar.is_visible = True
+            if self.inc():
+                raise GameOverError("You have escaped!")
+            else:
+                self.bar.value = self.count_to-self.count
+        elif self.count > 0:
+            self.bar.is_visible = False
+            self.bar.value = 0
+            self.reset()
+
+
+
+
 
 class Glass(Tile):
     def __init__(self, pos):
@@ -44,6 +71,7 @@ class Door(Tile,CountUp,TurnTaker):
         self.bar = HBar(Position(pos.x-1,pos.y-1),3,Door.CLOSED['barcolour'],libtcod.darkest_grey)
         self.bar.max_value = self.count_to-1
         self.bar.timeout = 5.0
+        self._trying_to_open = False
 
     def _open(self):
         self.__change(Door.OPEN)
@@ -77,6 +105,7 @@ class Door(Tile,CountUp,TurnTaker):
             return True
 
         else: # Door.CLOSED
+            self._trying_to_open = True
             if self.inc():
                 self.bar.is_visible = False
                 self._open()
@@ -92,6 +121,11 @@ class Door(Tile,CountUp,TurnTaker):
 
     def take_turn(self):
         if self.state is Door.CLOSED:
+            if self._trying_to_open:
+                self._trying_to_open = False
+            else:
+                self.bar.is_visible = False
+                self.reset()
             return
 
         else: # open or closing
@@ -108,3 +142,4 @@ class Door(Tile,CountUp,TurnTaker):
                     self.bar.value = self.count_to-self.count
                 else:
                     self.bar.is_visible = False
+

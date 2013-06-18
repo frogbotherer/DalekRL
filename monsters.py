@@ -278,27 +278,3 @@ class Player (Mappable,Activator):
             self.pickup(i)
 
 
-class Stairs(Monster,CountUp,Tanglable):
-    def __init__(self, pos):
-        Monster.__init__(self, pos, '<', libtcod.grey)
-        CountUp.__init__(self, 11)
-        Tanglable.__init__(self, 10)
-
-        self.bar = HBar(Position(pos.x-2,pos.y-1),5,libtcod.light_blue,libtcod.darkest_grey)
-        self.bar.max_value = self.count_to-1
-        self.bar.timeout = 5.0
-
-    def take_turn(self):
-        if self.pos == self.map.player.pos:
-            if self.count == 0:
-                self.bar.is_visible = True
-            if self.inc():
-                raise GameOverError("You have escaped!")
-            else:
-                self.bar.value = self.count_to-self.count
-        else:
-            self.bar.is_visible = False
-            self.bar.value = 0
-            self.reset()
-
-
