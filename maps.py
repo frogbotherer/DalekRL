@@ -4,7 +4,7 @@ import libtcodpy as libtcod
 
 from monsters import Monster, Player#, Stairs
 from interfaces import Mappable, Position, Traversable, Transparent
-from items import Item
+from items import Item, Evidence
 from tiles import Tile, Wall, Floor, Door, Stairs
 from errors import TodoError
 
@@ -244,6 +244,9 @@ class EmptyMap(Map):
             i = Item.random(self.map_rng,self.find_random_clear(self.map_rng))
             self.add(i)
 
+        # add evidence
+        self.add(Evidence())
+
         self._gen_add_key_elements()
         self._gen_finish()
 
@@ -278,6 +281,9 @@ class DalekMap(Map):
         for i in range(0,3):
             i = Item.random(self.map_rng,self.find_random_clear(self.map_rng))
             self.add(i)
+
+        # add evidence
+        self.add(Evidence())
 
         self._gen_add_key_elements()
         self._gen_finish()
@@ -940,14 +946,17 @@ class TypeAMap(Map):
         #    * if tile adjoins one walkable tile, it is a wall tile
 
         # place daleks
-        for i in range(0,8):
+        for i in range(10):
             d = Monster.random(self.map_rng,self.find_random_clear(self.map_rng))
             self.add(d)
 
         # place some items
-        for i in range(0,4):
+        for i in range(4):
             i = Item.random(self.map_rng,self.find_random_clear(self.map_rng))
             self.add(i)
+
+        # add evidence
+        self.add(Evidence(self.find_random_clear(self.map_rng)))
 
         self._gen_add_key_elements()
         self._gen_finish()

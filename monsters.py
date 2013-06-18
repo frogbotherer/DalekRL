@@ -170,11 +170,13 @@ class Dalek (Monster,Tanglable,Talker):
 
 
 # put here for now
-from items import Item, HandTeleport, Tangler
+from items import Item, HandTeleport, Tangler, Evidence
 class Player (Mappable,Activator):
     def __init__(self,pos):
         Mappable.__init__(self,pos,'@',libtcod.white)
         self.items = [HandTeleport(self,10),Tangler(self,3),None]
+        self.turns = 0
+        self.evidence = []
 
     def __str__(self):
         return "Player at %s" % self.pos
@@ -197,6 +199,11 @@ class Player (Mappable,Activator):
 
     def pickup(self,i):
         assert isinstance(i,Item), "Can't pick up a %s"%i
+
+        if isinstance(i,Evidence):
+            self.evidence.append(i)
+            self.map.remove(i)
+            return
 
         item_index = None
         if not None in self.items:
@@ -277,4 +284,5 @@ class Player (Mappable,Activator):
         if not i is None:
             self.pickup(i)
 
-
+    def take_turn(self):
+        self.turns += 1

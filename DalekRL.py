@@ -37,7 +37,10 @@ def do_nothing():
 def reset():
     global SCREEN_SIZE, RANDOM_SEED, MAP, KEYMAP, player
 
-    print("Game Over")
+    if not player is None:
+        print("Game Over")
+        print("%d evidence in %d turns" %(len(player.evidence),player.turns))
+
     if not MAP is None:
         MAP.close()
         del MAP
@@ -112,6 +115,7 @@ reset()
 while not libtcod.console_is_window_closed():
 
     # this should all belong in player.take_turn, I think :P
+    player.take_turn()
     try:
         # handle player input (and redraw screen)
         handle_keys()

@@ -5,15 +5,14 @@ import libtcodpy as libtcod
 from interfaces import Carryable, Activatable, Activator, CountUp, Mappable, TurnTaker
 from ui import HBar, Message
 
-class Item(Carryable, Activatable, Mappable, TurnTaker):
-    def __init__(self, owner):
+class Item(Carryable, Activatable, Mappable):
+    def __init__(self, owner, colour):
         pos = None
         if not isinstance(owner, Activator):
             pos   = owner
             owner = None
-        Mappable.__init__(self,pos,'!',libtcod.green)
+        Mappable.__init__(self,pos,'!',colour)
         Activatable.__init__(self,owner)
-        TurnTaker.__init__(self,100)
         if pos is None:
             self.is_visible = False
 
@@ -40,10 +39,11 @@ class Item(Carryable, Activatable, Mappable, TurnTaker):
         return Tangler(pos,libtcod.random_get_int_mean(rng,1,2,4))
 
 
-class CoolDownItem(Item, CountUp):
+class CoolDownItem(Item, CountUp, TurnTaker):
     def __init__(self,owner,count_to):
-        Item.__init__(self,owner)
+        Item.__init__(self,owner,libtcod.green)
         CountUp.__init__(self,count_to)
+        TurnTaker.__init__(self,100)
         self.bar = HBar(None, None, libtcod.dark_green, libtcod.dark_grey, True, False, str(self), str.ljust)
         self.bar.is_visible = False
 
@@ -76,7 +76,7 @@ class CoolDownItem(Item, CountUp):
 
 class LimitedUsesItem(Item):
     def __init__(self,owner,uses):
-        Item.__init__(self,owner)
+        Item.__init__(self,owner,libtcod.orange)
         self.max_uses = uses
         self.uses = uses
         self.bar = HBar(None, None, libtcod.red, libtcod.dark_grey, True, False, str(self), str.ljust)
@@ -104,8 +104,6 @@ class LimitedUsesItem(Item):
         Item.take_by(self,owner)
         self.bar.is_visible = True
 
-    def take_turn(self):
-        pass # probably
 
 class HandTeleport(CoolDownItem):
     def __str__(self):
@@ -135,3 +133,11 @@ class Tangler(LimitedUsesItem):
             return True
 
         return False
+
+
+class Evidence(Item):
+    def __str__(self):
+        return "Evidence"
+
+    def __init__(self,pos):
+        Item.__init__(self,pos,libtcod.yellow)
