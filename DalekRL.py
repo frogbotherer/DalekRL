@@ -44,7 +44,9 @@ def reset():
     #del player
     RANDOM_SEED += 3
     UI.clear_all()
+    print("UI CLEAR")
     TurnTaker.clear_all()
+    print("STATICS CLEARED")
     MAP = Map.random(RANDOM_SEED,SCREEN_SIZE-(0,4))
     MAP.generate()
     player = MAP.player

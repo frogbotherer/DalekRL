@@ -1,28 +1,32 @@
 #!/usr/bin/env python3
 
+import weakref
+
 import libtcodpy as libtcod
 
 class UI:
     ui_elements = []
     def __init__(self):
-        UI.ui_elements.append(self)
+        UI.ui_elements.append(weakref.ref(self))
         self.is_visible = False
         self.timeout = 0.0
 
-    def __del__(self):
-        UI.ui_elements.remove(self)
-
     def draw_all(timeout):
-        for e in UI.ui_elements:
-            if e.is_visible:
-                if e.timeout==0.0 or e.timeout>timeout:
-                    e.draw()
+        for eref in UI.ui_elements:
+            e = eref()
+            if e is None:
+                UI.ui_elements.remove(eref)
+            else:
+                if e.is_visible:
+                    if e.timeout==0.0 or e.timeout>timeout:
+                        e.draw()
 
     def clear_all():
-        for e in UI.ui_elements:
-            e.is_visible = False
-            del e
-            #UI.ui_elements.remove(e)
+        for eref in UI.ui_elements:
+            e = eref()
+            if e is not None:
+                e.is_visible = False
+                del e
         UI.ui_elements = []
 
 class Message(UI):

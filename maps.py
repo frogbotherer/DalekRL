@@ -181,6 +181,7 @@ class Map:
         #libtcod.path_delete(self.__tcod_pathfinder)
         libtcod.dijkstra_delete(self.__tcod_pathfinder)
         libtcod.map_delete(self.__tcod_map)
+        print("MAP CLOSED!")
 
     def __del__(self):
         self.close()
@@ -319,10 +320,15 @@ class TypeAMap(Map):
     REJECT_COVERAGE_SQ  = 0.8
     SANITY_LIMIT        = 100
     BOUNDARY_UNSET      = -1
+    DEBUG               = False
 
     def __init__(self, seed, size):
         Map.__init__(self, seed, size)
         self._map = [[]]
+
+    def debug_print(self,s):
+        if self.DEBUG:
+            print(s)
 
     class _ME:
         def __init__(self,tile_id,pos,size,opos=None,direction=None,length=None):
@@ -347,7 +353,7 @@ class TypeAMap(Map):
 
         def commit(self,m):
             assert self.pos.x+self.size.x <= len(m) and self.pos.y+self.size.y <= len(m[0]), "Can't commit %s to grid size (%d,%d)"%(self,len(m),len(m[0]))
-            print(".commit %s to grid size (%d,%d)"%(self,len(m),len(m[0])))
+            #self.debug_print(".commit %s to grid size (%d,%d)"%(self,len(m),len(m[0])))
             for x in range(self.size.x):
                 for y in range(self.size.y):
                     #print(" ... (%d,%d) = %d"%(x+self.pos.x,y+self.pos.y,self.tile_id))
@@ -549,7 +555,7 @@ class TypeAMap(Map):
                     length = abs(bounds[direction]-pos.x)-1
             target_pos = pos + self._gen_pos_from_dir( direction, length )
 
-            print(" [] %s %d at %s towards %s"%(direction,length,pos,target_pos))
+            self.debug_print(" [] %s %d at %s towards %s"%(direction,length,pos,target_pos))
 
             x_range = range(pos.x,target_pos.x+1)
             if pos.x>target_pos.x:
@@ -568,22 +574,22 @@ class TypeAMap(Map):
                             
                             # if we've already hit this edge, don't reset boundary
                             if bounds[direction] != self.BOUNDARY_UNSET:
-                                print("    end hit %d ignored at (%d,%d) size=%s; target now %s"%(self._map[x][y],x,y,size,target_pos))
+                                self.debug_print("    end hit %d ignored at (%d,%d) size=%s; target now %s"%(self._map[x][y],x,y,size,target_pos))
                                 found = True
                                 break
-                            print("    end hit %d at (%d,%d) size=%s; target now %s"%(self._map[x][y],x,y,size,target_pos))
+                            self.debug_print("    end hit %d at (%d,%d) size=%s; target now %s"%(self._map[x][y],x,y,size,target_pos))
 
                             #  * put a door at collision point
                             r_segs.append(self._ME(TypeAMap.DOOR, target_pos+self._gen_pos_from_dir( self._gen_get_compass_right(direction), 1 ), Position(1,1), Position(x,y)))
 
                         elif bounds[self._gen_get_compass_left(direction)] != self.BOUNDARY_UNSET:
                             target_pos -= self._gen_pos_from_dir( direction, 1 )
-                            print("        hit %d ignored at (%d,%d) size=%s; target now %s"%(self._map[x][y],x,y,size,target_pos))
+                            self.debug_print("        hit %d ignored at (%d,%d) size=%s; target now %s"%(self._map[x][y],x,y,size,target_pos))
 
                             if bounds[direction] != self.BOUNDARY_UNSET:
                                 found = True
                                 break
-                            print("        substituting for current dir! %s"%direction)
+                            self.debug_print("        substituting for current dir! %s"%direction)
                             target_pos -= self._gen_pos_from_dir( direction, 1 )
                         else:
                             # collision with a corridor or another room
@@ -597,7 +603,7 @@ class TypeAMap(Map):
                             else:
                                 size.x -= 1
 
-                            print("        hit %d at (%d,%d) size=%s; target now %s"%(self._map[x][y],x,y,size,target_pos))
+                            self.debug_print("        hit %d at (%d,%d) size=%s; target now %s"%(self._map[x][y],x,y,size,target_pos))
 
                             #  * put a door at collision point
                             r_segs.append(self._ME(TypeAMap.DOOR, Position(x,y)-self._gen_pos_from_dir(direction,1), Position(1,1), Position(x,y)))
@@ -607,7 +613,7 @@ class TypeAMap(Map):
                             bounds[direction] = y
                         else:
                             bounds[direction] = x
-                        print("        bounds = %s" % bounds)
+                        self.debug_print("        bounds = %s" % bounds)
 
                         #  * continue
                         found = True
@@ -618,7 +624,7 @@ class TypeAMap(Map):
             direction = self._gen_get_compass_right(direction)
             pos = target_pos
 
-        print ("Room starting at %s is %s"%(opos,bounds))
+        self.debug_print ("Room starting at %s is %s"%(opos,bounds))
         tl = Position(bounds['W']+2,bounds['N']+2)
         br = Position(bounds['E']-1,bounds['S']-1)
         size = br - tl
@@ -680,7 +686,7 @@ class TypeAMap(Map):
                 # get as close to terminating pos as possible
                 d, l = self._gen_dir_from_pos( curr_pos, terminating_pos )
                 c_segs.append( self._gen_corridor_seg( curr_pos, d, l, width ) )
-                print("Bend 1 (last): pos %s, target %s, dir %s, len %d"%(curr_pos,terminating_pos,d,l))
+                self.debug_print("Bend 1 (last): pos %s, target %s, dir %s, len %d"%(curr_pos,terminating_pos,d,l))
 
             elif num_bends == 2:
                 # get on same long or lat as terminating pos
@@ -693,7 +699,7 @@ class TypeAMap(Map):
                 if l > self._gen_get_available_dist(curr_pos,direction): # still!
                     l = self._gen_get_available_dist(curr_pos,direction) - self.CORRIDOR_MIN_LENGTH - width
                 c_segs.append( self._gen_corridor_seg( curr_pos, direction, l, width ) )
-                print("Bend 2 (pen.): pos %s, target %s, dir %s, len %d"%(curr_pos,terminating_pos,direction,l))
+                self.debug_print("Bend 2 (pen.): pos %s, target %s, dir %s, len %d"%(curr_pos,terminating_pos,direction,l))
 
             else:
                 # travel random distance in current direction, then turn
@@ -703,7 +709,7 @@ class TypeAMap(Map):
                 elif l_min <= 0:
                     direction = self._gen_get_compass_opposite(direction)
                 c_segs.append( self._gen_corridor_seg( curr_pos, direction, libtcod.random_get_int(self.map_rng,self.CORRIDOR_MIN_LENGTH+width+1,self._gen_get_available_dist(curr_pos,direction)-self.CORRIDOR_MIN_LENGTH-width), width ) )
-                print("Bend >2 (first): pos %s, target %s, dir %s, len %d"%(curr_pos,terminating_pos,direction,c_segs[-1].length))
+                self.debug_print("Bend >2 (first): pos %s, target %s, dir %s, len %d"%(curr_pos,terminating_pos,direction,c_segs[-1].length))
                 direction = self._gen_get_compass_turn(direction)
             num_bends -= 1
             curr_pos += self._gen_pos_from_dir( c_segs[-1].direction, c_segs[-1].length )
@@ -734,7 +740,7 @@ class TypeAMap(Map):
                 c_segs.append( s )
                 len_used += len_wanted
                 curr_pos += self._gen_pos_from_dir( direction, len_wanted )
-                print("iter: %d; pos: %s; dir: %s; used: %d; wanted %d; avail: %d"%(sanity,curr_pos,direction,len_used,len_wanted,len_avail))
+                self.debug_print("iter: %d; pos: %s; dir: %s; used: %d; wanted %d; avail: %d"%(sanity,curr_pos,direction,len_used,len_wanted,len_avail))
 
             # turn towards area with space to draw what we want
             direction = self._gen_get_compass_turn( direction )
@@ -770,7 +776,7 @@ class TypeAMap(Map):
         #    * choose corridor width
         #    * choose number of corridor bends (1-4, depending on sites)
         #    * plot corridor
-        print (" -- MAIN CORRIDOR --")
+        self.debug_print (" -- MAIN CORRIDOR --")
         d = self._gen_get_compass_dir()
         o = self._gen_get_compass_opposite(d)
         corridors += self._gen_corridor_to_area( self._gen_get_edge_tile( o, 2, 4 ),
@@ -805,7 +811,7 @@ class TypeAMap(Map):
             c = corridors[c_idx]
             intersect = c.opos + self._gen_pos_from_dir( c.direction, index_len )
             d = self._gen_get_compass_turn(c.direction)
-            print("%d/%d %d/%d from %s %s for %d = %s"%(used_len,main_len,index_len,c.length,c.opos,c.direction,index_len,intersect))
+            self.debug_print("%d/%d %d/%d from %s %s for %d = %s"%(used_len,main_len,index_len,c.length,c.opos,c.direction,index_len,intersect))
 
             corridors += self._gen_corridor_wriggle( intersect,
                                              d,
@@ -824,7 +830,7 @@ class TypeAMap(Map):
             if c.pos+c.size > coverage_br_pos:
                 coverage_br_pos = c.pos+c.size
         if coverage_tl_pos.distance_to(coverage_br_pos) < Position(0,0).distance_to(self.size)*self.REJECT_COVERAGE_PC:
-            print("Rejecting map !!!")
+            self.debug_print("Rejecting map !!!")
             return self.generate()
 
         # * commit corridors to map

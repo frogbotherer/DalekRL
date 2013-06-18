@@ -2,6 +2,7 @@
 
 import libtcodpy as libtcod
 from math import hypot
+import weakref
 
 from errors import InvalidMoveError
 from ui import Message
@@ -96,23 +97,25 @@ class TurnTaker:
         """Lowest initiative goes first"""
         self.initiative = initiative
         # might be a faster way to do this
-        TurnTaker.turn_takers.append(self)
-        TurnTaker.turn_takers.sort( key = lambda x: x.initiative )
-
-    def __del__(self):
-        TurnTaker.turn_takers.remove(self)
+        TurnTaker.turn_takers.append(weakref.ref(self))
+        TurnTaker.turn_takers.sort( key = lambda x: x() is None and 100000 or x().initiative )
 
     def take_turn(self):
         raise NotImplementedError
 
     def take_all_turns():
-        for t in TurnTaker.turn_takers:
-            t.take_turn()
+        for tref in TurnTaker.turn_takers:
+            t = tref()
+            if t is None:
+                TurnTaker.turn_takers.remove(tref)
+            else:
+                t.take_turn()
 
     def clear_all():
-        for t in TurnTaker.turn_takers:
-            #TurnTaker.turn_takers.remove(t)
-            del t
+        for tref in TurnTaker.turn_takers:
+            t = tref()
+            if not t is None:
+                del t
         TurnTaker.turn_takers = []
 
 class Traversable:
