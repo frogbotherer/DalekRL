@@ -89,6 +89,21 @@ class Map:
                     ro = o
         return ro
 
+    def find_all_within_r(self, obj, otype, radius):
+        """find all type otype in radius of obj"""
+        # TODO: allow class names instead of explicit layers
+        ret = []
+        for layer in self.__layer_order:
+            for ol in self.__layers[layer].values():
+                for o in ol:
+                    if not isinstance(o,otype):
+                        continue
+                    if obj is o or not obj.is_visible:
+                        continue
+                    if obj.pos.distance_to(o.pos) < radius:
+                        ret.append(o)
+        return ret
+
     def find_random_clear(self,rng=None):
         """find random clear cell in map"""
         if rng is None:

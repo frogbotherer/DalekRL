@@ -173,6 +173,17 @@ class Activatable:
     def activate(self):
         raise NotImplementedError("%s can't be activated"%self.__classname__)
 
+class Alertable:
+    def __init__(self,listen_radius=10):
+        self.listen_radius = listen_radius
+
+    def alert(self,to_pos):
+        if hasattr(self,'pos'):
+            return to_pos.distance_to(self.pos) <= self.listen_radius
+        else:
+            return True
+
+
 class Talker:
     def __init__(self,phrases,probability=0.05):
         """
@@ -200,3 +211,16 @@ class Talker:
             self.is_talking = True
             self.__chat.is_visible = True
     
+
+class Shouter:
+    def __init__(self,audible_radius=10):
+        assert isinstance(self,Mappable), "Shouter must be a mappable object" # bad mi??
+        self.audible_radius=audible_radius
+
+    def shout(self,at_pos=None):
+        if at_pos is None:
+            at_pos = self.pos
+
+        for a in self.map.find_all_within_r(self,Alertable,self.audible_radius):
+            a.alert(at_pos)
+

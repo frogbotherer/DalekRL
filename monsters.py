@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import libtcodpy as libtcod
-from interfaces import Mappable, Position, Activatable, Activator, CountUp, Talker, TurnTaker
+from interfaces import Mappable, Position, Activatable, Activator, CountUp, Talker, TurnTaker, Alertable, Shouter
 from errors import GameOverError, InvalidMoveError, TodoError
 from ui import HBar, Message, Menu
 
@@ -94,7 +94,7 @@ class MS_Stationary(Monster_State):
         return self.monster.pos
 
 
-class Dalek (Monster,Tanglable,Talker):
+class Dalek (Monster,Tanglable,Talker,Alertable):
     def __init__(self,pos=None):
         Monster.__init__(self,pos,'D',libtcod.red)
         Tanglable.__init__(self,5)
@@ -104,6 +104,7 @@ class Dalek (Monster,Tanglable,Talker):
                 MS_InvestigateSpot: ['** HUNTING **','** I WILL FIND YOU **'],
                 MS_Patrolling: ['** BEEP BOOP **','** BOOP BEEP **']
                 },0.05)
+        Alertable.__init__(self,30)
         
 
     def take_turn(self):
@@ -170,8 +171,14 @@ class Dalek (Monster,Tanglable,Talker):
         # chatter
         self.talk(self.state.__class__)
 
+    def alert(self,to_pos):
+        # only become alerted if in a neutral state
+        if isinstance(self.state,MS_Patrolling) or isinstance(self.state,MS_Stationary):
+            if Alertable.alert(self,to_pos):
+                self.state = MS_InvestigateSpot(self,to_pos)
 
-class StaticCamera(Monster, Talker, CountUp):
+
+class StaticCamera(Monster, Talker, CountUp, Shouter):
     def __init__(self,pos=None):
         Monster.__init__(self,pos,'C',libtcod.light_red)
         Talker.__init__(self,{
@@ -179,6 +186,7 @@ class StaticCamera(Monster, Talker, CountUp):
                 MS_InvestigateSpot: ['beeeeeeee','bip bip bip bip'],
                 MS_Stationary: ['bip','whrrrrr']
                 },1)
+        Shouter.__init__(self,50)
         CountUp.__init__(self,2)
 
     def take_turn(self):
@@ -192,6 +200,8 @@ class StaticCamera(Monster, Talker, CountUp):
         if self.map.can_see(self.pos):
             if self.inc():
                 self.state = MS_SeekingPlayer(self)
+                self.shout()
+
             elif not isinstance(self.state,MS_InvestigateSpot):
                 self.state = MS_InvestigateSpot( self, self.map.player.pos )
         
@@ -199,6 +209,10 @@ class StaticCamera(Monster, Talker, CountUp):
             if not isinstance(self.state,MS_Stationary):
                 self.state = MS_Stationary(self)
                 self.reset()
+            # TODO: fix Talker interface so don't need to cheat
+            if libtcod.random_get_int(None,1,10) > 1:
+                self.stop_talk()
+                return
 
         self.talk(self.state.__class__)
 
