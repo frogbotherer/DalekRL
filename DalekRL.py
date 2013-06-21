@@ -11,7 +11,7 @@ import libtcodpy as libtcod
 from interfaces import Position, TurnTaker
 from ui import UI
 from maps import Map
-from errors import InvalidMoveError, GameOverError
+from errors import InvalidMoveError, GameOverError, LevelWinError
 
 SCREEN_SIZE = Position(80,50)
 LIMIT_FPS = 10
@@ -34,12 +34,17 @@ def do_nothing():
     pass
 
 
-def reset():
+def reset(keep_player=False):
     global SCREEN_SIZE, RANDOM_SEED, MAP, KEYMAP, player
-
+    evidence = []
+    turns    = 0
     if not player is None:
         print("Game Over")
         print("%d evidence in %d turns" %(len(player.evidence),player.turns))
+
+        if keep_player:
+            evidence = player.evidence
+            turns    = player.turns
 
     if not MAP is None:
         MAP.close()
@@ -52,7 +57,9 @@ def reset():
     print("STATICS CLEARED")
     MAP = Map.random(RANDOM_SEED,SCREEN_SIZE-(0,4))
     MAP.generate()
-    player = MAP.player
+    player          = MAP.player
+    player.evidence = evidence
+    player.turns    = turns
     KEYMAP = {
         'k': player.move_n,
         'j': player.move_s,
@@ -128,6 +135,8 @@ while not libtcod.console_is_window_closed():
         # monster movement and items
         TurnTaker.take_all_turns()
     except GameOverError:
-        reset()
+        reset(False)
+    except LevelWinError:
+        reset(True)
 
 

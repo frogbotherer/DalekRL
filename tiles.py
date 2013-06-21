@@ -2,7 +2,7 @@
 
 import libtcodpy as libtcod
 from interfaces import Mappable, Traversable, Transparent, TurnTaker, CountUp, Position
-from errors import GameOverError
+from errors import LevelWinError
 from ui import HBar
 
 class Tile(Mappable,Traversable,Transparent):
@@ -37,7 +37,7 @@ class Stairs(Tile,CountUp,TurnTaker):
             if self.count == 0:
                 self.bar.is_visible = True
             if self.inc():
-                raise GameOverError("You have escaped!")
+                raise LevelWinError("You have escaped!")
             else:
                 self.bar.value = self.count_to-self.count
         elif self.count > 0:

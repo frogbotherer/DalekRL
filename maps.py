@@ -866,7 +866,7 @@ class TypeAMap(Map):
         # * populate Map object from _map
         misses = 0
         for x in range(len(self._map)):
-            for y in range(len(self._map[0])):
+            for y in range(len(self._map[x])):
                 t = self._map[x][y]
                 if   t & self.CORRIDOR:
                     self.add(Floor(Position(x,y)))
@@ -878,17 +878,27 @@ class TypeAMap(Map):
                     # only draw door if exactly two tiles in compass directions are walkable
                     m_ns = 0; m_ew = 0
                     if y>0 and y<self.size.y-1:
-                        if (self._map[x][y-1]&(self.CORRIDOR|self.ROOM)) > 0 \
-                                and (self._map[x][y+1]&(self.CORRIDOR|self.ROOM)) > 0:
+                        n = self._map[x][y-1]
+                        s = self._map[x][y+1]
+                        if n&(self.CORRIDOR|self.ROOM) > 0 \
+                                and s&(self.CORRIDOR|self.ROOM) > 0:
                             m_ns = 1
+                        if (n&(self.WALL|self.DOOR) > 0 or n == 0) \
+                                and (s&(self.WALL|self.DOOR) > 0 or s == 0):
+                            m_ns = -1
                     if x>0 and x<self.size.x-1:
-                        if (self._map[x-1][y]&(self.CORRIDOR|self.ROOM)) > 0 \
-                                and (self._map[x+1][y]&(self.CORRIDOR|self.ROOM)) > 0:
+                        e = self._map[x-1][y]
+                        w = self._map[x+1][y]
+                        if e&(self.CORRIDOR|self.ROOM) > 0 \
+                                and w&(self.CORRIDOR|self.ROOM) > 0:
                             m_ew = 1
-                    if (m_ns > 0 and m_ew == 0) or (m_ns == 0 and m_ew > 0):
+                        if (e&(self.WALL|self.DOOR) > 0 or e == 0) \
+                                and (w&(self.WALL|self.DOOR) > 0 or w == 0):
+                            m_ew = -1
+                    if (m_ns > 0 and m_ew < 0) or (m_ns < 0 and m_ew > 0):
                         self.add(Floor(Position(x,y)))
                         self.add(Door(Position(x,y)))
-                    elif m_ns == 0 and m_ew == 0:
+                    elif m_ns <= 0 and m_ew <= 0:
                         self.add(Wall(Position(x,y)))
                     else:
                         self.add(Floor(Position(x,y)))

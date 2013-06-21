@@ -7,6 +7,9 @@ class DalekError(Exception):
 class GameOverError(DalekError):
     pass
 
+class LevelWinError(DalekError):
+    pass
+
 class InvalidMoveError(DalekError):
     pass
 
