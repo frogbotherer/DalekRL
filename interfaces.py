@@ -193,7 +193,7 @@ class Talker:
         if self.is_talking:
             self.stop_talk()
 
-        elif libtcod.random_get_float(None,0.0,1.0)<self.__probability and key in self.__phrases.keys():
+        if libtcod.random_get_float(None,0.0,1.0)<self.__probability and key in self.__phrases.keys():
             #assert key in self.__phrases.keys(), "Talker %s has no vocab for key %s"%(self,key)
             self.__chat.pos = self.pos-(0,1)
             self.__chat.text = self.__phrases[key][libtcod.random_get_int(None,0,len(self.__phrases[key])-1)]

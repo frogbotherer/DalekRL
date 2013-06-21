@@ -24,7 +24,11 @@ class Monster (Mappable, TurnTaker):
         return "%s at %s" %(self.__class__.__name__,self.pos)
 
     def random(rng,pos):
-        return Dalek(pos)
+        r = libtcod.random_get_float(rng,0.0,1.0)
+        if r < 0.2:
+            return StaticCamera(pos)
+        else:
+            return Dalek(pos)
 
 from tangling import Tanglable
 
@@ -160,14 +164,43 @@ class Dalek (Monster,Tanglable,Talker):
         m = self.map.find_nearest(self,Monster)
 
         # if on monster square: tangle
-        if self.pos == m.pos:
+        if self.pos == m.pos and isinstance(m,Tanglable):
             self.tangle(m)
 
         # chatter
         self.talk(self.state.__class__)
 
 
+class StaticCamera(Monster, Talker, CountUp):
+    def __init__(self,pos=None):
+        Monster.__init__(self,pos,'C',libtcod.light_red)
+        Talker.__init__(self,{
+                MS_SeekingPlayer: ['** BLAAARP! BLAAARP! **','** INTRUDER ALERT! **','** WARNING! **'],
+                MS_InvestigateSpot: ['beeeeeeee','bip bip bip bip'],
+                MS_Stationary: ['bip','whrrrrr']
+                },1)
+        CountUp.__init__(self,2)
 
+    def take_turn(self):
+        # sanity checks
+        assert not self.map is None, "%s can't take turn without a map" % self
+
+        # if not visible, do nothing
+        if not self.is_visible:
+            return
+
+        if self.map.can_see(self.pos):
+            if self.inc():
+                self.state = MS_SeekingPlayer(self)
+            elif not isinstance(self.state,MS_InvestigateSpot):
+                self.state = MS_InvestigateSpot( self, self.map.player.pos )
+        
+        else: # can't see player
+            if not isinstance(self.state,MS_Stationary):
+                self.state = MS_Stationary(self)
+                self.reset()
+
+        self.talk(self.state.__class__)
 
 # put here for now
 from items import Item, HandTeleport, Tangler, Evidence
