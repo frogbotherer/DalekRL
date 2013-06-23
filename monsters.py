@@ -132,7 +132,7 @@ class Dalek (Monster,Tanglable,Talker,Alertable,Shouter):
             self.state = MS_RecentlyTangled(self)
 
         # otherwise chase player if visible
-        elif self.map.can_see(self.pos):
+        elif self.map.can_see(self):
             if not isinstance(self.state,MS_SeekingPlayer):
                 self.state = MS_SeekingPlayer(self)
                 self.shout(self.map.player.pos)
@@ -199,7 +199,7 @@ class StaticCamera(Monster, Talker, CountUp, Shouter):
         if not self.is_visible:
             return
 
-        if self.map.can_see(self.pos):
+        if self.map.can_see(self):
             if self.inc():
                 self.state = MS_SeekingPlayer(self)
                 self.shout()
@@ -219,11 +219,11 @@ class StaticCamera(Monster, Talker, CountUp, Shouter):
         self.talk(self.state.__class__)
 
 # put here for now
-from items import Item, HandTeleport, Tangler, Evidence
+from items import Item, Evidence
 class Player (Mappable,Activator):
     def __init__(self,pos):
         Mappable.__init__(self,pos,'@',libtcod.white)
-        self.items = [HandTeleport(self,10),Tangler(self,3),None]
+        self.items = [Item.random(None,self,0.8,1.0),Item.random(None,self,0.0,0.8),None]
         self.turns = 0
         self.evidence = []
         self.levels_seen = 0

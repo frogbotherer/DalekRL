@@ -35,16 +35,24 @@ class Item(Carryable, Activatable, Mappable):
         self.pos = None
         self.is_visible = False
 
-    def random(rng,pos):
-        return Tangler(pos,libtcod.random_get_int_mean(rng,1,2,4))
+    def random(rng,pos,lclamp=0.0,hclamp=1.0):
+        """random item at pos using rng. raising lclamp removes bad items; lowering hclamp removes good items"""
+        t = libtcod.random_get_float(rng,lclamp,hclamp)
+
+        if t < 0.8:
+            return Tangler(pos,libtcod.random_get_int_mean(rng,1,2,4))
+        elif t < 0.9:
+            return HandTeleport(pos,libtcod.random_get_int(rng,10,20))
+        else:
+            return Cloaker(pos,libtcod.random_get_int(rng,15,25))
 
 
 class CoolDownItem(Item, CountUp, TurnTaker):
-    def __init__(self,owner,count_to):
-        Item.__init__(self,owner,libtcod.green)
+    def __init__(self,owner,count_to,item_colour=libtcod.green,bar_colour=libtcod.dark_green):
+        Item.__init__(self,owner,item_colour)
         CountUp.__init__(self,count_to)
         TurnTaker.__init__(self,100)
-        self.bar = HBar(None, None, libtcod.dark_green, libtcod.dark_grey, True, False, str(self), str.ljust)
+        self.bar = HBar(None, None, bar_colour, libtcod.dark_grey, True, False, str(self), str.ljust)
         self.bar.is_visible = False
 
     def take_turn(self):
@@ -75,11 +83,11 @@ class CoolDownItem(Item, CountUp, TurnTaker):
 
 
 class LimitedUsesItem(Item):
-    def __init__(self,owner,uses):
-        Item.__init__(self,owner,libtcod.orange)
+    def __init__(self,owner,uses,item_colour=libtcod.orange,bar_colour=libtcod.red):
+        Item.__init__(self,owner,item_colour)
         self.max_uses = uses
         self.uses = uses
-        self.bar = HBar(None, None, libtcod.red, libtcod.dark_grey, True, False, str(self), str.ljust)
+        self.bar = HBar(None, None, bar_colour, libtcod.dark_grey, True, False, str(self), str.ljust)
         self.bar.is_visible = False
 
     def draw_ui(self,pos,max_width=40):
@@ -115,6 +123,35 @@ class HandTeleport(CoolDownItem):
 
         self.owner.move_to(self.owner.map.find_random_clear())
         return True
+
+
+class Cloaker(CoolDownItem):
+    def __init__(self,owner,uses):
+        CoolDownItem.__init__(self,owner,uses,libtcod.light_blue,libtcod.dark_blue)
+        self.hidden_at = None
+
+    def __str__(self):
+        return "Cloaker"
+
+    def activate(self):
+        if not CoolDownItem.activate(self):
+            return False
+        self.owner.is_visible = False
+        self.hidden_at = self.owner.pos
+        self.inc()
+        return True
+    
+    def take_turn(self):
+
+        # only run cooldown whilst effect inactive
+        if self.hidden_at is None:
+            CoolDownItem.take_turn(self)
+
+        # player moved; unhide them
+        elif self.hidden_at != self.owner.pos:
+            self.owner.is_visible = True
+            self.hidden_at = None
+
 
 
 from tangling import Tanglable, Tangle

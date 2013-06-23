@@ -114,7 +114,7 @@ class Door(Tile,CountUp,TurnTaker):
                 #    self.map.prepare_fov(self.map.player.pos)
                 return True
             else:
-                if self.map.can_see(self.pos):
+                if self.map.can_see(self):
                     self.bar.is_visible = True
                     self.bar.value = self.count_to-self.count
                 return False
@@ -137,7 +137,7 @@ class Door(Tile,CountUp,TurnTaker):
                     self._closed()
             elif self.state is Door.CLOSING:
                 # don't show state whilst open
-                if self.map.can_see(self.pos):
+                if self.map.can_see(self):
                     self.bar.is_visible = True
                     self.bar.value = self.count_to-self.count
                 else:

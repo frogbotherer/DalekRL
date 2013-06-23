@@ -172,7 +172,18 @@ class Map:
     def prepare_fov(self, pos, radius=0):
         libtcod.map_compute_fov(self.__tcod_map, pos.x, pos.y, radius, True, libtcod.FOV_BASIC)
 
-    def can_see(self, pos):
+    def can_see(self, obj, target=None):
+        """default is: can obj see player?"""
+        assert isinstance(obj,Mappable), "%s can't be tested for visibility" % obj
+        if target is None or target is self.player:
+            return self.player.is_visible and libtcod.map_is_in_fov(self.__tcod_map, obj.pos.x, obj.pos.y)
+        elif obj is self.player:
+            return obj.is_visible and libtcod.map_is_in_fov(self.__tcod_map, obj.pos.x, obj.pos.y)
+        else:
+            raise NotImplementedError
+
+    def _drawing_can_see(self,pos):
+        # ONLY FOR DRAWING!!
         return libtcod.map_is_in_fov(self.__tcod_map, pos.x, pos.y)
 
     def get_path(self,from_pos,to_pos,steps=None):

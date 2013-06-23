@@ -81,7 +81,7 @@ class Mappable:
         if not self.is_visible:
             return
         colour = self.colour
-        if not self.map.can_see(self.pos):
+        if not self.map._drawing_can_see(self.pos):
             if self.has_been_seen and self.remains_in_place:
                 colour = libtcod.darkest_grey
             else:
