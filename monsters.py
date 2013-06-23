@@ -94,7 +94,7 @@ class MS_Stationary(Monster_State):
         return self.monster.pos
 
 
-class Dalek (Monster,Tanglable,Talker,Alertable):
+class Dalek (Monster,Tanglable,Talker,Alertable,Shouter):
     def __init__(self,pos=None):
         Monster.__init__(self,pos,'D',libtcod.red)
         Tanglable.__init__(self,5)
@@ -105,6 +105,7 @@ class Dalek (Monster,Tanglable,Talker,Alertable):
                 MS_Patrolling: ['** BEEP BOOP **','** BOOP BEEP **']
                 },0.05)
         Alertable.__init__(self,30)
+        Shouter.__init__(self,30)
         
 
     def take_turn(self):
@@ -134,6 +135,7 @@ class Dalek (Monster,Tanglable,Talker,Alertable):
         elif self.map.can_see(self.pos):
             if not isinstance(self.state,MS_SeekingPlayer):
                 self.state = MS_SeekingPlayer(self)
+                self.shout(self.map.player.pos)
 
         # otherwise: if was chasing and now lost player, home on last loc
         elif isinstance(self.state,MS_SeekingPlayer):
@@ -224,6 +226,7 @@ class Player (Mappable,Activator):
         self.items = [HandTeleport(self,10),Tangler(self,3),None]
         self.turns = 0
         self.evidence = []
+        self.levels_seen = 0
 
     def __str__(self):
         return "Player at %s" % self.pos

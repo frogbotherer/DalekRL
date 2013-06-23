@@ -36,15 +36,17 @@ def do_nothing():
 
 def reset(keep_player=False):
     global SCREEN_SIZE, RANDOM_SEED, MAP, KEYMAP, player
-    evidence = []
-    turns    = 0
+    evidence    = []
+    turns       = 0
+    levels_seen = 1
     if not player is None:
         print("Game Over")
-        print("%d evidence in %d turns" %(len(player.evidence),player.turns))
+        print("%d evidence in %d turns; %d levels seen" %(len(player.evidence),player.turns,player.levels_seen))
 
         if keep_player:
-            evidence = player.evidence
-            turns    = player.turns
+            evidence    = player.evidence
+            turns       = player.turns
+            levels_seen = player.levels_seen+1
 
     if not MAP is None:
         MAP.close()
@@ -57,9 +59,10 @@ def reset(keep_player=False):
     print("STATICS CLEARED")
     MAP = Map.random(RANDOM_SEED,SCREEN_SIZE-(0,4))
     MAP.generate()
-    player          = MAP.player
-    player.evidence = evidence
-    player.turns    = turns
+    player             = MAP.player
+    player.evidence    = evidence
+    player.turns       = turns
+    player.levels_seen = levels_seen
     KEYMAP = {
         'k': player.move_n,
         'j': player.move_s,

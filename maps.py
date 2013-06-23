@@ -91,7 +91,7 @@ class Map:
 
     def find_all_within_r(self, obj, otype, radius):
         """find all type otype in radius of obj"""
-        # TODO: allow class names instead of explicit layers
+        # TODO: there might be a more efficient way to do this using another FOV map from TCOD
         ret = []
         for layer in self.__layer_order:
             for ol in self.__layers[layer].values():
