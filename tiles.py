@@ -101,17 +101,17 @@ class Door(Tile,CountUp,TurnTaker):
         self.bar.timeout = 5.0
         self._trying_to_open = False
 
-    def _open(self):
+    def to_open(self):
         self.__change(Door.OPEN)
         self.map.recalculate_paths()
         self.map.prepare_fov(self.map.player.pos)
 
-    def _closed(self):
+    def to_closed(self):
         self.__change(Door.CLOSED)
         self.map.recalculate_paths()
         self.map.prepare_fov(self.map.player.pos)
 
-    def _closing(self):
+    def to_closing(self):
         self.__change(Door.CLOSING)
 
     def __change(self,state_dat):
@@ -136,7 +136,7 @@ class Door(Tile,CountUp,TurnTaker):
             self._trying_to_open = True
             if self.inc():
                 self.bar.is_visible = False
-                self._open()
+                self.to_open()
                 #if obj is self.map.player: # i think we need to do this anyway
                 #    self.map.recalculate_paths()
                 #    self.map.prepare_fov(self.map.player.pos)
@@ -160,9 +160,9 @@ class Door(Tile,CountUp,TurnTaker):
             if self.inc():
                 self.bar.is_visible = False
                 if self.state is Door.OPEN:
-                    self._closing()
+                    self.to_closing()
                 else: # closing
-                    self._closed()
+                    self.to_closed()
             elif self.state is Door.CLOSING:
                 # don't show state whilst open
                 if self.map.can_see(self):

@@ -172,6 +172,7 @@ class CrateLifter (Monster,Tanglable,Talker,Shouter):
                     else:
                         # i put crate down
                         #  * add back to map
+                        self.my_crate.pos = self.pos
                         self.map.add(self.my_crate,Tile)
                         self.am_carrying_my_crate = False
 
@@ -203,6 +204,10 @@ class CrateLifter (Monster,Tanglable,Talker,Shouter):
             self.move_to(self.state.get_move())
         except InvalidMoveError:
             pass
+
+        # if on player square: lose (let's leave it as noisy useless monster for now)
+        #if self.pos == self.map.player.pos:
+        #    raise GameOverError("Crate Monkey")
 
         # find monster
         m = self.map.find_nearest(self,Monster)
@@ -346,7 +351,7 @@ from tiles import Tile
 class Player (Mappable,Activator):
     def __init__(self,pos):
         Mappable.__init__(self,pos,'@',libtcod.white)
-        self.items = [Item.random(None,self,0.8,1.0),Item.random(None,self,0.0,0.8),None]
+        self.items = [Item.random(None,self,2,1.5),Item.random(None,self,1),None]
         self.turns = 0
         self.evidence = []
         self.levels_seen = 0
