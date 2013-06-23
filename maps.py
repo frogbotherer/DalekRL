@@ -2,11 +2,11 @@
 
 import libtcodpy as libtcod
 
-from monsters import Monster, Player#, Stairs
+from monsters import Monster, Player
 from interfaces import Mappable, Position, Traversable, Transparent
 from items import Item, Evidence
 from tiles import Tile, Wall, Floor, Door, Stairs
-from errors import TodoError
+from errors import TodoError, InvalidMoveError
 
 from functools import reduce
 
@@ -22,7 +22,6 @@ class Map:
             Tile: {},
             }
         self.map_rng = libtcod.random_new_from_seed(seed)
-        self.rng = libtcod.random_get_instance()
         self.size = size
         self.__tcod_map = libtcod.map_new( self.size.x, self.size.y )
         self.__tcod_pathfinder = None
@@ -56,12 +55,19 @@ class Map:
         """move object on map. NB. setting a Mappable's pos directly will break stuff"""
         assert isinstance(obj,Mappable), "%s cannot appear on map"%obj
 
+        # check that we can move from current pos
+        srcs  = self.find_all_at_pos(obj.pos,Tile) # probably just Tiles
+        for src in srcs:
+            if isinstance(src,Traversable):
+                if not src.try_leaving(obj):
+                    raise InvalidMoveError
+
         # check that we can move to pos
         dests = self.find_all_at_pos(pos,Tile) # probably just Tiles
         for dest in dests:
             if isinstance(dest,Traversable):
                 if not dest.try_movement(obj):
-                    return # perhaps raise IllegalMoveError
+                    raise InvalidMoveError
 
         if layer is None:
             layer = self.__get_layer_from_obj(obj)
@@ -75,41 +81,52 @@ class Map:
         # update obj position
         obj.pos = pos
 
-    def find_nearest(self, obj, layer):
-        """find nearest thing in layer to obj"""
+    def find_all(self, otype, layer=None):
+        """find all type otype in layer"""
+        layers = [layer]
+        if layer is None:
+            layers = self.__layer_order
+
+        # fast if asking for a layer
+        if otype in layers:
+            return reduce(lambda a,b: a+b, self.__layers[otype].values(), [])
+
+        r = []
+        for layer in layers:
+            for ol in self.__layers[layer].values():
+                r += [o for o in ol if isinstance(o,otype)]
+        return r
+
+    def find_nearest(self, obj, otype, layer=None):
+        """find nearest thing of type otype to obj"""
         r = 10000000 # safely larger than the map
         ro = None
-        for ol in self.__layers[layer].values():
-            for o in ol:
-                if obj is o or not obj.is_visible:
-                    continue
-                d = obj.pos.distance_to(o.pos)
-                if d<r:
-                    r  = d
-                    ro = o
+
+        for o in self.find_all(otype,layer):
+            if obj is o or not o.is_visible:
+                continue
+            d = obj.pos.distance_to(o.pos)
+            if d<r:
+                r  = d
+                ro = o
         return ro
 
     def find_all_within_r(self, obj, otype, radius):
         """find all type otype in radius of obj"""
         # TODO: there might be a more efficient way to do this using another FOV map from TCOD
         ret = []
-        for layer in self.__layer_order:
-            for ol in self.__layers[layer].values():
-                for o in ol:
-                    if not isinstance(o,otype):
-                        continue
-                    if obj is o or not obj.is_visible:
-                        continue
-                    if obj.pos.distance_to(o.pos) < radius:
-                        ret.append(o)
+        for o in self.find_all(otype):
+            if obj is o or not o.is_visible:
+                continue
+            if obj.pos.distance_to(o.pos) < radius:
+                ret.append(o)
         return ret
 
     def find_random_clear(self,rng=None):
         """find random clear cell in map"""
-        if rng is None:
-            rng = self.rng
+        # assumes that 2+ tiles in the same space means a door/crate/what-have-you
         occupied = list(self.__layers[Player].keys()) + list(self.__layers[Monster].keys()) \
-                 + [t[0] for t in self.__layers[Tile].items() if t[1][0].blocks_movement()]
+                 + [t[0] for t in self.__layers[Tile].items() if t[1][0].blocks_movement() and len(t[1])==0]
 
         while 1:
             p = Position(libtcod.random_get_int(rng,0,self.size.x-1),libtcod.random_get_int(rng,0,self.size.y-1))
@@ -299,7 +316,7 @@ class DalekMap(Map):
                     self.add(Floor(Position(i,j)))
 
         # place daleks
-        for i in range(0,10):
+        for i in range(0,15):
             d = Monster.random(self.map_rng,self.find_random_clear(self.map_rng))
             self.add(d)
 
@@ -319,7 +336,7 @@ class TypeAMap(Map):
     """Map Layout:
      * corridors of 1 and 2 tile width
      * adjoining rooms with multiple exits and interconnects
-     * sub-partitioned rooms
+     * TODO: sub-partitioned rooms
      * 80-90% of map space used
     """
 
@@ -981,8 +998,12 @@ class TypeAMap(Map):
         # * for tile in empty tiles:
         #    * if tile adjoins one walkable tile, it is a wall tile
 
+        # place some furniture
+        for i in range(5):
+            self.add(Tile.random_furniture(self.map_rng,self.find_random_clear(self.map_rng)))
+
         # place daleks
-        for i in range(10):
+        for i in range(15):
             d = Monster.random(self.map_rng,self.find_random_clear(self.map_rng))
             self.add(d)
 

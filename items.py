@@ -4,6 +4,7 @@ import libtcodpy as libtcod
 
 from interfaces import Carryable, Activatable, Activator, CountUp, Mappable, TurnTaker
 from ui import HBar, Message
+from errors import InvalidMoveError
 
 class Item(Carryable, Activatable, Mappable):
     def __init__(self, owner, colour):
@@ -39,8 +40,10 @@ class Item(Carryable, Activatable, Mappable):
         """random item at pos using rng. raising lclamp removes bad items; lowering hclamp removes good items"""
         t = libtcod.random_get_float(rng,lclamp,hclamp)
 
+        if t < 0.4:
+            return MemoryWipe(pos,libtcod.random_get_int_mean(rng,1,4,2))
         if t < 0.8:
-            return Tangler(pos,libtcod.random_get_int_mean(rng,1,2,4))
+            return Tangler(pos,libtcod.random_get_int_mean(rng,1,4,2))
         elif t < 0.9:
             return HandTeleport(pos,libtcod.random_get_int(rng,10,20))
         else:
@@ -121,7 +124,11 @@ class HandTeleport(CoolDownItem):
         if not CoolDownItem.activate(self):
             return False
 
-        self.owner.move_to(self.owner.map.find_random_clear())
+        try:
+            self.owner.move_to(self.owner.map.find_random_clear())
+        except InvalidMoveError:
+            print("Can't teleport from %s" % self.owner.pos)
+            return False
         return True
 
 
@@ -163,12 +170,26 @@ class Tangler(LimitedUsesItem):
 
     def activate(self):
         # TODO: make this find the nearest untangled tanglable
-        m = self.owner.map.find_nearest(self.owner,Monster)
+        m = self.owner.map.find_nearest(self.owner,Tanglable,Monster)
         if isinstance(m, Tanglable) and not m.is_tangled() and LimitedUsesItem.activate(self):
             t = Tangle()
             t.add(m)
             return True
 
+        return False
+
+class MemoryWipe(LimitedUsesItem):
+    def __str__(self):
+        return "Memory Wipe"
+
+    def activate(self):
+        ms = self.owner.map.find_all_within_r(self.owner, Monster, 5)
+        print(ms)
+        if len(ms)>0 and LimitedUsesItem.activate(self):
+            for m in ms:
+                print("wiping %s memory"%m)
+                m.reset_state()
+            return True
         return False
 
 

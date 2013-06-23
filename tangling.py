@@ -7,7 +7,6 @@ class Tanglable:
     def __init__(self,tangle_turns=5):
         self.tangle_turns = tangle_turns
         self.tangled_with = None
-        self.recently_tangled = False
 
     def tangle(self,other):
         if isinstance(other,Tangle):
@@ -30,12 +29,13 @@ class Tanglable:
 from monsters import Monster
 from interfaces import Talker
 
-class Tangle(Monster):
+class Tangle(Monster,Tanglable):
 
     def __init__(self):
         self.__dogpile = []
         self.tangle_counter = 0
         Monster.__init__(self,None,'T',libtcod.red)
+        Tanglable.__init__(self,0)
 
     def add(self,monster):
         if not monster in self.__dogpile:
@@ -63,7 +63,6 @@ class Tangle(Monster):
             for o in self.__dogpile:
                 o.tangled_with = None
                 o.is_visible = True
-                o.recently_tangled = True
 
             # remove tangle from map
             self.map.remove(self)

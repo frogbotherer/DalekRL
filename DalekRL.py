@@ -131,7 +131,7 @@ while not libtcod.console_is_window_closed():
         handle_keys()
     except InvalidMoveError:
         print("You can't move like that")
-        continue
+
     player.map.prepare_fov(player.pos)
 
     try:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import libtcodpy as libtcod
-from interfaces import Mappable, Traversable, Transparent, TurnTaker, CountUp, Position
+from interfaces import Mappable, Traversable, Transparent, TurnTaker, CountUp, Position, Activatable
 from errors import LevelWinError
 from ui import HBar
 
@@ -10,6 +10,9 @@ class Tile(Mappable,Traversable,Transparent):
         Mappable.__init__(self,pos,symbol,colour,remains_in_place=True)
         Traversable.__init__(self,walk_cost)
         Transparent.__init__(self,transparency)
+
+    def random_furniture(rng, pos):
+        return Crate(pos)
 
 class Wall(Tile):
     def __init__(self, pos):
@@ -46,7 +49,32 @@ class Stairs(Tile,CountUp,TurnTaker):
             self.reset()
 
 
+class Crate(Tile, Activatable):
+    def __init__(self, pos):
+        Tile.__init__(self, pos, 'N', libtcod.light_grey, 1.0, 0.8)
+        Activatable.__init__(self)
 
+    def activate(self, activator=None):
+        print("activating by %s"%activator)
+        # sanity
+        if not (self.owner is None or self.owner is activator):
+            raise InvalidMoveError("Crate already occupied by %s" % self.owner)
+        assert not activator is None, "Crate activated by None"
+
+        # climb into crate
+        if self.owner is None:
+            self.owner = activator
+            self.owner.is_visible = False
+
+        # climb out of crate
+        else:
+            self.owner.is_visible = True
+            self.owner = None
+        return True
+
+    def try_leaving(self, obj):
+        # prevent leaving if in crate
+        return not obj is self.owner
 
 
 class Glass(Tile):

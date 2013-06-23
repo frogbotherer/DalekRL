@@ -124,6 +124,9 @@ class Traversable:
         # 1.0 => traverse with no penalty
         self.walk_cost = walk_cost
 
+    def try_leaving(self,obj):
+        return True
+
     def try_movement(self,obj):
         return True
 
@@ -166,12 +169,13 @@ class Activator:
     pass
 
 class Activatable:
-    def __init__(self,owner):
+    def __init__(self,owner=None):
         assert isinstance(owner,Activator) or owner is None, "%s can't activate %s"%(owner,self)
         self.owner = owner
 
-    def activate(self):
-        raise NotImplementedError("%s can't be activated"%self.__classname__)
+    def activate(self,activator=None):
+        assert isinstance(self.owner,Activator) or isinstance(activator,Activator), "%s can't be activated" % self
+        return True
 
 class Alertable:
     def __init__(self,listen_radius=10):

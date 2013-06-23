@@ -16,9 +16,9 @@ class Monster_State:
 
 class Monster (Mappable, TurnTaker):
     def __init__(self,pos,symbol,colour):
-        self.state = None
         Mappable.__init__(self,pos,symbol,colour)
         TurnTaker.__init__(self,10)
+        self.reset_state()
 
     def __str__(self):
         return "%s at %s" %(self.__class__.__name__,self.pos)
@@ -27,17 +27,38 @@ class Monster (Mappable, TurnTaker):
         r = libtcod.random_get_float(rng,0.0,1.0)
         if r < 0.2:
             return StaticCamera(pos)
+        elif r < 0.4:
+            return CrateLifter(pos)
         else:
             return Dalek(pos)
 
+    def reset_state(self):
+        self.state = MS_Stationary(self)
+
+
 from tangling import Tanglable
 
-class MS_RecentlyTangled(Monster_State):
+
+class MS_Confused(Monster_State,CountUp):
+    def __init__(self,monster,turns=3):
+        Monster_State.__init__(self,monster)
+        CountUp.__init__(self,turns)
+
     def get_move(self):
+        self.inc()
+
         # this will give us a random direction +/- 1 square, or no move
         d = libtcod.random_get_int(None,0,8)
         v = Position( d%3-1, d//3-1 )        
         return self.monster.pos + v
+
+class MS_RecentlyTangled(MS_Confused):
+    def __init__(self,monster):
+        MS_Confused.__init__(self,monster,4)
+
+class MS_LostSearchTarget(MS_Confused):
+    def __init__(self,monster):
+        MS_Confused.__init__(self,monster,2)
 
 class MS_SeekingPlayer(Monster_State):
     def __init__(self,monster):
@@ -67,8 +88,10 @@ class MS_InvestigateSpot(Monster_State):
 
         if len(next_move):
             return next_move[0]
+        elif self.monster.pos == self.destination_pos:
+            return self.destination_pos
         else:
-            assert False, "Can't investigate!"
+            assert False, "Can't investigate %s from %s" % (self.destination_pos,self.monster.pos)
 
 class MS_Patrolling(Monster_State):
     def __init__(self,monster,min_distance=10):
@@ -93,10 +116,110 @@ class MS_Stationary(Monster_State):
     def get_move(self):
         return self.monster.pos
 
+from tiles import Crate
+class CrateLifter (Monster,Tanglable,Talker,Shouter):
+    def __init__(self,pos=None):
+        Monster.__init__(self,pos,'l',libtcod.light_red)
+        Tanglable.__init__(self,7)
+        Talker.__init__(self,{},0.05)
+        Shouter.__init__(self,40)
+        self.my_crate = None
+        self.am_carrying_my_crate = False
+
+    def take_turn(self):
+        if not self.is_visible:
+            return None
+
+        if isinstance(self.state,MS_InvestigateSpot):
+            if self.pos == self.state.destination_pos:
+                # arrived, what were we doing?
+
+                if not self.am_carrying_my_crate:
+                    # if i'm not carrying a crate ...
+
+                    if self.my_crate in self.map.find_all_at_pos(self.pos,Tile):
+                        # ... and my crate is on this square ...
+
+                        if self.my_crate.owner is None:
+                            # ... and i can pick up my crate:
+
+                            # * pick up crate
+                            self.map.remove(self.my_crate,Tile)
+                            self.am_carrying_my_crate = True
+                            
+                            # * choose somewhere to put it
+                            self.state.destination_pos = self.map.find_random_clear()
+
+                        else:
+                            # someone is in my crate :(
+                            # * tell everyone the crate is too heavy!
+                            self.shout()
+
+                    else:
+                        # someone moved my crate
+                        #  * be confused
+                        self.state = MS_LostSearchTarget(self)
+                        #  * choose a new one
+                        self.__choose_new_crate()
+
+                else:
+                    # ... i am carrying my crate
+                    if len( [c for c in self.map.find_all_at_pos(self.pos,Tile) if isinstance(c,Crate)] ) > 0:
+                        # ... but i can't drop it here because there's one there already
+                        # * choose somewhere else to put it
+                        self.state.destination_pos = self.map.find_random_clear()
+
+                    else:
+                        # i put crate down
+                        #  * add back to map
+                        self.map.add(self.my_crate,Tile)
+                        self.am_carrying_my_crate = False
+
+                        #  * find a new crate to pick up
+                        self.__choose_new_crate()
+
+            else:
+                # happily looking for [somewhere to put] my crate
+                pass
+
+        elif isinstance(self.state,MS_Confused):
+            if self.state.full():
+                # if i was confused and am now right, work out what to do next
+                if self.am_carrying_my_crate:
+                    self.state = MS_InvestigateSpot(self,self.map.find_random_clear())
+
+                else:
+                    if self.my_crate is None:
+                        self.__choose_new_crate()
+                    self.state = MS_InvestigateSpot(self,self.my_crate.pos)
+
+        else:
+            # any other state: find my crate
+            self.__choose_new_crate()
+            self.state = MS_InvestigateSpot(self,self.my_crate.pos)
+
+        # try to move
+        try:
+            self.move_to(self.state.get_move())
+        except InvalidMoveError:
+            pass
+
+        # find monster
+        m = self.map.find_nearest(self,Monster)
+
+        # if on monster square: tangle
+        if self.pos == m.pos and isinstance(m,Tanglable):
+            self.tangle(m)
+            self.state = MS_RecentlyTangled(self)
+
+    def __choose_new_crate(self):
+        all_crates = self.map.find_all(Crate,Tile)
+        self.my_crate = all_crates[libtcod.random_get_int(None,0,len(all_crates)-1)]
+
 
 class Dalek (Monster,Tanglable,Talker,Alertable,Shouter):
     def __init__(self,pos=None):
-        Monster.__init__(self,pos,'D',libtcod.red)
+        Monster.__init__(self,pos,'d',libtcod.red)
         Tanglable.__init__(self,5)
         Talker.__init__(self,{
                 MS_RecentlyTangled: ['** BZZZT **'],
@@ -106,7 +229,7 @@ class Dalek (Monster,Tanglable,Talker,Alertable,Shouter):
                 },0.05)
         Alertable.__init__(self,30)
         Shouter.__init__(self,30)
-        
+
 
     def take_turn(self):
         # sanity checks
@@ -126,10 +249,9 @@ class Dalek (Monster,Tanglable,Talker,Alertable,Shouter):
         if self.pos == p.pos:
             self.state = MS_Stationary(self)
 
-        # if recently tangled, move randomly
-        elif self.recently_tangled:
-            self.recently_tangled = False
-            self.state = MS_RecentlyTangled(self)
+        # if still confused from tangling, be confused
+        elif isinstance(self.state,MS_Confused) and not self.state.full():
+            pass
 
         # otherwise chase player if visible
         elif self.map.can_see(self):
@@ -145,8 +267,7 @@ class Dalek (Monster,Tanglable,Talker,Alertable,Shouter):
         elif isinstance(self.state,MS_InvestigateSpot):
             # ... change state if got to spot without finding player
             if self.pos == self.state.destination_pos:
-                # TODO: this means bots will give up chase just before rounding a corner :(
-                self.state = MS_Patrolling(self)
+                self.state = MS_LostSearchTarget(self)
 
         # otherwise patrol
         else:
@@ -169,6 +290,7 @@ class Dalek (Monster,Tanglable,Talker,Alertable,Shouter):
         # if on monster square: tangle
         if self.pos == m.pos and isinstance(m,Tanglable):
             self.tangle(m)
+            self.state = MS_RecentlyTangled(self)
 
         # chatter
         self.talk(self.state.__class__)
@@ -182,7 +304,7 @@ class Dalek (Monster,Tanglable,Talker,Alertable,Shouter):
 
 class StaticCamera(Monster, Talker, CountUp, Shouter):
     def __init__(self,pos=None):
-        Monster.__init__(self,pos,'C',libtcod.light_red)
+        Monster.__init__(self,pos,'c',libtcod.light_red)
         Talker.__init__(self,{
                 MS_SeekingPlayer: ['** BLAAARP! BLAAARP! **','** INTRUDER ALERT! **','** WARNING! **'],
                 MS_InvestigateSpot: ['beeeeeeee','bip bip bip bip'],
@@ -220,6 +342,7 @@ class StaticCamera(Monster, Talker, CountUp, Shouter):
 
 # put here for now
 from items import Item, Evidence
+from tiles import Tile
 class Player (Mappable,Activator):
     def __init__(self,pos):
         Mappable.__init__(self,pos,'@',libtcod.white)
@@ -333,6 +456,9 @@ class Player (Mappable,Activator):
         i = self.map.find_at_pos(self.pos,Item)
         if not i is None:
             self.pickup(i)
+        for i in self.map.find_all_at_pos(self.pos,Tile):
+            if isinstance(i,Activatable):
+                i.activate(self)
 
     def take_turn(self):
         self.turns += 1
