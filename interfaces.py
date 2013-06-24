@@ -49,15 +49,18 @@ class Position:
 class Mappable:
     """Can appear on the map"""
 
-    def __init__(self, pos, symbol, colour, remains_in_place=False):
+    def __init__(self, pos, symbol, colour, remains_in_place=False, unseen_symbol=None, unseen_colour=libtcod.darkest_grey):
         self.map = None
         self.pos = pos
         self.last_known_pos = pos
         self.symbol = symbol
         self.colour = colour
         self.remains_in_place = remains_in_place
+
         self.is_visible = True
         self.has_been_seen = False
+        self.unseen_symbol = (unseen_symbol is None) and self.symbol or unseen_symbol
+        self.unseen_colour = unseen_colour
 
     ##
     # movement
@@ -81,9 +84,11 @@ class Mappable:
         if not self.is_visible:
             return
         colour = self.colour
+        symbol = self.unseen_symbol
         if not self.map._drawing_can_see(self.pos):
             if self.has_been_seen and self.remains_in_place:
-                colour = libtcod.darkest_grey
+                colour = self.unseen_colour
+                symbol = self.unseen_symbol
             else:
                 return
         libtcod.console_put_char_ex(0, self.pos.x, self.pos.y, self.symbol, colour, libtcod.BKGND_NONE)

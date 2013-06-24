@@ -53,6 +53,7 @@ class Crate(Tile, Activatable):
     def __init__(self, pos):
         Tile.__init__(self, pos, 'N', libtcod.light_grey, 1.0, 0.8)
         Activatable.__init__(self)
+        self.remains_in_place = False
 
     def activate(self, activator=None):
         print("activating by %s"%activator)
@@ -95,6 +96,7 @@ class Door(Tile,CountUp,TurnTaker):
         Tile.__init__(self, pos, Door.CLOSED['symbol'], Door.CLOSED['colour'], Door.CLOSED['walkcost'], Door.CLOSED['transparency'])
         CountUp.__init__(self, Door.CLOSED['timer'])
         TurnTaker.__init__(self,5)
+        self.unseen_symbol = Door.CLOSED['symbol'] # always shows as closed when can't be seen
         self.state = Door.CLOSED
         self.bar = HBar(Position(pos.x-1,pos.y-1),3,Door.CLOSED['barcolour'],libtcod.darkest_grey)
         self.bar.max_value = self.count_to-1
