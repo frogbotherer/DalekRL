@@ -194,16 +194,20 @@ class Alertable:
 
 
 class Talker:
-    def __init__(self,phrases,probability=0.05):
-        """
-        <phrases> dictionary of phrases, keyed on key given by talk()
-        """
-        self.__phrases = phrases
-        self.__probability = probability
+    def __init__(self):
+        self.__phrases = {}
         self.is_talking = False
         self.__chat = Message(None, "", True)
         self.__chat.is_visible = False
         self.__chat.timeout = 2.0
+
+    def add_phrases(self,key,phrases,probability=0.05,is_shouting=False):
+        if not key in self.__phrases.keys():
+            self.__phrases[key] = {}
+        self.__phrases[key]['probability'] = probability
+        self.__phrases[key]['is_shouting'] = is_shouting
+        self.__phrases[key]['phrases']     = phrases
+        return self
 
     def stop_talk(self):
         self.__chat.is_visible = False
@@ -212,13 +216,16 @@ class Talker:
     def talk(self, key=None):
         if self.is_talking:
             self.stop_talk()
-
-        if libtcod.random_get_float(None,0.0,1.0)<self.__probability and key in self.__phrases.keys():
+        if not key in self.__phrases.keys():
+            return
+        if libtcod.random_get_float(None,0.0,1.0)<self.__phrases[key]['probability']:
             #assert key in self.__phrases.keys(), "Talker %s has no vocab for key %s"%(self,key)
             self.__chat.pos = self.pos-(0,1)
-            self.__chat.text = self.__phrases[key][libtcod.random_get_int(None,0,len(self.__phrases[key])-1)]
+            self.__chat.text = self.__phrases[key]['phrases'][libtcod.random_get_int(None,0,len(self.__phrases[key]['phrases'])-1)]
             self.is_talking = True
             self.__chat.is_visible = True
+            if isinstance(self,Shouter) and self.__phrases[key]['is_shouting']:
+                self.shout()
     
 
 class Shouter:

@@ -139,15 +139,21 @@ class CrateLifter (Monster,Tanglable,Talker,Shouter):
     def __init__(self,pos=None):
         Monster.__init__(self,pos,'l',libtcod.light_red)
         Tanglable.__init__(self,7)
-        Talker.__init__(self,{},0.05)
+        Talker.__init__(self)
         Shouter.__init__(self,40)
         self.my_crate = None
         self.am_carrying_my_crate = False
+
+        self.add_phrases('default',['doop doop','doop de doop','a boop de doop'],0.1)
+        self.add_phrases('sad',['MY CRATE NOOO!','WHERE CRATE?','NULL CRATE EXCEPTION!'],0.1)
+        self.add_phrases('angry',['** ILLEGAL CRATE CONTENTS **','** ERROR ** ERROR **'],1.0)
+        self.add_phrases('happy',['DONK!','order fulfilled!','Return code: 0'],0.8)
 
     def take_turn(self):
         if not self.is_visible:
             return None
 
+        talk_state = 'default'
         if isinstance(self.state,MS_InvestigateSpot):
             if self.pos == self.state.destination_pos:
                 # arrived, what were we doing?
@@ -171,12 +177,13 @@ class CrateLifter (Monster,Tanglable,Talker,Shouter):
                         else:
                             # someone is in my crate :(
                             # * tell everyone the crate is too heavy!
-                            self.shout()
+                            talk_state = 'angry'
 
                     else:
                         # someone moved my crate
                         #  * be confused
                         self.state = MS_LostSearchTarget(self)
+                        talk_state = 'sad'
                         #  * choose a new one
                         self.__choose_new_crate()
 
@@ -189,6 +196,8 @@ class CrateLifter (Monster,Tanglable,Talker,Shouter):
 
                     else:
                         # i put crate down
+                        talk_state = 'happy'
+
                         #  * add back to map
                         self.my_crate.pos = self.pos
                         self.map.add(self.my_crate,Tile)
@@ -211,7 +220,8 @@ class CrateLifter (Monster,Tanglable,Talker,Shouter):
                     if self.my_crate is None:
                         self.__choose_new_crate()
                     self.state = MS_InvestigateSpot(self,self.my_crate.pos)
-
+            else:
+                talk_state = 'sad'
         else:
             # any other state: find my crate
             self.__choose_new_crate()
@@ -235,6 +245,9 @@ class CrateLifter (Monster,Tanglable,Talker,Shouter):
             self.tangle(m)
             self.state = MS_RecentlyTangled(self)
 
+        # make noises
+        self.talk(talk_state)
+
     def __choose_new_crate(self):
         all_crates = self.map.find_all(Crate,Tile)
         self.my_crate = all_crates[libtcod.random_get_int(None,0,len(all_crates)-1)]
@@ -246,12 +259,12 @@ class Dalek (Monster,Tanglable,Talker,Alertable,Shouter):
     def __init__(self,pos=None):
         Monster.__init__(self,pos,'d',libtcod.red)
         Tanglable.__init__(self,5)
-        Talker.__init__(self,{
-                MS_RecentlyTangled: ['** BZZZT **'],
-                MS_SeekingPlayer: ['** EXTERMINATE! **','** DESTROY! **','** HALT! **'],
-                MS_InvestigateSpot: ['** HUNTING **','** I WILL FIND YOU **'],
-                MS_Patrolling: ['** BEEP BOOP **','** BOOP BEEP **']
-                },0.05)
+        Talker.__init__(self)
+        self.add_phrases( MS_RecentlyTangled, ['** BZZZT **'], 0.2 )
+        self.add_phrases( MS_SeekingPlayer, ['** EXTERMINATE! **','** DESTROY! **','** HALT! **'], 0.05, True )
+        self.add_phrases( MS_InvestigateSpot, ['** HUNTING **','** I WILL FIND YOU **'], 0.05 )
+        self.add_phrases( MS_Patrolling, ['** BEEP BOOP **','** BOOP BEEP **'], 0.05 )
+
         Alertable.__init__(self,30)
         Shouter.__init__(self,30)
 
@@ -332,11 +345,10 @@ class StaticCamera(Monster, Talker, CountUp, Shouter):
 
     def __init__(self,pos=None):
         Monster.__init__(self,pos,'c',libtcod.light_red)
-        Talker.__init__(self,{
-                MS_SeekingPlayer: ['** BLAAARP! BLAAARP! **','** INTRUDER ALERT! **','** WARNING! **'],
-                MS_InvestigateSpot: ['beeeeeeee','bip bip bip bip'],
-                MS_Stationary: ['bip','whrrrrr']
-                },1)
+        Talker.__init__(self)
+        self.add_phrases( MS_SeekingPlayer, ['** BLAAARP! BLAAARP! **','** INTRUDER ALERT! **','** WARNING! **'], 0.7, True )
+        self.add_phrases( MS_InvestigateSpot, ['beeeeeeee','bip bip bip bip'], 1.0 )
+        self.add_phrases( MS_Stationary, ['bip','whrrrrr'], 0.1 )
         Shouter.__init__(self,50)
         CountUp.__init__(self,2)
 
@@ -351,7 +363,6 @@ class StaticCamera(Monster, Talker, CountUp, Shouter):
         if self.map.can_see(self):
             if self.inc():
                 self.state = MS_SeekingPlayer(self)
-                self.shout()
 
             elif not isinstance(self.state,MS_InvestigateSpot):
                 self.state = MS_InvestigateSpot( self, self.map.player.pos )
@@ -360,10 +371,6 @@ class StaticCamera(Monster, Talker, CountUp, Shouter):
             if not isinstance(self.state,MS_Stationary):
                 self.state = MS_Stationary(self)
                 self.reset()
-            # TODO: fix Talker interface so don't need to cheat
-            if libtcod.random_get_int(None,1,10) > 1:
-                self.stop_talk()
-                return
 
         self.talk(self.state.__class__)
 
