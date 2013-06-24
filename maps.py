@@ -97,13 +97,13 @@ class Map:
                 r += [o for o in ol if isinstance(o,otype)]
         return r
 
-    def find_nearest(self, obj, otype, layer=None):
+    def find_nearest(self, obj, otype, layer=None, must_be_visible=True):
         """find nearest thing of type otype to obj"""
         r = 10000000 # safely larger than the map
         ro = None
 
         for o in self.find_all(otype,layer):
-            if obj is o or not o.is_visible:
+            if obj is o or (must_be_visible and not o.is_visible):
                 continue
             d = obj.pos.distance_to(o.pos)
             if d<r:
@@ -111,12 +111,12 @@ class Map:
                 ro = o
         return ro
 
-    def find_all_within_r(self, obj, otype, radius):
+    def find_all_within_r(self, obj, otype, radius, must_be_visible=True):
         """find all type otype in radius of obj"""
         # TODO: there might be a more efficient way to do this using another FOV map from TCOD
         ret = []
         for o in self.find_all(otype):
-            if obj is o or not o.is_visible:
+            if obj is o or (must_be_visible and not o.is_visible):
                 continue
             if obj.pos.distance_to(o.pos) < radius:
                 ret.append(o)
@@ -1008,7 +1008,7 @@ class TypeAMap(Map):
             self.add(d)
 
         # place some items
-        for i in range(4):
+        for i in range(8):
             i = Item.random(self.map_rng,self.find_random_clear(self.map_rng))
             self.add(i)
 

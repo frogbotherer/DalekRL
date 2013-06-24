@@ -64,20 +64,25 @@ class Item(Carryable, Activatable, Mappable):
         while t >= awesome_range:
             t = libtcod.random_get_float(rng,0.0,awesome_range) * weight
 
+        #print("Range = 0.0 - %f  =>  %f" % (awesome_range,t))
+
         # find rank that was rolled
         rank = ranks[0]
         while t > Item.AWESOME_MAP[rank][-1].awesome_acc_weight:
             t    -= Item.AWESOME_MAP[rank][-1].awesome_acc_weight
             rank += 1
 
+        #print("Rank = %d  =>  %s   %s" %(rank,Item.AWESOME_MAP[rank],[C.awesome_acc_weight for C in Item.AWESOME_MAP[rank]]))
+
         # find item that was rolled
         item_idx = 0
         while t > Item.AWESOME_MAP[rank][item_idx].awesome_acc_weight:
-            t        -= Item.AWESOME_MAP[rank][item_idx].awesome_weight
             item_idx += 1
 
         # calculate item power (higher in range => more power)
-        item_power = 2 * t / Item.AWESOME_MAP[rank][item_idx].awesome_weight
+        item_power = 2 * (Item.AWESOME_MAP[rank][item_idx].awesome_acc_weight-t) / Item.AWESOME_MAP[rank][item_idx].awesome_weight
+        
+        #print("Got %s (%d) at power %f" % (Item.AWESOME_MAP[rank][item_idx],item_idx,item_power))
 
         return Item.AWESOME_MAP[rank][item_idx](pos,item_power)
 
@@ -85,7 +90,7 @@ class Item(Carryable, Activatable, Mappable):
         Item.AWESOME_MAP = {}
         for i in range(1,6):
             Item.AWESOME_MAP[i] = [] # need empty entries even if no rank
-        for C in (MemoryWipe,Tangler,HandTeleport,Cloaker,DoorRelease):
+        for C in (MemoryWipe,Tangler,HandTeleport,Cloaker,DoorRelease,LevelMap):
             Item.AWESOME_MAP[C.awesome_rank].append(C)
         for CL in Item.AWESOME_MAP.values():
             CL.sort(key=lambda x: x.awesome_weight)
@@ -222,7 +227,7 @@ from tangling import Tanglable, Tangle
 from monsters import Monster
 
 class Tangler(LimitedUsesItem):
-    awesome_weight = 1.2
+    awesome_weight = 1.5
 
     def __str__(self):
         return "Tangler"
@@ -238,11 +243,12 @@ class Tangler(LimitedUsesItem):
         return False
 
 class MemoryWipe(LimitedUsesItem):
+    awesome_weight = 0.8
     def __str__(self):
         return "Memory Wipe"
 
     def activate(self):
-        ms = self.owner.map.find_all_within_r(self.owner, Monster, 10)
+        ms = self.owner.map.find_all_within_r(self.owner, Monster, 10, False)
         if len(ms)>0 and LimitedUsesItem.activate(self):
             for m in ms:
                 m.reset_state()
@@ -260,6 +266,22 @@ class DoorRelease(LimitedUsesItem):
         d = self.owner.map.find_nearest(self.owner,Door,Tile)
         if not d is None and LimitedUsesItem.activate(self):
             d.to_closing()
+            return True
+        return False
+
+class LevelMap(LimitedUsesItem):
+    awesome_weight = 0.4
+    def __init__(self,owner,item_power,item_colour=libtcod.orange,bar_colour=libtcod.red):
+        # only a few uses permitted!
+        LimitedUsesItem.__init__(self,owner,item_power*0.3,item_colour=item_colour,bar_colour=bar_colour)
+
+    def __str__(self):
+        return "Map"
+
+    def activate(self):
+        if LimitedUsesItem.activate(self):
+            for t in self.owner.map.find_all(Tile):
+                t.has_been_seen = True
             return True
         return False
 

@@ -5,6 +5,7 @@ from interfaces import Mappable, Position, Activatable, Activator, CountUp, Talk
 from errors import GameOverError, InvalidMoveError, TodoError
 from ui import HBar, Message, Menu
 
+from functools import reduce
 
 class Monster_State:
     def __init__(self,monster):
@@ -15,6 +16,11 @@ class Monster_State:
 
 
 class Monster (Mappable, TurnTaker):
+    # TODO: genericise item generation logic and reuse here
+    generator_weight = 1.0
+    # put most dangerous to right
+    GENERATOR = []
+
     def __init__(self,pos,symbol,colour):
         Mappable.__init__(self,pos,symbol,colour)
         TurnTaker.__init__(self,10)
@@ -23,18 +29,28 @@ class Monster (Mappable, TurnTaker):
     def __str__(self):
         return "%s at %s" %(self.__class__.__name__,self.pos)
 
-    def random(rng,pos):
-        r = libtcod.random_get_float(rng,0.0,1.0)
-        if r < 0.2:
-            return StaticCamera(pos)
-        elif r < 0.4:
-            return CrateLifter(pos)
-        else:
-            return Dalek(pos)
+    def random(rng,pos,weight=1.0):
+        if Monster.GENERATOR == []:
+            Monster.__GEN_GENERATOR()
+        
+        max_weight = reduce( lambda a,b: a+b, [C.generator_weight for C in Monster.GENERATOR], 0.0 )
+        r = max_weight + 1.0
+
+        while r > max_weight:
+            r = libtcod.random_get_float(rng,0.0,max_weight * weight)
+
+        m_idx = 0
+        while r > Monster.GENERATOR[m_idx].generator_weight:
+            r -= Monster.GENERATOR[m_idx].generator_weight
+            m_idx += 1
+
+        return Monster.GENERATOR[m_idx](pos)
 
     def reset_state(self):
         self.state = MS_Stationary(self)
 
+    def __GEN_GENERATOR():
+        Monster.GENERATOR = [StaticCamera,CrateLifter,Dalek]
 
 from tangling import Tanglable
 
@@ -118,6 +134,8 @@ class MS_Stationary(Monster_State):
 
 from tiles import Crate
 class CrateLifter (Monster,Tanglable,Talker,Shouter):
+    generator_weight = 0.5
+
     def __init__(self,pos=None):
         Monster.__init__(self,pos,'l',libtcod.light_red)
         Tanglable.__init__(self,7)
@@ -223,6 +241,8 @@ class CrateLifter (Monster,Tanglable,Talker,Shouter):
 
 
 class Dalek (Monster,Tanglable,Talker,Alertable,Shouter):
+    generator_weight = 1.2
+
     def __init__(self,pos=None):
         Monster.__init__(self,pos,'d',libtcod.red)
         Tanglable.__init__(self,5)
@@ -308,6 +328,8 @@ class Dalek (Monster,Tanglable,Talker,Alertable,Shouter):
 
 
 class StaticCamera(Monster, Talker, CountUp, Shouter):
+    generator_weight = 0.9
+
     def __init__(self,pos=None):
         Monster.__init__(self,pos,'c',libtcod.light_red)
         Talker.__init__(self,{
