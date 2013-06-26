@@ -2,7 +2,7 @@
 
 import libtcodpy as libtcod
 from interfaces import Mappable, Traversable, Transparent, TurnTaker, CountUp, Position, Activatable
-from errors import LevelWinError
+from errors import LevelWinError, InvalidMoveError
 from ui import HBar
 
 class Tile(Mappable,Traversable,Transparent):
@@ -47,7 +47,6 @@ class Stairs(Tile,CountUp,TurnTaker):
             self.bar.is_visible = False
             self.bar.value = 0
             self.reset()
-
 
 class Crate(Tile, Activatable):
     def __init__(self, pos):
@@ -172,4 +171,55 @@ class Door(Tile,CountUp,TurnTaker):
                     self.bar.value = self.count_to-self.count
                 else:
                     self.bar.is_visible = False
+
+
+# implemented as a turn taker
+#from monsters import Monster
+#from player import Player
+#class FloorTeleport(Tile,TurnTaker):
+#    def __init__(self, pos):
+#        Tile.__init__(self, pos, '^', libtcod.purple, 0.2, 1.0)
+#        TurnTaker.__init__(self,1000)
+#
+#    def take_turn(self):
+#        # sanity
+#        if len(self.map.find_all_at_pos(self.pos,[Monster,Player])) == 0:
+#            return
+#
+#        targets = self.map.find_all(FloorTeleport,Tile)
+#        targets.remove(self)
+#
+#        if len(targets) == 0:
+#            return # oops, only one telepad on the level
+#
+#        for obj in self.map.find_all_at_pos(self.pos,[Monster,Player]):
+#            try:
+#                obj.move_to( targets[libtcod.random_get_int(None,0,len(targets)-1)].pos )
+#
+#            except InvalidMoveError:
+#                pass # teleport exit blocked?
+
+
+# implemented using the try_movement() method
+class FloorTeleport(Tile):
+    def __init__(self, pos):
+        Tile.__init__(self, pos, '^', libtcod.purple, 0.2, 1.0)
+
+    def try_movement(self,obj):
+        if obj.pos.distance_to(self.pos) >= 2:
+            # moving to this tile from far away: must be teleporting; don't teleport again!
+            return True
+
+        try:
+            targets = self.map.find_all(FloorTeleport,Tile)
+            targets.remove(self)
+            if len(targets) == 0:
+                pass # oops, only one telepad on the level
+            else:
+                obj.move_to( targets[libtcod.random_get_int(None,0,len(targets)-1)].pos )
+
+        except InvalidMoveError:
+            pass # teleport exit blocked?
+
+        return False # prevent original movement
 

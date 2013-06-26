@@ -6,7 +6,7 @@ from monsters import Monster
 from player import Player
 from interfaces import Mappable, Position, Traversable, Transparent
 from items import Item, Evidence
-from tiles import Tile, Wall, Floor, Door, Stairs
+from tiles import Tile, Wall, Floor, Door, Stairs, FloorTeleport
 from errors import TodoError, InvalidMoveError
 
 from functools import reduce
@@ -145,10 +145,11 @@ class Map:
 
         return None
 
-    def find_all_at_pos(self, pos, layer=None):
-        layers = [layer]
-        if layer is None:
+    def find_all_at_pos(self, pos, layers=None):
+        if layers is None:
             layers = self.__layer_order
+        elif not isinstance(layers,list):
+            layers = [layers]
         r = []
         for l in layers:
             if pos in self.__layers[l].keys():
@@ -346,6 +347,7 @@ class TypeAMap(Map):
     ROOM     = 0x2
     WALL     = 0x4
     DOOR     = 0x8
+    TELEPORT = 0x10
 
     COMPASS = { 'N': {'opposite':'S','clockwise':'E','anticlockwise':'W','adjacent':['W','E']},
                 'S': {'opposite':'N','clockwise':'W','anticlockwise':'E','adjacent':['W','E']},
@@ -370,6 +372,7 @@ class TypeAMap(Map):
     REJECT_COVERAGE_SQ  = 0.8
     SANITY_LIMIT        = 100
     BOUNDARY_UNSET      = -1
+    TELEPORT_CHANCE     = 0.4
     DEBUG               = False
 
     def __init__(self, seed, size, player):
@@ -799,6 +802,10 @@ class TypeAMap(Map):
             if self._gen_get_available_dist( curr_pos, direction ) < self.CORRIDOR_MIN_LENGTH+width+1:
                 direction = o
 
+        # add teleport at end of corridor
+        if libtcod.random_get_float(self.map_rng,0.0,1.0) < self.TELEPORT_CHANCE and len(c_segs)>0:
+            c_segs.append(self._ME(TypeAMap.TELEPORT, c_segs[-1].opos+self._gen_pos_from_dir(c_segs[-1].direction,c_segs[-1].length), Position(1,1)))
+
         return c_segs
 
     def generate(self):
@@ -946,6 +953,8 @@ class TypeAMap(Map):
                         self.add(Wall(Position(x,y)))
                     else:
                         self.add(Floor(Position(x,y)))
+                elif t & self.TELEPORT:
+                    self.add(FloorTeleport(Position(x,y)))
                 elif t == 0:
                     if x>0 and y>0 and x<self.size.x-1 and y<self.size.y-1:
                         # * if tile adjoins one walkable tile, it is a wall tile
@@ -998,6 +1007,10 @@ class TypeAMap(Map):
         # * use pathing to prove map traversable
         # * for tile in empty tiles:
         #    * if tile adjoins one walkable tile, it is a wall tile
+
+        # if we only generated one teleport, add another one
+        if len(self.find_all(FloorTeleport,Tile)) == 1:
+            self.add(FloorTeleport(self.find_random_clear(self.map_rng)))
 
         # place some furniture
         for i in range(5):

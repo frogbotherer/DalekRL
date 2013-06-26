@@ -68,12 +68,10 @@ while not libtcod.console_is_window_closed():
 
     try:
         # monster movement and items
-        print("TAKE ALL TURNS")
         TurnTaker.take_all_turns()
     except GameOverError:
         reset(False)
     except LevelWinError:
-        print("WIIIIIIIIIIIIIIN!")
         reset(True)
 
 

@@ -18,7 +18,7 @@ class Player (Mappable,Activator,TurnTaker):
 
     def __init__(self,pos=None):
         Mappable.__init__(self,pos,'@',libtcod.white)
-        TurnTaker.__init__(self,0)
+        TurnTaker.__init__(self,1)
         self.items = [Item.random(None,self,2,1.5),Item.random(None,self,1),None]
         self.turns = 0
         self.evidence = []
@@ -163,7 +163,8 @@ class Player (Mappable,Activator,TurnTaker):
             # handle player input (and redraw screen)
             self.handle_keys()
         except InvalidMoveError:
-            print("You can't move like that")
+            pass # sometimes this is ok, like teleporting
+            #print("You can't move like that")
         self.map.prepare_fov(self.pos)
 
     def handle_keys(self):
