@@ -2,7 +2,8 @@
 
 import libtcodpy as libtcod
 
-from monsters import Monster, Player
+from monsters import Monster
+from player import Player
 from interfaces import Mappable, Position, Traversable, Transparent
 from items import Item, Evidence
 from tiles import Tile, Wall, Floor, Door, Stairs
@@ -13,8 +14,8 @@ from functools import reduce
 class Map:
     __layer_order = [Tile,Item,Monster,Player]
 
-    def __init__(self, seed, size):
-        self.player = None
+    def __init__(self, seed, size, player):
+        self.player = player
         self.__layers = {
             Player: {},
             Monster: {},
@@ -252,7 +253,7 @@ class Map:
         self.add(Stairs(self.find_random_clear(self.map_rng)))
 
         # place player
-        self.player = Player(self.find_random_clear(self.map_rng))
+        self.player.pos = self.find_random_clear(self.map_rng)
         self.add(self.player)
 
     def _gen_finish(self):
@@ -262,11 +263,11 @@ class Map:
         # calculate player's initial fov
         self.prepare_fov(self.player.pos)
 
-    def random(seed,size):
+    def random(seed,size,player):
         print(" -- MAP SEED %d --" %seed)
-        #return EmptyMap(seed,size)
-        #return DalekMap(seed,size)
-        return TypeAMap(seed,size)
+        #return EmptyMap(seed,size,player)
+        #return DalekMap(seed,size,player)
+        return TypeAMap(seed,size,player)
 
 class EmptyMap(Map):
     def generate(self):
@@ -371,8 +372,8 @@ class TypeAMap(Map):
     BOUNDARY_UNSET      = -1
     DEBUG               = False
 
-    def __init__(self, seed, size):
-        Map.__init__(self, seed, size)
+    def __init__(self, seed, size, player):
+        Map.__init__(self, seed, size, player)
         self._map = [[]]
 
     def debug_print(self,s):
