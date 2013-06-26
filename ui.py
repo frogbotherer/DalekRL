@@ -29,6 +29,10 @@ class UI:
                 del e
         UI.ui_elements = []
 
+    def refresh_ui_list(self):
+        if not weakref.ref(self) in UI.ui_elements:
+            UI.ui_elements.append(weakref.ref(self))
+
 class Message(UI):
     def __init__(self, pos, text, centred=False):
         UI.__init__(self)

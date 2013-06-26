@@ -101,8 +101,7 @@ class TurnTaker:
     def __init__(self, initiative):
         """Lowest initiative goes first"""
         self.initiative = initiative
-        # might be a faster way to do this
-        TurnTaker.turn_takers.append(weakref.ref(self))
+        TurnTaker.turn_takers.append(weakref.ref(self))        
         TurnTaker.turn_takers.sort( key = lambda x: x() is None and 100000 or x().initiative )
 
     def take_turn(self):
@@ -122,6 +121,12 @@ class TurnTaker:
             if not t is None:
                 del t
         TurnTaker.turn_takers = []
+
+    def refresh_turntaker(self):
+        if not weakref.ref(self) in TurnTaker.turn_takers:
+            # might be a faster way to do this
+            TurnTaker.turn_takers.append(weakref.ref(self))        
+            TurnTaker.turn_takers.sort( key = lambda x: x() is None and 100000 or x().initiative )        
 
 class Traversable:
     def __init__(self, walk_cost=0.0):

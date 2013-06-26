@@ -39,9 +39,12 @@ def reset(keep_player=False):
     RANDOM_SEED += 1
     UI.clear_all()
     TurnTaker.clear_all()
-    print("STATICS CLEARED")
 
-    if not keep_player:
+    if keep_player:
+        PLAYER.refresh_turntaker()
+
+    else:
+
         if not PLAYER is None:
             print("Game Over")
             print("%d evidence in %d turns; %d levels seen" %(len(PLAYER.evidence),PLAYER.turns,PLAYER.levels_seen))
@@ -65,6 +68,7 @@ while not libtcod.console_is_window_closed():
 
     try:
         # monster movement and items
+        print("TAKE ALL TURNS")
         TurnTaker.take_all_turns()
     except GameOverError:
         reset(False)

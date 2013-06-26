@@ -199,3 +199,12 @@ class Player (Mappable,Activator,TurnTaker):
         # clear screen
         libtcod.console_clear(0)
 
+    def refresh_turntaker(self):
+        TurnTaker.refresh_turntaker(self)
+        for i in self.items:
+            if isinstance(i,TurnTaker):
+                i.refresh_turntaker()
+
+            # TODO: this isn't great :(
+            if hasattr(i,'bar') and isinstance(i.bar,UI):
+                i.bar.refresh_ui_list()
