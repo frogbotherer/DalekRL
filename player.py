@@ -9,11 +9,12 @@ from ui import UI, Menu
 from errors import GameOverError, InvalidMoveError
 
 import sys
+from time import sleep
 
 class Player (Mappable,Activator,TurnTaker):
     # these don't really belong here
     SCREEN_SIZE = Position(80,50)
-    LIMIT_FPS = 10
+    LIMIT_FPS = 15
     MAX_TIMEOUT = 5
 
     def __init__(self,pos=None):
@@ -192,13 +193,20 @@ class Player (Mappable,Activator,TurnTaker):
 
     def redraw_screen(self,t):
         # draw and flush screen
+        if not UI.need_update(t):
+            # clearly one of the libtcod functions here causes the wait for the next frame
+            sleep(1.0/Player.LIMIT_FPS)
+            return
+
         self.map.draw()
         self.draw_ui(Position(0,Player.SCREEN_SIZE.y-3))
         UI.draw_all(t)
+
         libtcod.console_flush()
 
         # clear screen
         libtcod.console_clear(0)
+
 
     def refresh_turntaker(self):
         TurnTaker.refresh_turntaker(self)

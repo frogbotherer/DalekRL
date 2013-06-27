@@ -6,10 +6,31 @@ import libtcodpy as libtcod
 
 class UI:
     ui_elements = []
+    timeout_register = {}
+
     def __init__(self):
         UI.ui_elements.append(weakref.ref(self))
         self.is_visible = False
-        self.timeout = 0.0
+        self._timeout = 0.0
+
+    @property
+    def timeout(self):
+        return self._timeout
+    @timeout.setter
+    def timeout(self,t):
+        if self._timeout > 0.0:
+            UI.timeout_register[self._timeout] -= 1
+            if UI.timeout_register[self._timeout] == 0:
+                UI.timeout_register.remove(self._timeout)
+        if t > 0.0:
+            UI.timeout_register[t] = UI.timeout_register.get(t,0) + 1
+        self._timeout = t
+    @timeout.deleter
+    def timeout(self):
+        del self._timeout
+
+    def need_update(timeout):
+        return timeout == 0.0 or timeout in UI.timeout_register.keys()
 
     def draw_all(timeout):
         for eref in UI.ui_elements:
@@ -32,6 +53,7 @@ class UI:
     def refresh_ui_list(self):
         if not weakref.ref(self) in UI.ui_elements:
             UI.ui_elements.append(weakref.ref(self))
+
 
 class Message(UI):
     def __init__(self, pos, text, centred=False):
