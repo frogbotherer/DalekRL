@@ -14,8 +14,17 @@ class Monster_State:
     def get_move(self):
         raise NotImplementedError
 
+
+class AI:
+    """effectively a Monster_State factory"""
+    def __init__(self):
+        self.reset_state()
+
     def get_next_state(self):
         raise NotImplementedError
+
+    def reset_state(self):
+        self.state = MS_Stationary(self)
 
 
 class Monster (Mappable, TurnTaker):
@@ -27,7 +36,6 @@ class Monster (Mappable, TurnTaker):
     def __init__(self,pos,symbol,colour):
         Mappable.__init__(self,pos,symbol,colour)
         TurnTaker.__init__(self,10)
-        self.reset_state()
 
     def __str__(self):
         return "%s at %s" %(self.__class__.__name__,self.pos)
@@ -49,8 +57,6 @@ class Monster (Mappable, TurnTaker):
 
         return Monster.GENERATOR[m_idx](pos)
 
-    def reset_state(self):
-        self.state = MS_Stationary(self)
 
     def __GEN_GENERATOR():
         Monster.GENERATOR = [StaticCamera,CrateLifter,Dalek,BetterDalek]
@@ -136,7 +142,7 @@ class MS_Stationary(Monster_State):
         return self.monster.pos
 
 from tiles import Tile,Crate
-class CrateLifter (Monster,Tanglable,Talker,Shouter):
+class CrateLifter (Monster,Tanglable,Talker,Shouter,AI):
     generator_weight = 0.5
 
     def __init__(self,pos=None):
@@ -144,6 +150,8 @@ class CrateLifter (Monster,Tanglable,Talker,Shouter):
         Tanglable.__init__(self,7)
         Talker.__init__(self)
         Shouter.__init__(self,40)
+        AI.__init__(self)
+
         self.my_crate = None
         self.am_carrying_my_crate = False
 
@@ -256,7 +264,42 @@ class CrateLifter (Monster,Tanglable,Talker,Shouter):
         self.my_crate = all_crates[libtcod.random_get_int(None,0,len(all_crates)-1)]
 
 
-class Dalek (Monster,Tanglable,Talker,Alertable,Shouter):
+class DalekAI(AI):
+
+    def get_next_state(self):
+        # if already on the player square(!), stop
+        if self.pos == self.map.player.pos:
+            return MS_Stationary(self)
+
+        # if still confused from tangling, be confused
+        elif isinstance(self.state,MS_Confused) and not self.state.full():
+            return self.state
+
+        # otherwise chase player if visible
+        elif self.map.can_see(self):
+            if not isinstance(self.state,MS_SeekingPlayer):
+                self.shout(self.map.player.pos)
+                return MS_SeekingPlayer(self)
+
+        # otherwise: if was chasing and now lost player, home on last loc
+        elif isinstance(self.state,MS_SeekingPlayer):
+            return MS_InvestigateSpot(self,self.state.player_last_pos)
+
+        # otherwise if investigating
+        elif isinstance(self.state,MS_InvestigateSpot):
+            # ... change state if got to spot without finding player
+            if self.pos == self.state.destination_pos:
+                return MS_LostSearchTarget(self)
+
+        # otherwise patrol
+        else:
+            if not isinstance(self.state,MS_Patrolling):
+                return MS_Patrolling(self)
+
+        return self.state
+
+
+class Dalek (Monster,Tanglable,Talker,Alertable,Shouter,DalekAI):
     generator_weight = 1.2
 
     def __init__(self,pos=None):
@@ -270,6 +313,8 @@ class Dalek (Monster,Tanglable,Talker,Alertable,Shouter):
 
         Alertable.__init__(self,30)
         Shouter.__init__(self,30)
+        
+        DalekAI.__init__(self)
 
 
     def take_turn(self):
@@ -280,39 +325,9 @@ class Dalek (Monster,Tanglable,Talker,Alertable,Shouter):
         if not self.is_visible:
             return
 
-        # TODO: refactor as follows??
-        # self.state = self.state.get_next_state()
-        # self.move_to( self.state.get_move() )
+        # update state
+        self.state = self.get_next_state()
 
-        # if already on the player square(!), stop
-        if self.pos == self.map.player.pos:
-            self.state = MS_Stationary(self)
-
-        # if still confused from tangling, be confused
-        elif isinstance(self.state,MS_Confused) and not self.state.full():
-            pass
-
-        # otherwise chase player if visible
-        elif self.map.can_see(self):
-            if not isinstance(self.state,MS_SeekingPlayer):
-                self.state = MS_SeekingPlayer(self)
-                self.shout(self.map.player.pos)
-
-        # oth#erwise: if was chasing and now lost player, home on last loc
-        elif isinstance(self.state,MS_SeekingPlayer):
-            self.state = MS_InvestigateSpot(self,self.state.player_last_pos)
-
-        # otherwise if investigating
-        elif isinstance(self.state,MS_InvestigateSpot):
-            # ... change state if got to spot without finding player
-            if self.pos == self.state.destination_pos:
-                self.state = MS_LostSearchTarget(self)
-
-        # otherwise patrol
-        else:
-            if not isinstance(self.state,MS_Patrolling):
-                self.state = MS_Patrolling(self)
-                
         # try to move
         try:
             self.move_to(self.state.get_move())
@@ -341,8 +356,8 @@ class Dalek (Monster,Tanglable,Talker,Alertable,Shouter):
                 self.state = MS_InvestigateSpot(self,to_pos)
 
 
-class BetterDalek (Monster,Talker,Alertable,Shouter):
-    generator_weight = 0.5
+class BetterDalek (Monster,Talker,Alertable,Shouter,DalekAI):
+    generator_weight = 1.3
 
     def __init__(self,pos=None):
         Monster.__init__(self,pos,'b',libtcod.red)
@@ -354,6 +369,7 @@ class BetterDalek (Monster,Talker,Alertable,Shouter):
         Alertable.__init__(self,30)
         Shouter.__init__(self,30)
 
+        DalekAI.__init__(self)
 
     def take_turn(self):
         # sanity checks
@@ -363,45 +379,42 @@ class BetterDalek (Monster,Talker,Alertable,Shouter):
         if not self.is_visible:
             return
 
-        # TODO: refactor as follows??
-        # self.state = self.state.get_next_state()
-        # self.move_to( self.state.get_move() )
-
-        # if already on the player square(!), stop
-        if self.pos == self.map.player.pos:
-            self.state = MS_Stationary(self)
-
-        # if still confused from tangling, be confused
-        elif isinstance(self.state,MS_Confused) and not self.state.full():
-            pass
-
-        # otherwise chase player if visible
-        elif self.map.can_see(self):
-            if not isinstance(self.state,MS_SeekingPlayer):
-                self.state = MS_SeekingPlayer(self)
-                self.shout(self.map.player.pos)
-
-        # otherwise: if was chasing and now lost player, home on last loc
-        elif isinstance(self.state,MS_SeekingPlayer):
-            self.state = MS_InvestigateSpot(self,self.state.player_last_pos)
-
-        # otherwise if investigating
-        elif isinstance(self.state,MS_InvestigateSpot):
-            # ... change state if got to spot without finding player
-            if self.pos == self.state.destination_pos:
-                self.state = MS_LostSearchTarget(self)
-
-        # otherwise patrol
-        else:
-            if not isinstance(self.state,MS_Patrolling):
-                self.state = MS_Patrolling(self)
+        # get next state
+        self.state = self.get_next_state()
                 
         # try to move
         try:
             new_pos = self.state.get_move()
-            if len(self.map.find_all_at_pos(new_pos,Monster))>0:
+            if new_pos != self.pos and len(self.map.find_all_at_pos(new_pos,Monster))>0:
                 # TODO: complain about path being blocked
-                raise InvalidMoveError
+                # attempt a different move
+                #  * get a vector representing the direction we tried
+                v  = new_pos - self.pos
+                #  * convert to an int
+                #      -1,-1   0,-1   1,-1          0    1    2
+                #      -1,0    0,0    1,0           7         3
+                #      -1,1    0,1    1,1           6    5    4
+                #
+                V_MAP = [
+                    Position(-1,-1),
+                    Position(0,-1),
+                    Position(1,-1),
+                    Position(1,0),
+                    Position(1,1),
+                    Position(0,1),
+                    Position(-1,1),
+                    Position(-1,0)
+                    ]
+                vi  = V_MAP.index(v)
+                #  * get the adjacent vectors
+                #  * try both of those
+                if    len(self.map.find_all_at_pos(self.pos + V_MAP[vi-1],Monster)) == 0:
+                    new_pos = self.pos + V_MAP[vi-1]
+                elif  len(self.map.find_all_at_pos(self.pos + V_MAP[vi+1],Monster)) == 0:
+                    new_pos = self.pos + V_MAP[vi+1]
+                #  * ... otherwise give up
+                else:
+                    raise InvalidMoveError
             self.move_to(new_pos)
 
         except InvalidMoveError:
@@ -421,7 +434,7 @@ class BetterDalek (Monster,Talker,Alertable,Shouter):
                 self.state = MS_InvestigateSpot(self,to_pos)
 
 
-class StaticCamera(Monster, Talker, CountUp, Shouter):
+class StaticCamera(Monster, Talker, CountUp, Shouter, AI):
     generator_weight = 0.5
 
     def __init__(self,pos=None):
@@ -432,6 +445,8 @@ class StaticCamera(Monster, Talker, CountUp, Shouter):
         self.add_phrases( MS_Stationary, ['bip','whrrrrr'], 0.1 )
         Shouter.__init__(self,50)
         CountUp.__init__(self,2)
+
+        AI.__init__(self)
 
     def take_turn(self):
         # sanity checks

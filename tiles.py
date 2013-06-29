@@ -22,13 +22,15 @@ class Floor(Tile):
     def __init__(self, pos):
         Tile.__init__(self, pos, '.', libtcod.dark_grey, 1.0, 1.0)
 
-
-class Stairs(Tile,CountUp,TurnTaker):
+class StairsUp(Tile):
     def __init__(self, pos):
-        Tile.__init__(self, pos, '<', libtcod.grey, 1.0, 1.0)
+        Tile.__init__(self, pos, '<', libtcod.dark_grey, 1.0, 1.0)
+
+class StairsDown(Tile,CountUp,TurnTaker):
+    def __init__(self, pos):
+        Tile.__init__(self, pos, '>', libtcod.light_grey, 1.0, 1.0)
         CountUp.__init__(self, 11)
         TurnTaker.__init__(self, 0)
-        #Tanglable.__init__(self, 10)
 
         self.bar = HBar(Position(pos.x-2,pos.y-1),5,libtcod.light_blue,libtcod.darkest_grey)
         self.bar.max_value = self.count_to-1
@@ -203,7 +205,7 @@ class Door(Tile,CountUp,TurnTaker):
 # implemented using the try_movement() method
 class FloorTeleport(Tile):
     def __init__(self, pos):
-        Tile.__init__(self, pos, '^', libtcod.purple, 0.2, 1.0)
+        Tile.__init__(self, pos, '^', libtcod.purple, 0.0, 1.0)
 
     def try_movement(self,obj):
         if obj.pos.distance_to(self.pos) >= 2:

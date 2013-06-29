@@ -6,7 +6,7 @@ from monsters import Monster
 from player import Player
 from interfaces import Mappable, Position, Traversable, Transparent
 from items import Item, Evidence
-from tiles import Tile, Wall, Floor, Door, Stairs, FloorTeleport
+from tiles import Tile, Wall, Floor, Door, StairsDown, StairsUp, FloorTeleport
 from errors import TodoError, InvalidMoveError
 
 from functools import reduce
@@ -250,11 +250,20 @@ class Map:
             self.add(Wall(Position(self.size.x-1,i)))
 
     def _gen_add_key_elements(self):
+        up_pos   = self.find_random_clear(self.map_rng)
+        down_pos = self.find_random_clear(self.map_rng)
+
+        self.recalculate_paths()
+        while len(self.get_path(up_pos,down_pos)) < 1:
+            up_pos   = self.find_random_clear(self.map_rng)
+            down_pos = self.find_random_clear(self.map_rng)
+
         # place stairs
-        self.add(Stairs(self.find_random_clear(self.map_rng)))
+        self.add(StairsDown(down_pos))
+        self.add(StairsUp(up_pos))
 
         # place player
-        self.player.pos = self.find_random_clear(self.map_rng)
+        self.player.pos = up_pos
         self.add(self.player)
 
     def _gen_finish(self):
@@ -678,11 +687,19 @@ class TypeAMap(Map):
             pos = target_pos
 
         self.debug_print ("Room starting at %s is %s"%(opos,bounds))
+
+
         tl = Position(bounds['W']+2,bounds['N']+2)
         br = Position(bounds['E']-1,bounds['S']-1)
         size = br - tl
         r_segs.append(self._ME(TypeAMap.ROOM, tl, size, opos))
 
+        # room behaves badly if starting coord outside bounds
+        if tl > opos or br < opos:
+            self.debug_print ("Rejecting room: starting coord outside final bounds")
+            return []
+
+        # size limits
         if size.x < self.ROOM_MIN_WIDTH or size.y < self.ROOM_MIN_WIDTH:
             return []
         if size.x*size.y > self.ROOM_MAX_AREA:
@@ -919,12 +936,16 @@ class TypeAMap(Map):
         for x in range(len(self._map)):
             for y in range(len(self._map[x])):
                 t = self._map[x][y]
+
                 if   t & self.CORRIDOR:
                     self.add(Floor(Position(x,y)))
+
                 elif t & self.ROOM:
                     self.add(Floor(Position(x,y)))
+
                 elif t & self.WALL:
                     self.add(Wall(Position(x,y)))
+
                 elif t & self.DOOR:
                     # only draw door if exactly two tiles in compass directions are walkable
                     m_ns = 0; m_ew = 0
@@ -953,8 +974,10 @@ class TypeAMap(Map):
                         self.add(Wall(Position(x,y)))
                     else:
                         self.add(Floor(Position(x,y)))
+
                 elif t & self.TELEPORT:
                     self.add(FloorTeleport(Position(x,y)))
+
                 elif t == 0:
                     if x>0 and y>0 and x<self.size.x-1 and y<self.size.y-1:
                         # * if tile adjoins one walkable tile, it is a wall tile
