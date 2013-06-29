@@ -14,6 +14,9 @@ class Monster_State:
     def get_move(self):
         raise NotImplementedError
 
+    def get_next_state(self):
+        raise NotImplementedError
+
 
 class Monster (Mappable, TurnTaker):
     # TODO: genericise item generation logic and reuse here
@@ -50,7 +53,7 @@ class Monster (Mappable, TurnTaker):
         self.state = MS_Stationary(self)
 
     def __GEN_GENERATOR():
-        Monster.GENERATOR = [StaticCamera,CrateLifter,Dalek]
+        Monster.GENERATOR = [StaticCamera,CrateLifter,Dalek,BetterDalek]
 
 from tangling import Tanglable
 
@@ -277,14 +280,95 @@ class Dalek (Monster,Tanglable,Talker,Alertable,Shouter):
         if not self.is_visible:
             return
 
-        p = self.map.player
+        # TODO: refactor as follows??
+        # self.state = self.state.get_next_state()
+        # self.move_to( self.state.get_move() )
+
+        # if already on the player square(!), stop
+        if self.pos == self.map.player.pos:
+            self.state = MS_Stationary(self)
+
+        # if still confused from tangling, be confused
+        elif isinstance(self.state,MS_Confused) and not self.state.full():
+            pass
+
+        # otherwise chase player if visible
+        elif self.map.can_see(self):
+            if not isinstance(self.state,MS_SeekingPlayer):
+                self.state = MS_SeekingPlayer(self)
+                self.shout(self.map.player.pos)
+
+        # oth#erwise: if was chasing and now lost player, home on last loc
+        elif isinstance(self.state,MS_SeekingPlayer):
+            self.state = MS_InvestigateSpot(self,self.state.player_last_pos)
+
+        # otherwise if investigating
+        elif isinstance(self.state,MS_InvestigateSpot):
+            # ... change state if got to spot without finding player
+            if self.pos == self.state.destination_pos:
+                self.state = MS_LostSearchTarget(self)
+
+        # otherwise patrol
+        else:
+            if not isinstance(self.state,MS_Patrolling):
+                self.state = MS_Patrolling(self)
+                
+        # try to move
+        try:
+            self.move_to(self.state.get_move())
+        except InvalidMoveError:
+            pass
+
+        # if on player square: lose
+        if self.pos == self.map.player.pos:
+            raise GameOverError("Caught!")
+
+        # find monster
+        m = self.map.find_nearest(self,Monster)
+
+        # if on monster square: tangle
+        if self.pos == m.pos and isinstance(m,Tanglable):
+            self.tangle(m)
+            self.state = MS_RecentlyTangled(self)
+
+        # chatter
+        self.talk(self.state.__class__)
+
+    def alert(self,to_pos):
+        # only become alerted if in a neutral state
+        if isinstance(self.state,MS_Patrolling) or isinstance(self.state,MS_Stationary):
+            if Alertable.alert(self,to_pos):
+                self.state = MS_InvestigateSpot(self,to_pos)
+
+
+class BetterDalek (Monster,Talker,Alertable,Shouter):
+    generator_weight = 0.5
+
+    def __init__(self,pos=None):
+        Monster.__init__(self,pos,'b',libtcod.red)
+        Talker.__init__(self)
+        self.add_phrases( MS_SeekingPlayer, ['** EXTERMINATE! **','** DESTROY! **','** HALT! **'], 0.05, True )
+        self.add_phrases( MS_InvestigateSpot, ['** HUNTING **','** I WILL FIND YOU **'], 0.05 )
+        self.add_phrases( MS_Patrolling, ['** RRRRRRRRRR **','** BZZZZZZZZ **'], 0.05 )
+
+        Alertable.__init__(self,30)
+        Shouter.__init__(self,30)
+
+
+    def take_turn(self):
+        # sanity checks
+        assert not self.map is None, "%s can't take turn without a map" % self
+
+        # if not visible, do nothing
+        if not self.is_visible:
+            return
 
         # TODO: refactor as follows??
         # self.state = self.state.get_next_state()
         # self.move_to( self.state.get_move() )
 
         # if already on the player square(!), stop
-        if self.pos == p.pos:
+        if self.pos == self.map.player.pos:
             self.state = MS_Stationary(self)
 
         # if still confused from tangling, be confused
@@ -314,21 +398,18 @@ class Dalek (Monster,Tanglable,Talker,Alertable,Shouter):
                 
         # try to move
         try:
-            self.move_to(self.state.get_move())
+            new_pos = self.state.get_move()
+            if len(self.map.find_all_at_pos(new_pos,Monster))>0:
+                # TODO: complain about path being blocked
+                raise InvalidMoveError
+            self.move_to(new_pos)
+
         except InvalidMoveError:
             pass
 
         # if on player square: lose
-        if self.pos == p.pos:
+        if self.pos == self.map.player.pos:
             raise GameOverError("Caught!")
-
-        # find monster
-        m = self.map.find_nearest(self,Monster)
-
-        # if on monster square: tangle
-        if self.pos == m.pos and isinstance(m,Tanglable):
-            self.tangle(m)
-            self.state = MS_RecentlyTangled(self)
 
         # chatter
         self.talk(self.state.__class__)
