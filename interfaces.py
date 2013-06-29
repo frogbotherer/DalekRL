@@ -129,10 +129,13 @@ class TurnTaker:
             TurnTaker.turn_takers.sort( key = lambda x: x() is None and 100000 or x().initiative )        
 
 class Traversable:
-    def __init__(self, walk_cost=0.0):
+    def __init__(self, walk_cost=0.0, may_block_movement=False):
         # 0.0 => can't traverse
         # 1.0 => traverse with no penalty
         self.walk_cost = walk_cost
+        # False => try_movement always True
+        # True  => try_movement might return False
+        self.may_block_movement = may_block_movement
 
     def try_leaving(self,obj):
         return True
@@ -140,8 +143,8 @@ class Traversable:
     def try_movement(self,obj):
         return True
 
-    def blocks_movement(self):
-        return self.walk_cost == 0.0
+    def blocks_movement(self, is_for_mapping=False):
+        return (self.walk_cost == 0.0) and (not is_for_mapping or self.may_block_movement)
 
 class Transparent:
     def __init__(self, transparency=0.0):

@@ -6,9 +6,11 @@ from errors import LevelWinError, InvalidMoveError
 from ui import HBar
 
 class Tile(Mappable,Traversable,Transparent):
-    def __init__(self, pos, symbol, colour, walk_cost=0.0, transparency=0.0):
+    def __init__(self, pos, symbol, colour, walk_cost=0.0, transparency=0.0, may_block_movement=False):
+        """walk_cost == 0.0  =>  can't traverse tile
+        walk_cost > 0.0; may_block_movement == True  =>  pathing shouldn't rely on tile being traversable (e.g. teleport tiles, locked doors)"""
         Mappable.__init__(self,pos,symbol,colour,remains_in_place=True)
-        Traversable.__init__(self,walk_cost)
+        Traversable.__init__(self,walk_cost,may_block_movement)
         Transparent.__init__(self,transparency)
 
     def random_furniture(rng, pos):
@@ -205,9 +207,10 @@ class Door(Tile,CountUp,TurnTaker):
 # implemented using the try_movement() method
 class FloorTeleport(Tile):
     def __init__(self, pos):
-        Tile.__init__(self, pos, '^', libtcod.purple, 0.0, 1.0)
+        Tile.__init__(self, pos, '^', libtcod.purple, 0.2, 1.0, True)
 
     def try_movement(self,obj):
+
         if obj.pos.distance_to(self.pos) >= 2:
             # moving to this tile from far away: must be teleporting; don't teleport again!
             return True

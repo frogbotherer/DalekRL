@@ -330,21 +330,38 @@ class Dalek (Monster,Tanglable,Talker,Alertable,Shouter,DalekAI):
 
         # try to move
         try:
-            self.move_to(self.state.get_move())
+            new_pos = self.state.get_move()
+
+            m = self.map.find_all_at_pos(new_pos,Monster)
+
+            ## this logic stops the monster from entering the same square as a non-tanglable
+            ## ... with the side-effect that the player can stand on static cameras and be
+            ##     untouchable :(
+            #if len(m) == 0:
+            #    self.move_to(new_pos)
+            #
+            #elif len([mi for mi in m if isinstance(mi,Tanglable)]) > 0:
+            #    # tangle if poss
+            #    self.move_to(new_pos)
+            #    self.tangle(m[0])
+            #    self.state = MS_RecentlyTangled(self)
+            #
+            #else:
+            #    # don't move if can't tangle with dest monster
+            #    #print("%s can't tangle with %s" % (self,m[0]))
+            #    pass
+            self.move_to(new_pos)
+
+            if len([mi for mi in m if isinstance(mi,Tanglable)])>0:
+                self.tangle(m[0])
+                self.state = MS_RecentlyTangled(self)
+
         except InvalidMoveError:
             pass
 
         # if on player square: lose
         if self.pos == self.map.player.pos:
             raise GameOverError("Caught!")
-
-        # find monster
-        m = self.map.find_nearest(self,Monster)
-
-        # if on monster square: tangle
-        if self.pos == m.pos and isinstance(m,Tanglable):
-            self.tangle(m)
-            self.state = MS_RecentlyTangled(self)
 
         # chatter
         self.talk(self.state.__class__)
@@ -357,7 +374,7 @@ class Dalek (Monster,Tanglable,Talker,Alertable,Shouter,DalekAI):
 
 
 class BetterDalek (Monster,Talker,Alertable,Shouter,DalekAI):
-    generator_weight = 1.3
+    generator_weight = 0.1
 
     def __init__(self,pos=None):
         Monster.__init__(self,pos,'b',libtcod.red)
@@ -410,8 +427,8 @@ class BetterDalek (Monster,Talker,Alertable,Shouter,DalekAI):
                 #  * try both of those
                 if    len(self.map.find_all_at_pos(self.pos + V_MAP[vi-1],Monster)) == 0:
                     new_pos = self.pos + V_MAP[vi-1]
-                elif  len(self.map.find_all_at_pos(self.pos + V_MAP[vi+1],Monster)) == 0:
-                    new_pos = self.pos + V_MAP[vi+1]
+                elif  len(self.map.find_all_at_pos(self.pos + V_MAP[(vi+1)%8],Monster)) == 0:
+                    new_pos = self.pos + V_MAP[(vi+1)%8]
                 #  * ... otherwise give up
                 else:
                     raise InvalidMoveError
@@ -439,6 +456,7 @@ class StaticCamera(Monster, Talker, CountUp, Shouter, AI):
 
     def __init__(self,pos=None):
         Monster.__init__(self,pos,'c',libtcod.light_red)
+        self.remains_in_place = True
         Talker.__init__(self)
         self.add_phrases( MS_SeekingPlayer, ['** BLAAARP! BLAAARP! **','** INTRUDER ALERT! **','** WARNING! **'], 0.7, True )
         self.add_phrases( MS_InvestigateSpot, ['beeeeeeee','bip bip bip bip'], 1.0 )

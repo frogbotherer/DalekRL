@@ -178,11 +178,12 @@ class Map:
                 for o in d:
                     o.draw()
 
-    def recalculate_paths(self):
+    def recalculate_paths(self, is_for_mapping=False):
+        """if is_for_mapping is set, don't count things like teleports as traversable"""
         libtcod.map_clear(self.__tcod_map)
         for ol in self.__layers[Tile].values():
             for o in ol:
-                is_walkable = (isinstance(o,Traversable) and not o.blocks_movement())
+                is_walkable = (isinstance(o,Traversable) and (not o.blocks_movement(is_for_mapping)))
                 is_transparent = (isinstance(o,Transparent) and not o.blocks_light())
                 libtcod.map_set_properties(self.__tcod_map,o.pos.x,o.pos.y,is_transparent,is_walkable)
         #self.__tcod_pathfinder = libtcod.path_new_using_map(self.__tcod_map)
@@ -253,7 +254,7 @@ class Map:
         up_pos   = self.find_random_clear(self.map_rng)
         down_pos = self.find_random_clear(self.map_rng)
 
-        self.recalculate_paths()
+        self.recalculate_paths(True)
         while len(self.get_path(up_pos,down_pos)) < 1:
             up_pos   = self.find_random_clear(self.map_rng)
             down_pos = self.find_random_clear(self.map_rng)
@@ -299,7 +300,7 @@ class EmptyMap(Map):
             self.add(i)
 
         # add evidence
-        self.add(Evidence())
+        self.add(Evidence(self.find_random_clear(self.map_rng)))
 
         self._gen_add_key_elements()
         self._gen_finish()
@@ -337,7 +338,7 @@ class DalekMap(Map):
             self.add(i)
 
         # add evidence
-        self.add(Evidence())
+        self.add(Evidence(self.find_random_clear(self.map_rng)))
 
         self._gen_add_key_elements()
         self._gen_finish()
