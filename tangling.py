@@ -26,16 +26,17 @@ class Tanglable:
         return not self.tangled_with is None and self.tangled_with.tangle_counter > 0
 
 
-from monsters import Monster
+from monsters import Monster, AI
 from interfaces import Talker
 
-class Tangle(Monster,Tanglable):
+class Tangle(Monster,Tanglable,AI):
 
     def __init__(self):
         self.__dogpile = []
         self.tangle_counter = 0
         Monster.__init__(self,None,'T',libtcod.red)
         Tanglable.__init__(self,0)
+        AI.__init__(self) # so that memory wipes in range of a tangle don't crash it
 
     def add(self,monster):
         if not monster in self.__dogpile:

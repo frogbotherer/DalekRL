@@ -59,7 +59,7 @@ class Monster (Mappable, TurnTaker):
 
 
     def __GEN_GENERATOR():
-        Monster.GENERATOR = [StaticCamera,CrateLifter,Dalek,BetterDalek]
+        Monster.GENERATOR = [StaticCamera,CrateLifter,Dalek,SlowDalek,BetterDalek]
 
 from tangling import Tanglable
 
@@ -352,8 +352,9 @@ class Dalek (Monster,Tanglable,Talker,Alertable,Shouter,DalekAI):
             #    pass
             self.move_to(new_pos)
 
-            if len([mi for mi in m if isinstance(mi,Tanglable)])>0:
-                self.tangle(m[0])
+            ms = [mi for mi in m if isinstance(mi,Tanglable)]
+            if len(ms) > 0:
+                self.tangle(ms[0])
                 self.state = MS_RecentlyTangled(self)
 
         except InvalidMoveError:
@@ -450,6 +451,30 @@ class BetterDalek (Monster,Talker,Alertable,Shouter,DalekAI):
             if Alertable.alert(self,to_pos):
                 self.state = MS_InvestigateSpot(self,to_pos)
 
+class SlowDalek (BetterDalek):
+    """like a BetterDalek, but moves only once every two spaces"""
+    generator_weight = 0.5
+
+    def __init__(self,pos=None):
+        Monster.__init__(self,pos,'s',libtcod.red)
+        Talker.__init__(self)
+        self.add_phrases( MS_SeekingPlayer, ['** EXXXXX **','** TERRRRR **','** MIIII **'], 0.05, True )
+        self.add_phrases( MS_InvestigateSpot, ['** BUUUU **','** AAAA **'], 0.05 )
+        self.add_phrases( MS_Patrolling, ['** RRRRRRRRRR **','** BZZZZZZZZ **'], 0.05 )
+
+        Alertable.__init__(self,30)
+        Shouter.__init__(self,30)
+
+        DalekAI.__init__(self)
+
+        self._tick = True
+
+    def take_turn(self):
+        if self._tick:
+            BetterDalek.take_turn(self)
+            self._tick = False
+        else:
+            self._tick = True
 
 class StaticCamera(Monster, Talker, CountUp, Shouter, AI):
     generator_weight = 0.5
