@@ -2,8 +2,8 @@
 
 import libtcodpy as libtcod
 
-from interfaces import Mappable, Activator, Activatable, TurnTaker, Position
-from items import Item, Evidence
+from interfaces import Mappable, Activator, Activatable, TurnTaker, Position, StatusEffect
+from items import Item, SlotItem, Evidence, XRaySpecs
 from tiles import Tile
 from ui import UI, Menu
 from errors import GameOverError, InvalidMoveError
@@ -11,7 +11,7 @@ from errors import GameOverError, InvalidMoveError
 import sys
 from time import sleep
 
-class Player (Mappable,Activator,TurnTaker):
+class Player (Mappable,Activator,TurnTaker,StatusEffect):
     # these don't really belong here
     SCREEN_SIZE = Position(80,50)
     LIMIT_FPS = 15
@@ -19,11 +19,17 @@ class Player (Mappable,Activator,TurnTaker):
 
     def __init__(self,pos=None):
         Mappable.__init__(self,pos,'@',libtcod.white)
+        StatusEffect.__init__(self)
         TurnTaker.__init__(self,1)
         self.items = [Item.random(None,self,2,1.5),Item.random(None,self,1),None]
+        self.slot_items = {
+            SlotItem.HEAD_SLOT: XRaySpecs(self),
+            SlotItem.BODY_SLOT: None,
+            SlotItem.FEET_SLOT: None,
+            }
         self.turns = 0
         self.evidence = []
-        self.levels_seen = 0
+        self.levels_seen = 1
         
         self.KEYMAP = {
             'k': self.move_n,
@@ -38,6 +44,9 @@ class Player (Mappable,Activator,TurnTaker):
             '1': self.use_item1,
             '2': self.use_item2,
             '3': self.use_item3,
+            '4': self.use_head,
+            '5': self.use_body,
+            '6': self.use_feet,
             'q': sys.exit,
             'r': self.reset_game,
             ' ': self.interact,
@@ -49,20 +58,55 @@ class Player (Mappable,Activator,TurnTaker):
         return "Player at %s" % self.pos
 
     def use_item(self,slot):
-        assert slot<len(self.items), "Using undefined item slot"
-        if self.items[slot] is None:
+        assert slot in self.slot_items.keys() or slot<len(self.items), "Using undefined item slot"
+
+        item = None
+        if slot in self.slot_items.keys():
+            item = self.slot_items[slot]
+        elif isinstance(slot,int):
+            item = self.items[slot]
+
+        if item is None:
             return
-        assert isinstance(self.items[slot],Activatable)
+        assert isinstance(item,Activatable)
         
-        return self.items[slot].activate()
+        return item.activate()
 
     def draw_ui(self,pos,max_size=80):
+        # UI constants TODO: move them
+        COL_W = 24
+        C_MARGIN_W = 1
+
+        # print inventory items
         for i in range(len(self.items)):
             libtcod.console_print(0, pos.x, pos.y+i, "%d."%(i+1))
             if self.items[i] is None:
                 libtcod.console_print(0, pos.x+3, pos.y+i, "--- Nothing ---")
             else:
-                self.items[i].draw_ui(pos+(3,i), 40)
+                self.items[i].draw_ui(pos+(3,i), COL_W)
+
+        # print slot items
+        i = 4
+        for s in (SlotItem.HEAD_SLOT,SlotItem.BODY_SLOT,SlotItem.FEET_SLOT):
+            libtcod.console_print(0, pos.x+COL_W+3+C_MARGIN_W, pos.y+i-4, "%d."%(i))
+            if self.slot_items[s] is None:
+                libtcod.console_print(0, pos.x+COL_W+3+C_MARGIN_W+3, pos.y+i-4, "--- Nothing ---")
+            else:
+                self.slot_items[s].draw_ui(pos+(COL_W+3+C_MARGIN_W+3,i-4), COL_W)
+            i += 1
+        
+        # print info
+        libtcod.console_print(0, pos.x + COL_W*2 + C_MARGIN_W*2 + 3+3, pos.y,   "Level:    %5d" % self.levels_seen)
+        libtcod.console_print(0, pos.x + COL_W*2 + C_MARGIN_W*2 + 3+3, pos.y+1, "Evidence: %5d" % len(self.evidence))
+        libtcod.console_print(0, pos.x + COL_W*2 + C_MARGIN_W*2 + 3+3, pos.y+2, "Turns:    %5d" % self.turns)
+
+    def reset_fov(self):
+        if self.has_effect(StatusEffect.BLIND):
+            return self.map.prepare_fov(self.pos,4)
+        elif self.has_effect(StatusEffect.X_RAY_VISION):
+            return self.map.prepare_fov(self.pos,6)
+        else:
+            return self.map.prepare_fov(self.pos,0)
 
     def pickup(self,i):
         assert isinstance(i,Item), "Can't pick up a %s"%i
@@ -150,6 +194,12 @@ class Player (Mappable,Activator,TurnTaker):
         self.use_item(1)
     def use_item3(self):
         self.use_item(2)
+    def use_head(self):
+        self.use_item(SlotItem.HEAD_SLOT)
+    def use_body(self):
+        self.use_item(SlotItem.BODY_SLOT)
+    def use_feet(self):
+        self.use_item(SlotItem.FEET_SLOT)
     def interact(self):
         i = self.map.find_at_pos(self.pos,Item)
         if not i is None:
@@ -166,7 +216,7 @@ class Player (Mappable,Activator,TurnTaker):
         except InvalidMoveError:
             pass # sometimes this is ok, like teleporting
             #print("You can't move like that")
-        self.map.prepare_fov(self.pos)
+        self.reset_fov()
 
     def handle_keys(self):
         k = libtcod.Key()

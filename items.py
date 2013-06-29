@@ -4,22 +4,23 @@ import libtcodpy as libtcod
 
 from functools import reduce
 
-from interfaces import Carryable, Activatable, Activator, CountUp, Mappable, TurnTaker
+from interfaces import Carryable, Activatable, Activator, CountUp, Mappable, TurnTaker, StatusEffect
 from ui import HBar, Message
 from errors import InvalidMoveError
 
 class Item(Carryable, Activatable, Mappable):
+    # for item generation
     awesome_rank    = 2   # out of 5. 0 can't be returned by .random()
     awesome_weight  = 1.0 # 0.0 never occur; 1.0 normal; 2.0 twice normal ... choices also sorted by weight within each rank
     AWESOME_MAP     = None
 
-    def __init__(self, owner, power, colour):
+    def __init__(self, owner, power, colour, symbol='!'):
         pos = None
         if not isinstance(owner, Activator):
             pos   = owner
             owner = None
         self.power = power
-        Mappable.__init__(self,pos,'!',colour)
+        Mappable.__init__(self,pos,symbol,colour)
         Activatable.__init__(self,owner)
         if pos is None:
             self.is_visible = False
@@ -43,7 +44,7 @@ class Item(Carryable, Activatable, Mappable):
         self.pos = None
         self.is_visible = False
 
-    def random(rng,pos,ranks=range(1,2),weight=1.0):
+    def random(rng,pos,ranks=range(1,4),weight=1.0):
         """random item at pos using rng. fixing a rank will limit choice to that rank. raising weight increases probability of a good item"""
         # build cache of item ranks and weights
         if Item.AWESOME_MAP is None:
@@ -90,7 +91,7 @@ class Item(Carryable, Activatable, Mappable):
         Item.AWESOME_MAP = {}
         for i in range(1,6):
             Item.AWESOME_MAP[i] = [] # need empty entries even if no rank
-        for C in (MemoryWipe,Tangler,HandTeleport,Cloaker,DoorRelease,LevelMap):
+        for C in (MemoryWipe,Tangler,HandTeleport,Cloaker,DoorRelease,LevelMap,XRaySpecs):
             Item.AWESOME_MAP[C.awesome_rank].append(C)
         for CL in Item.AWESOME_MAP.values():
             CL.sort(key=lambda x: x.awesome_weight)
@@ -99,6 +100,73 @@ class Item(Carryable, Activatable, Mappable):
                 # generate a corrected cumulative weight, where high rank items are rarer
                 C.awesome_acc_weight = (C.awesome_weight + last)/C.awesome_rank
                 last += C.awesome_weight
+
+
+class SlotItem(Item):
+    awesome_rank   = 3
+    awesome_weight = 1.0
+
+    HEAD_SLOT = 'Head'
+    BODY_SLOT = 'Body'
+    FEET_SLOT = 'Feet'
+
+    def __init__(self,owner,item_power,valid_slot,item_colour=libtcod.cyan,bar_colour=libtcod.dark_cyan):
+        Item.__init__(self,owner,item_power,item_colour,'[')
+        self.valid_slot = valid_slot
+
+
+class RunDownItem(SlotItem, CountUp, TurnTaker):
+    def __init__(self,owner,item_power,valid_slot,item_colour=libtcod.cyan,bar_colour=libtcod.dark_cyan):
+        SlotItem.__init__(self,owner,item_power,valid_slot,item_colour,bar_colour)
+        count_to = int( 200 - 100*item_power )
+        CountUp.__init__(self,count_to)
+        TurnTaker.__init__(self,100)
+
+        self.bar = HBar(None, None, bar_colour, libtcod.dark_grey, True, False, str(self), str.ljust)
+        self.bar.is_visible = False
+
+        self.is_active = False
+
+    def take_turn(self):
+        if not self.is_active:
+            return False
+
+        elif self.inc():
+            self.is_active = False
+
+        return True
+
+    def activate(self):
+        if self.is_active:
+            # deactivate an active item
+            self.is_active = False
+            return True
+
+        elif self.full():
+            # can't activate one that's run out
+            return False
+
+        else:
+            self.is_active = True
+            self.inc(4) # activation costs 4 + 1 for the first turn; discouraging flickering
+            return True
+
+    # TODO: refactor these, plus the bar, into the base class
+    def draw_ui(self,pos,max_width=40):
+        self.bar.pos = pos
+        self.bar.size = max_width
+        self.bar.value = self.count_to-self.count
+        self.bar.max_value = self.count_to
+        self.bar.is_visible = True
+
+    def drop_at(self,pos):
+        Item.drop_at(self,pos)
+        self.bar.is_visible = False
+
+    def take_by(self,owner):
+        Item.take_by(self,owner)
+        self.bar.is_visible = True
+
 
 class CoolDownItem(Item, CountUp, TurnTaker):
     awesome_rank   = 2
@@ -293,3 +361,20 @@ class Evidence(Item):
 
     def __init__(self,pos):
         Item.__init__(self,pos,0.0,libtcod.yellow)
+
+class XRaySpecs(RunDownItem):
+    def __init__(self,owner,item_power=1.0):
+        RunDownItem.__init__(self,owner,item_power,SlotItem.HEAD_SLOT)
+
+    def __str__(self):
+        return "X-Ray Specs"
+
+    def activate(self):
+        if not RunDownItem.activate(self):
+            return False
+
+        if self.is_active:
+            self.owner.add_effect(StatusEffect.X_RAY_VISION)
+
+        else:
+            self.owner.remove_effect(StatusEffect.X_RAY_VISION)

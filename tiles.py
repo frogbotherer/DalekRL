@@ -109,12 +109,12 @@ class Door(Tile,CountUp,TurnTaker):
     def to_open(self):
         self.__change(Door.OPEN)
         self.map.recalculate_paths()
-        self.map.prepare_fov(self.map.player.pos)
+        self.map.player.reset_fov()
 
     def to_closed(self):
         self.__change(Door.CLOSED)
         self.map.recalculate_paths()
-        self.map.prepare_fov(self.map.player.pos)
+        self.map.player.reset_fov()
 
     def to_closing(self):
         self.__change(Door.CLOSING)
@@ -144,7 +144,7 @@ class Door(Tile,CountUp,TurnTaker):
                 self.to_open()
                 #if obj is self.map.player: # i think we need to do this anyway
                 #    self.map.recalculate_paths()
-                #    self.map.prepare_fov(self.map.player.pos)
+                #    self.map.player.reset_fov()
                 return True
             else:
                 if self.map.can_see(self):

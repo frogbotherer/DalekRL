@@ -156,16 +156,47 @@ class Transparent:
         return self.transparency == 0.0
 
 
+class StatusEffect:
+    """things that have passive status (such as being blind, stunned, able to see through walls, ...)"""
+    # buffs
+    X_RAY_VISION = 100
+    FAST         = 101
+
+    # debuffs
+    BLIND        = 200
+    DEAF         = 201
+
+    def __init__(self):
+        self.current_effects = []
+
+    def add_effect(self,status):
+        if status in self.current_effects:
+            return False
+        else:
+            self.current_effects.append(status)
+            return True
+
+    def remove_effect(self,status):
+        if not status in self.current_effects:
+            return False
+        else:
+            self.current_effects.remove(status)
+            return True
+
+    def has_effect(self,status):
+        return status in self.current_effects
+
+
 class CountUp:
     """things that count up (e.g. multi-turn stairs traversal)"""
     def __init__(self,count_to,c=0):
         self.count_to = count_to
         self.count    = c
 
-    def inc(self):
+    def inc(self,i=1):
         if self.full():
             return True
-        self.count += 1
+        self.count += i
         return self.full()
 
     def reset(self,c=0):
@@ -199,6 +230,15 @@ class Alertable:
             return to_pos.distance_to(self.pos) <= self.listen_radius
         else:
             return True
+
+
+# TODO: use this for symmetry between player and monsters with same capabilities
+class CanSee:
+    def __init__(self,radius=0):
+        self.seeing_radius = radius
+
+    def reset_fov(self):
+        raise NotImplementedError
 
 
 class Talker:

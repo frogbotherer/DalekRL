@@ -4,7 +4,7 @@ import libtcodpy as libtcod
 
 from monsters import Monster
 from player import Player
-from interfaces import Mappable, Position, Traversable, Transparent
+from interfaces import Mappable, Position, Traversable, Transparent, StatusEffect
 from items import Item, Evidence
 from tiles import Tile, Wall, Floor, Door, StairsDown, StairsUp, FloorTeleport
 from errors import TodoError, InvalidMoveError
@@ -24,8 +24,11 @@ class Map:
             }
         self.map_rng = libtcod.random_new_from_seed(seed)
         self.size = size
-        self.__tcod_map = libtcod.map_new( self.size.x, self.size.y )
+        self.__tcod_map_empty  = libtcod.map_new( self.size.x, self.size.y ) # for xray, audio, ghosts(?)
+        libtcod.map_clear( self.__tcod_map_empty, True, True )               # clear the map to be traversable and visible
+        self.__tcod_map        = libtcod.map_new( self.size.x, self.size.y )
         self.__tcod_pathfinder = None
+        
 
     def __get_layer_from_obj(self, obj):
         for l in self.__layer_order:
@@ -190,10 +193,12 @@ class Map:
         self.__tcod_pathfinder = libtcod.dijkstra_new(self.__tcod_map)
 
     def prepare_fov(self, pos, radius=0):
+        libtcod.map_compute_fov(self.__tcod_map_empty, pos.x, pos.y, radius, True, libtcod.FOV_BASIC)
         libtcod.map_compute_fov(self.__tcod_map, pos.x, pos.y, radius, True, libtcod.FOV_BASIC)
 
     def can_see(self, obj, target=None):
         """default is: can obj see player?"""
+        # TODO: handle x-ray vision here
         assert isinstance(obj,Mappable), "%s can't be tested for visibility" % obj
         if target is None or target is self.player:
             return self.player.is_visible and libtcod.map_is_in_fov(self.__tcod_map, obj.pos.x, obj.pos.y)
@@ -204,7 +209,10 @@ class Map:
 
     def _drawing_can_see(self,pos):
         # ONLY FOR DRAWING!!
-        return libtcod.map_is_in_fov(self.__tcod_map, pos.x, pos.y)
+        if self.player.has_effect(StatusEffect.X_RAY_VISION):
+            return libtcod.map_is_in_fov(self.__tcod_map_empty, pos.x, pos.y)
+        else:
+            return libtcod.map_is_in_fov(self.__tcod_map, pos.x, pos.y)
 
     def get_path(self,from_pos,to_pos,steps=None):
         """gets array of Position objects from from_pos to to_pos. set steps to limit number of objects to return"""
@@ -227,6 +235,7 @@ class Map:
         #libtcod.path_delete(self.__tcod_pathfinder)
         libtcod.dijkstra_delete(self.__tcod_pathfinder)
         libtcod.map_delete(self.__tcod_map)
+        libtcod.map_delete(self.__tcod_map_empty)
         print("MAP CLOSED!")
 
     def __del__(self):
@@ -272,7 +281,7 @@ class Map:
         self.recalculate_paths()
 
         # calculate player's initial fov
-        self.prepare_fov(self.player.pos)
+        self.player.reset_fov()
 
     def random(seed,size,player):
         print(" -- MAP SEED %d --" %seed)
