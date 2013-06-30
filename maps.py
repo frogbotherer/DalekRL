@@ -717,7 +717,7 @@ class TypeAMap(Map):
 
         # put some teleports in the corners
         if libtcod.random_get_float(self.map_rng,0.0,1.0) < self.TELEPORT_CHANCE and len(r_segs)>0:
-            r_segs.append(self._ME(TypeAMap.TELEPORT, (tl,br)[libtcod.random_get_int(self.map_rng,0,1)], Position(1,1)))
+            r_segs.append(self._ME(TypeAMap.TELEPORT, (tl,br-(1,1))[libtcod.random_get_int(self.map_rng,0,1)], Position(1,1)))
 
         return r_segs
 

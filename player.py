@@ -130,7 +130,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect):
             b = Menu( Position(xu,yu), Position(xu*2,yu*2), title="Pick up" )
             b.add('x',str(i))
             b.add_spacer()
-            for idx in range(len(self.items)):
+            for idx in range(len(items)):
                 v = items[idx]
                 b.add('%d'%(idx+1),str(v))
             b.is_visible = True
@@ -161,7 +161,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect):
                         break
             b.is_visible = False
             del b
-            if item_index is None:
+            if item_index is None or item_index >= len(items):
                 return
             items[item_index].drop_at(self.pos)
             self.map.add(items[item_index])
