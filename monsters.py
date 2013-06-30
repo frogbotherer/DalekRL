@@ -423,6 +423,8 @@ class BetterDalek (Monster,Talker,Alertable,Shouter,DalekAI):
                     Position(-1,1),
                     Position(-1,0)
                     ]
+                if not v in V_MAP:
+                    raise InvalidMoveError # not sure how this happens?
                 vi  = V_MAP.index(v)
                 #  * get the adjacent vectors
                 #  * try both of those

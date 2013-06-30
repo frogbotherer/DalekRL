@@ -29,9 +29,11 @@ class UI:
     def timeout(self):
         del self._timeout
 
+    @staticmethod
     def need_update(timeout):
         return timeout == 0.0 or timeout in UI.timeout_register.keys()
 
+    @staticmethod
     def draw_all(timeout):
         for eref in UI.ui_elements:
             e = eref()
@@ -42,6 +44,7 @@ class UI:
                     if e.timeout==0.0 or e.timeout>timeout:
                         e.draw()
 
+    @staticmethod
     def clear_all():
         for eref in UI.ui_elements:
             e = eref()

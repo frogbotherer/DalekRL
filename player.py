@@ -3,7 +3,7 @@
 import libtcodpy as libtcod
 
 from interfaces import Mappable, Activator, Activatable, TurnTaker, Position, StatusEffect
-from items import Item, SlotItem, Evidence, XRaySpecs
+from items import Item, SlotItem, Evidence, XRaySpecs, RunningShoes
 from tiles import Tile
 from ui import UI, Menu
 from errors import GameOverError, InvalidMoveError
@@ -25,7 +25,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect):
         self.slot_items = {
             SlotItem.HEAD_SLOT: XRaySpecs(self),
             SlotItem.BODY_SLOT: None,
-            SlotItem.FEET_SLOT: None,
+            SlotItem.FEET_SLOT: RunningShoes(self),
             }
         self.turns = 0
         self.evidence = []
@@ -104,7 +104,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect):
         if self.has_effect(StatusEffect.BLIND):
             return self.map.prepare_fov(self.pos,4)
         elif self.has_effect(StatusEffect.X_RAY_VISION):
-            return self.map.prepare_fov(self.pos,6)
+            return self.map.prepare_fov(self.pos,10)
         else:
             return self.map.prepare_fov(self.pos,0)
 
@@ -117,7 +117,10 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect):
             return
 
         item_index = None
-        if not None in self.items:
+        items      = self.items
+        if isinstance(i,SlotItem):
+            items  = [self.slot_items[i.valid_slot]]
+        if not None in items:
             # prompt to drop something; drop it
 
             ###
@@ -128,7 +131,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect):
             b.add('x',str(i))
             b.add_spacer()
             for idx in range(len(self.items)):
-                v = self.items[idx]
+                v = items[idx]
                 b.add('%d'%(idx+1),str(v))
             b.is_visible = True
             while 1:
@@ -160,11 +163,16 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect):
             del b
             if item_index is None:
                 return
-            self.items[item_index].drop_at(self.pos)
-            self.map.add(self.items[item_index])
+            items[item_index].drop_at(self.pos)
+            self.map.add(items[item_index])
         else:
-            item_index = self.items.index(None)
-        self.items[item_index] = i
+            item_index = items.index(None)
+
+        if isinstance(i,SlotItem):
+            self.slot_items[i.valid_slot] = i
+        else:
+            self.items[item_index] = i
+
         self.map.remove(i)
         i.take_by(self)
 
@@ -260,7 +268,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect):
 
     def refresh_turntaker(self):
         TurnTaker.refresh_turntaker(self)
-        for i in self.items:
+        for i in self.items + self.slot_items.values():
             if isinstance(i,TurnTaker):
                 i.refresh_turntaker()
 

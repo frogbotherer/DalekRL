@@ -101,12 +101,12 @@ class TurnTaker:
     def __init__(self, initiative):
         """Lowest initiative goes first"""
         self.initiative = initiative
-        TurnTaker.turn_takers.append(weakref.ref(self))        
-        TurnTaker.turn_takers.sort( key = lambda x: x() is None and 100000 or x().initiative )
+        TurnTaker.add_turntaker(self)
 
     def take_turn(self):
         raise NotImplementedError
 
+    @staticmethod
     def take_all_turns():
         for tref in TurnTaker.turn_takers:
             t = tref()
@@ -115,6 +115,7 @@ class TurnTaker:
             else:
                 t.take_turn()
 
+    @staticmethod
     def clear_all():
         for tref in TurnTaker.turn_takers:
             t = tref()
@@ -124,9 +125,21 @@ class TurnTaker:
 
     def refresh_turntaker(self):
         if not weakref.ref(self) in TurnTaker.turn_takers:
-            # might be a faster way to do this
-            TurnTaker.turn_takers.append(weakref.ref(self))        
-            TurnTaker.turn_takers.sort( key = lambda x: x() is None and 100000 or x().initiative )        
+            TurnTaker.add_turntaker(self)
+
+    @staticmethod
+    def add_turntaker(t):
+        # might be a faster way to do this
+        TurnTaker.turn_takers.append(weakref.ref(t))        
+        TurnTaker.turn_takers.sort( key = lambda x: x() is None and 100000 or x().initiative )                
+
+    @staticmethod
+    def clear_turntaker(t,count=1):
+        r = weakref.ref(t)
+        for x in range(count):
+            if r in TurnTaker.turn_takers:
+                TurnTaker.turn_takers.remove(r)
+
 
 class Traversable:
     def __init__(self, walk_cost=0.0, may_block_movement=False):

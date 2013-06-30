@@ -118,7 +118,7 @@ class SlotItem(Item):
 class RunDownItem(SlotItem, CountUp, TurnTaker):
     def __init__(self,owner,item_power,valid_slot,item_colour=libtcod.cyan,bar_colour=libtcod.dark_cyan):
         SlotItem.__init__(self,owner,item_power,valid_slot,item_colour,bar_colour)
-        count_to = int( 200 - 100*item_power )
+        count_to = int( 50 + 100*item_power )
         CountUp.__init__(self,count_to)
         TurnTaker.__init__(self,100)
 
@@ -175,7 +175,7 @@ class CoolDownItem(Item, CountUp, TurnTaker):
     def __init__(self,owner,item_power,item_colour=libtcod.green,bar_colour=libtcod.dark_green):
         count_to = int( 30 - 10*item_power )
         Item.__init__(self,owner,item_power,item_colour)
-        CountUp.__init__(self,count_to)
+        CountUp.__init__(self,count_to,count_to)
         TurnTaker.__init__(self,100)
         self.bar = HBar(None, None, bar_colour, libtcod.dark_grey, True, False, str(self), str.ljust)
         self.bar.is_visible = False
@@ -378,3 +378,20 @@ class XRaySpecs(RunDownItem):
 
         else:
             self.owner.remove_effect(StatusEffect.X_RAY_VISION)
+
+class RunningShoes(RunDownItem):
+    def __init__(self,owner,item_power=1.0):
+        RunDownItem.__init__(self,owner,item_power*0.5,SlotItem.FEET_SLOT)
+
+    def __str__(self):
+        return "Running Shoes"
+
+    def activate(self):
+        if not RunDownItem.activate(self):
+            return False
+
+        if self.is_active:
+            TurnTaker.add_turntaker(self.owner)
+
+        else:
+            TurnTaker.clear_turntaker(self.owner)
