@@ -268,7 +268,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect):
 
     def refresh_turntaker(self):
         TurnTaker.refresh_turntaker(self)
-        for i in self.items + self.slot_items.values():
+        for i in self.items + list(self.slot_items.values()):
             if isinstance(i,TurnTaker):
                 i.refresh_turntaker()
 

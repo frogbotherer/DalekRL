@@ -652,6 +652,7 @@ class TypeAMap(Map):
                             self.debug_print("    end hit %d at (%d,%d) size=%s; target now %s"%(self._map[x][y],x,y,size,target_pos))
 
                             #  * put a door at collision point
+                            self.debug_print("    Door added at %s"%(target_pos+self._gen_pos_from_dir( self._gen_get_compass_right(direction), 1 )))
                             r_segs.append(self._ME(TypeAMap.DOOR, target_pos+self._gen_pos_from_dir( self._gen_get_compass_right(direction), 1 ), Position(1,1), Position(x,y)))
 
                         elif bounds[self._gen_get_compass_left(direction)] != self.BOUNDARY_UNSET:
@@ -678,6 +679,7 @@ class TypeAMap(Map):
                             self.debug_print("        hit %d at (%d,%d) size=%s; target now %s"%(self._map[x][y],x,y,size,target_pos))
 
                             #  * put a door at collision point
+                            self.debug_print("        Door added at %s"%(Position(x,y)-self._gen_pos_from_dir(direction,1)))
                             r_segs.append(self._ME(TypeAMap.DOOR, Position(x,y)-self._gen_pos_from_dir(direction,1), Position(1,1), Position(x,y)))
 
                         #  * record this position as the bound for this direction
@@ -966,8 +968,8 @@ class TypeAMap(Map):
                     if y>0 and y<self.size.y-1:
                         n = self._map[x][y-1]
                         s = self._map[x][y+1]
-                        if n&(self.CORRIDOR|self.ROOM) > 0 \
-                                and s&(self.CORRIDOR|self.ROOM) > 0:
+                        if n&(self.CORRIDOR|self.ROOM|self.TELEPORT) > 0 \
+                                and s&(self.CORRIDOR|self.ROOM|self.TELEPORT) > 0:
                             m_ns = 1
                         if (n&(self.WALL|self.DOOR) > 0 or n == 0) \
                                 and (s&(self.WALL|self.DOOR) > 0 or s == 0):
@@ -975,8 +977,8 @@ class TypeAMap(Map):
                     if x>0 and x<self.size.x-1:
                         e = self._map[x-1][y]
                         w = self._map[x+1][y]
-                        if e&(self.CORRIDOR|self.ROOM) > 0 \
-                                and w&(self.CORRIDOR|self.ROOM) > 0:
+                        if e&(self.CORRIDOR|self.ROOM|self.TELEPORT) > 0 \
+                                and w&(self.CORRIDOR|self.ROOM|self.TELEPORT) > 0:
                             m_ew = 1
                         if (e&(self.WALL|self.DOOR) > 0 or e == 0) \
                                 and (w&(self.WALL|self.DOOR) > 0 or w == 0):
