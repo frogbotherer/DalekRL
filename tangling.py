@@ -31,10 +31,10 @@ from interfaces import Talker
 
 class Tangle(Monster,Tanglable,AI):
 
-    def __init__(self):
+    def __init__(self,pos=None):
         self.__dogpile = []
         self.tangle_counter = 0
-        Monster.__init__(self,None,'T',libtcod.red)
+        Monster.__init__(self,pos,'T',libtcod.red)
         Tanglable.__init__(self,0)
         AI.__init__(self) # so that memory wipes in range of a tangle don't crash it
 

@@ -91,7 +91,7 @@ class Item(Carryable, Activatable, Mappable):
         Item.AWESOME_MAP = {}
         for i in range(1,6):
             Item.AWESOME_MAP[i] = [] # need empty entries even if no rank
-        for C in (MemoryWipe,Tangler,HandTeleport,Cloaker,DoorRelease,LevelMap,XRaySpecs):
+        for C in (MemoryWipe,Tangler,TangleMine,HandTeleport,Cloaker,DoorRelease,LevelMap,XRaySpecs):
             Item.AWESOME_MAP[C.awesome_rank].append(C)
         for CL in Item.AWESOME_MAP.values():
             CL.sort(key=lambda x: x.awesome_weight)
@@ -306,6 +306,21 @@ class Tangler(LimitedUsesItem):
         if isinstance(m, Tanglable) and not m.is_tangled() and LimitedUsesItem.activate(self):
             t = Tangle()
             t.add(m)
+            return True
+
+        return False
+
+class TangleMine(LimitedUsesItem):
+    awesome_weight = 1.2
+
+    def __str__(self):
+        return "Tangle Mine"
+
+    def activate(self):
+        if LimitedUsesItem.activate(self):
+            t = Tangle(self.owner.pos)
+            t.tangle_counter = 0 # stays until something collides with it
+            self.owner.map.add(t)
             return True
 
         return False

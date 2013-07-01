@@ -1052,7 +1052,7 @@ class TypeAMap(Map):
             self.add(FloorTeleport(self.find_random_clear(self.map_rng)))
 
         # place some furniture
-        for i in range(5):
+        for i in range(15):
             self.add(Tile.random_furniture(self.map_rng,self.find_random_clear(self.map_rng)))
 
         # place daleks
