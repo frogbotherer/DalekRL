@@ -53,6 +53,8 @@ class Map:
         assert obj.pos in self.__layers[layer].keys(), "%s not found at %s in layer %s"%(obj,obj.pos,layer)
 
         self.__layers[layer][obj.pos].remove(obj)
+        if len(self.__layers[layer][obj.pos]) == 0:
+            del self.__layers[layer][obj.pos]
         obj.map = None
 
     def move(self, obj, pos, layer=None):
