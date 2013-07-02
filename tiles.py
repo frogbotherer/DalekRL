@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import libtcodpy as libtcod
-from interfaces import Mappable, Traversable, Transparent, TurnTaker, CountUp, Position, Activatable
+from interfaces import Mappable, Traversable, Transparent, TurnTaker, CountUp, Position, Activatable, HasInventory
 from errors import LevelWinError, InvalidMoveError
 from ui import HBar
 
@@ -13,8 +13,14 @@ class Tile(Mappable,Traversable,Transparent):
         Traversable.__init__(self,walk_cost,may_block_movement)
         Transparent.__init__(self,transparency)
 
+    @staticmethod
     def random_furniture(rng, pos):
         return Crate(pos)
+
+    @staticmethod
+    def random_special_tile(rng, pos):
+        S = [FloorTeleport,FloorCharger]
+        return S[libtcod.random_get_int(rng,0,len(S)-1)](pos)
 
 class Wall(Tile):
     def __init__(self, pos):
@@ -228,3 +234,18 @@ class FloorTeleport(Tile):
 
         return False # prevent original movement
 
+from items import Item
+class FloorCharger(Tile, CountUp):
+    def __init__(self, pos):
+        Tile.__init__(self, pos, 'X', libtcod.purple, 1.0, 1.0, False)
+        CountUp.__init__(self, 50)
+
+    def try_movement(self, obj):
+        if isinstance(obj,HasInventory):
+            for i in obj.items + list(obj.slot_items.values()):
+                #print("charging %s (%s!) %d" %(i,i is None and 'None' or i.is_chargable,self.count))
+                if isinstance(i,Item) and i.is_chargable and i.charge():
+                    if not self.inc():
+                        return True
+
+        return True

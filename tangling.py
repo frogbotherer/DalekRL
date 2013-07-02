@@ -55,7 +55,7 @@ class Tangle(Monster,Tanglable,AI):
             self.tangle_counter += monster.tangle_turns
 
     def take_turn(self):
-        if self.tangle_counter == 0:
+        if self.tangle_counter == 0 or len(self.__dogpile) == 0:
             return
 
         self.tangle_counter -= 1

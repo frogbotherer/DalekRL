@@ -212,12 +212,26 @@ class CountUp:
         self.count += i
         return self.full()
 
+    def dec(self,i=1):
+        if i > self.count:
+            self.count = 0
+        else:
+            self.count -= i
+        return self.count == 0
+
     def reset(self,c=0):
         self.count = c
 
     def full(self):
         return self.count == self.count_to
 
+
+class HasInventory:
+    def __init__(self,inv_size,fixed_slots=()):
+        self.items = [None for i in range(inv_size)]
+        self.slot_items = {}
+        for s in fixed_slots:
+            self.slot_items[s] = None
 
 class Carryable:
     pass

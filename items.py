@@ -24,6 +24,7 @@ class Item(Carryable, Activatable, Mappable):
         Activatable.__init__(self,owner)
         if pos is None:
             self.is_visible = False
+        self.is_chargable = False
 
     def __str__(self):
         if self.owner is None:
@@ -44,6 +45,11 @@ class Item(Carryable, Activatable, Mappable):
         self.pos = None
         self.is_visible = False
 
+    def charge(self,amount=1):
+        """returns true if item is charged by more than 0"""
+        return False
+
+    @staticmethod
     def random(rng,pos,ranks=range(1,4),weight=1.0):
         """random item at pos using rng. fixing a rank will limit choice to that rank. raising weight increases probability of a good item"""
         # build cache of item ranks and weights
@@ -126,6 +132,7 @@ class RunDownItem(SlotItem, CountUp, TurnTaker):
         self.bar.is_visible = False
 
         self.is_active = False
+        self.is_chargable = True
 
     def take_turn(self):
         if not self.is_active:
@@ -150,6 +157,10 @@ class RunDownItem(SlotItem, CountUp, TurnTaker):
             self.is_active = True
             self.inc(4) # activation costs 4 + 1 for the first turn; discouraging flickering
             return True
+
+    def charge(self,amount=1):
+        if self.is_chargable:
+            return self.dec(amount)
 
     # TODO: refactor these, plus the bar, into the base class
     def draw_ui(self,pos,max_width=40):
@@ -179,6 +190,7 @@ class CoolDownItem(Item, CountUp, TurnTaker):
         TurnTaker.__init__(self,100)
         self.bar = HBar(None, None, bar_colour, libtcod.dark_grey, True, False, str(self), str.ljust)
         self.bar.is_visible = False
+        self.is_chargable = True
 
     def take_turn(self):
         return self.inc()
@@ -206,6 +218,9 @@ class CoolDownItem(Item, CountUp, TurnTaker):
         Item.take_by(self,owner)
         self.bar.is_visible = True
 
+    def charge(self,amount=1):
+        if self.is_chargable:
+            return not self.inc(amount)
 
 class LimitedUsesItem(Item):
     awesome_rank   = 1
@@ -319,7 +334,7 @@ class TangleMine(LimitedUsesItem):
     def activate(self):
         if LimitedUsesItem.activate(self):
             t = Tangle(self.owner.pos)
-            t.tangle_counter = 0 # stays until something collides with it
+            t.tangle_counter = 10 # stays until something collides with it
             self.owner.map.add(t)
             return True
 
@@ -410,3 +425,10 @@ class RunningShoes(RunDownItem):
 
         else:
             TurnTaker.clear_turntaker(self.owner)
+
+class LabCoat(SlotItem):
+    def __init__(self,owner,item_power=1.0):
+        SlotItem.__init__(owner,0.0,SlotItem.BODY_SLOT)
+
+    def __str__(self):
+        return "Lab Coat"

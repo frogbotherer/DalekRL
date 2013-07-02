@@ -391,7 +391,7 @@ class TypeAMap(Map):
     REJECT_COVERAGE_SQ  = 0.8
     SANITY_LIMIT        = 100
     BOUNDARY_UNSET      = -1
-    TELEPORT_CHANCE     = 0.4
+    TELEPORT_CHANCE     = 0.2 # just less than 1 per room
     DEBUG               = False
 
     def __init__(self, seed, size, player):
@@ -718,8 +718,10 @@ class TypeAMap(Map):
             return []
 
         # put some teleports in the corners
-        if libtcod.random_get_float(self.map_rng,0.0,1.0) < self.TELEPORT_CHANCE and len(r_segs)>0:
-            r_segs.append(self._ME(TypeAMap.TELEPORT, (tl,br-(1,1))[libtcod.random_get_int(self.map_rng,0,1)], Position(1,1)))
+        if len(r_segs)>0:
+            for corner in (tl, br-(1,1), tl+(size.x-1,0), tl+(0,size.y-1)):
+                if libtcod.random_get_float(self.map_rng,0.0,1.0) < self.TELEPORT_CHANCE and len(r_segs)>0:
+                    r_segs.append(self._ME(TypeAMap.TELEPORT, corner, Position(1,1)))
 
         return r_segs
 
@@ -992,7 +994,8 @@ class TypeAMap(Map):
                         self.add(Floor(Position(x,y)))
 
                 elif t & self.TELEPORT:
-                    self.add(FloorTeleport(Position(x,y)))
+                    #self.add(FloorTeleport(Position(x,y)))
+                    self.add(Tile.random_special_tile(self.map_rng,Position(x,y)))
 
                 elif t == 0:
                     if x>0 and y>0 and x<self.size.x-1 and y<self.size.y-1:

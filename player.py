@@ -2,7 +2,7 @@
 
 import libtcodpy as libtcod
 
-from interfaces import Mappable, Activator, Activatable, TurnTaker, Position, StatusEffect
+from interfaces import Mappable, Activator, Activatable, TurnTaker, Position, StatusEffect, HasInventory
 from items import Item, SlotItem, Evidence, XRaySpecs, RunningShoes
 from tiles import Tile
 from ui import UI, Menu
@@ -11,7 +11,7 @@ from errors import GameOverError, InvalidMoveError
 import sys
 from time import sleep
 
-class Player (Mappable,Activator,TurnTaker,StatusEffect):
+class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
     # these don't really belong here
     SCREEN_SIZE = Position(80,50)
     LIMIT_FPS = 15
@@ -21,6 +21,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect):
         Mappable.__init__(self,pos,'@',libtcod.white)
         StatusEffect.__init__(self)
         TurnTaker.__init__(self,1)
+        HasInventory.__init__(self,3,(SlotItem.HEAD_SLOT,SlotItem.BODY_SLOT,SlotItem.FEET_SLOT))
         self.items = [Item.random(None,self,2,1.5),Item.random(None,self,1),None]
         self.slot_items = {
             SlotItem.HEAD_SLOT: XRaySpecs(self),
@@ -109,6 +110,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect):
             return self.map.prepare_fov(self.pos,0)
 
     def pickup(self,i):
+        # TODO: move all this into HasInventory interface
         assert isinstance(i,Item), "Can't pick up a %s"%i
 
         if isinstance(i,Evidence):
@@ -177,7 +179,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect):
         i.take_by(self)
 
     def do_nothing(self):
-        pass
+        self.move( (0,0) ) # triggers try_movement on current square
     def reset_game(self):
         raise GameOverError
     def move_n(self):
