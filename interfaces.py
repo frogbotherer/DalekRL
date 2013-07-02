@@ -85,6 +85,7 @@ class Mappable:
             return
         colour = self.colour
         symbol = self.unseen_symbol
+        #if False and not self.map._drawing_can_see(self.pos):
         if not self.map._drawing_can_see(self.pos):
             if self.has_been_seen and self.remains_in_place:
                 colour = self.unseen_colour

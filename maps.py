@@ -654,8 +654,14 @@ class TypeAMap(Map):
                             self.debug_print("    end hit %d at (%d,%d) size=%s; target now %s"%(self._map[x][y],x,y,size,target_pos))
 
                             #  * put a door at collision point
-                            self.debug_print("    Door added at %s"%(target_pos+self._gen_pos_from_dir( self._gen_get_compass_right(direction), 1 )))
+                            self.debug_print("    Door added in corner at %s"%(target_pos+self._gen_pos_from_dir( self._gen_get_compass_right(direction), 1 )))
                             r_segs.append(self._ME(TypeAMap.DOOR, target_pos+self._gen_pos_from_dir( self._gen_get_compass_right(direction), 1 ), Position(1,1), Position(x,y)))
+                            t = self._gen_get_compass_left(direction)
+                            if bounds[t] == self.BOUNDARY_UNSET:
+                                if t in ('N','S'):
+                                    bounds[t] = y + self._gen_pos_from_dir(t,1).y
+                                else:
+                                    bounds[t] = x + self._gen_pos_from_dir(t,1).x
 
                         elif bounds[self._gen_get_compass_left(direction)] != self.BOUNDARY_UNSET:
                             target_pos -= self._gen_pos_from_dir( direction, 1 )
@@ -685,10 +691,11 @@ class TypeAMap(Map):
                             r_segs.append(self._ME(TypeAMap.DOOR, Position(x,y)-self._gen_pos_from_dir(direction,1), Position(1,1), Position(x,y)))
 
                         #  * record this position as the bound for this direction
-                        if direction in ['N','S']:
-                            bounds[direction] = y
-                        else:
-                            bounds[direction] = x
+                        if bounds[direction] == self.BOUNDARY_UNSET:
+                            if direction in ['N','S']:
+                                bounds[direction] = y
+                            else:
+                                bounds[direction] = x
                         self.debug_print("        bounds = %s" % bounds)
 
                         #  * continue
@@ -987,6 +994,7 @@ class TypeAMap(Map):
                         if (e&(self.WALL|self.DOOR) > 0 or e == 0) \
                                 and (w&(self.WALL|self.DOOR) > 0 or w == 0):
                             m_ew = -1
+                    #if True or (m_ns > 0 and m_ew < 0) or (m_ns < 0 and m_ew > 0):
                     if (m_ns > 0 and m_ew < 0) or (m_ns < 0 and m_ew > 0):
                         self.add(Floor(Position(x,y)))
                         self.add(Door(Position(x,y)))
