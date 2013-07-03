@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import libtcodpy as libtcod
-from math import hypot
+from math import hypot, atan2, pi
 import weakref
 
 from errors import InvalidMoveError
@@ -45,6 +45,12 @@ class Position:
         """returns distance to other"""
         return hypot(self.x-other.x,self.y-other.y)
 
+    def angle_to(self,other):
+        """returns angle in radians/pi between self and other. i.e. 0.0 => matching directions; 1.0 => opposites"""
+        t = abs( atan2(self.x,self.y) - atan2(other.x,other.y) ) / pi
+        if t > 1.0:
+            t -= 1.0
+        return t
 
 class Mappable:
     """Can appear on the map"""
@@ -52,7 +58,7 @@ class Mappable:
     def __init__(self, pos, symbol, colour, remains_in_place=False, unseen_symbol=None, unseen_colour=libtcod.darkest_grey):
         self.map = None
         self.pos = pos
-        self.last_known_pos = pos
+        self.last_pos = pos
         self.symbol = symbol
         self.colour = colour
         self.remains_in_place = remains_in_place

@@ -85,7 +85,8 @@ class Map:
         self.__layers[layer].setdefault(pos,[]).append(obj)
 
         # update obj position
-        obj.pos = pos
+        obj.last_pos = obj.pos
+        obj.pos      = pos
 
     def find_all(self, otype, layer=None):
         """find all type otype in layer"""
@@ -198,12 +199,17 @@ class Map:
         libtcod.map_compute_fov(self.__tcod_map_empty, pos.x, pos.y, radius, True, libtcod.FOV_BASIC)
         libtcod.map_compute_fov(self.__tcod_map, pos.x, pos.y, radius, True, libtcod.FOV_BASIC)
 
-    def can_see(self, obj, target=None):
-        """default is: can obj see player?"""
+    def can_see(self, obj, target=None, angle_of_vis=1.0):
+        """default is: can obj see player? angle_of_vis between 0.0 and 1.0 where 0.0 is blind and 1.0 can see all around"""
         # TODO: handle x-ray vision here
         assert isinstance(obj,Mappable), "%s can't be tested for visibility" % obj
         if target is None or target is self.player:
-            return self.player.is_visible and libtcod.map_is_in_fov(self.__tcod_map, obj.pos.x, obj.pos.y)
+            #if looking_at:
+            #    print("angle from %s to %s is %f"%(obj,self.player,(obj.pos-obj.last_pos).angle_to(obj.pos-self.player.pos)))
+            # 
+            #    travelling S:     pos-last_pos == (0,1)
+            #    player in-front:  player.pos-obj.pos  must (0, >0)
+            return self.player.is_visible and libtcod.map_is_in_fov(self.__tcod_map, obj.pos.x, obj.pos.y) and (angle_of_vis==1.0 or (obj.pos-obj.last_pos).angle_to(self.player.pos-obj.pos) <= angle_of_vis)
         elif obj is self.player:
             return obj.is_visible and libtcod.map_is_in_fov(self.__tcod_map, obj.pos.x, obj.pos.y)
         else:
@@ -384,8 +390,8 @@ class TypeAMap(Map):
     CORRIDOR_MINOR_FREQ = 6
     CORRIDOR_MINOR_STEP = 4
     CORRIDOR_MIN_LENGTH = 5
-    MIN_ROOMS           = 4
-    MAX_ROOMS           = 12
+    MIN_ROOMS           = 6
+    MAX_ROOMS           = 14
     ROOM_MIN_WIDTH      = 4
     ROOM_MAX_AREA       = 80*14 # i.e. approx 1/3rd of screen area
     ROOM_BOUNDARY_STOP  = [1.0,0.8,0.6,0.5]

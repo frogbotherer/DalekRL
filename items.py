@@ -346,7 +346,7 @@ class MemoryWipe(LimitedUsesItem):
         return "Memory Wipe"
 
     def activate(self):
-        ms = self.owner.map.find_all_within_r(self.owner, Monster, 10, False)
+        ms = self.owner.map.find_all_within_r(self.owner, Monster, 30, False)
         if len(ms)>0 and LimitedUsesItem.activate(self):
             for m in ms:
                 m.reset_state()

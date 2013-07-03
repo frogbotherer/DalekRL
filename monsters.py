@@ -38,7 +38,7 @@ class Monster (Mappable, TurnTaker):
         TurnTaker.__init__(self,10)
 
     def __str__(self):
-        return "%s at %s" %(self.__class__.__name__,self.pos)
+        return "%s at %s facing %s" %(self.__class__.__name__,self.pos,self.pos-self.last_pos)
 
     def random(rng,pos,weight=1.0):
         if Monster.GENERATOR == []:
@@ -276,7 +276,7 @@ class DalekAI(AI):
             return self.state
 
         # otherwise chase player if visible
-        elif self.map.can_see(self):
+        elif self.map.can_see(self,self.map.player,0.5):
             if not isinstance(self.state,MS_SeekingPlayer):
                 self.shout(self.map.player.pos)
                 return MS_SeekingPlayer(self)
