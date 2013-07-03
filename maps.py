@@ -204,8 +204,8 @@ class Map:
         # TODO: handle x-ray vision here
         assert isinstance(obj,Mappable), "%s can't be tested for visibility" % obj
         if target is None or target is self.player:
-            #if looking_at:
-            #    print("angle from %s to %s is %f"%(obj,self.player,(obj.pos-obj.last_pos).angle_to(obj.pos-self.player.pos)))
+            #if angle_of_vis<1.0:
+            #    print("angle from %s to %s is %f"%(obj,self.player,(obj.pos-obj.last_pos).angle_to(self.player.pos-obj.pos)))
             # 
             #    travelling S:     pos-last_pos == (0,1)
             #    player in-front:  player.pos-obj.pos  must (0, >0)
@@ -291,6 +291,7 @@ class Map:
         # calculate player's initial fov
         self.player.reset_fov()
 
+    @staticmethod
     def random(seed,size,player):
         print(" -- MAP SEED %d --" %seed)
         #return EmptyMap(seed,size,player)
@@ -307,7 +308,7 @@ class EmptyMap(Map):
                 self.add(Floor(Position(i,j)))
 
         # place daleks
-        for i in range(0,20):
+        for i in range(0,1):
             d = Monster.random(self.map_rng,self.find_random_clear(self.map_rng))
             self.add(d)
 

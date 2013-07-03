@@ -42,6 +42,7 @@ def reset(keep_player=False):
 
     if keep_player:
         PLAYER.refresh_turntaker()
+        PLAYER.levels_seen += 1
 
     else:
 

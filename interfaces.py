@@ -47,10 +47,12 @@ class Position:
 
     def angle_to(self,other):
         """returns angle in radians/pi between self and other. i.e. 0.0 => matching directions; 1.0 => opposites"""
-        t = abs( atan2(self.x,self.y) - atan2(other.x,other.y) ) / pi
+        t = (atan2(self.x,self.y) - atan2(other.x,other.y))/ pi
         if t > 1.0:
-            t -= 1.0
-        return t
+            t -= 2.0
+        elif t < -1.0:
+            t += 2.0
+        return abs(t)
 
 class Mappable:
     """Can appear on the map"""
