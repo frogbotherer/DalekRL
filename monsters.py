@@ -162,7 +162,8 @@ class CrateLifter (Monster,Tanglable,Talker,Shouter,AI):
 
     def take_turn(self):
         if not self.is_visible:
-            return None
+            #print("%s not visible. tangled? %s"%(self,self.is_tangled()))
+            return 
 
         talk_state = 'default'
         if isinstance(self.state,MS_InvestigateSpot):
@@ -323,6 +324,7 @@ class Dalek (Monster,Tanglable,Talker,Alertable,Shouter,DalekAI):
 
         # if not visible, do nothing
         if not self.is_visible:
+            #print("%s not visible. tangled? %s"%(self,self.is_tangled()))
             return
 
         # update state
@@ -395,6 +397,7 @@ class BetterDalek (Monster,Talker,Alertable,Shouter,DalekAI):
 
         # if not visible, do nothing
         if not self.is_visible:
+            #print("%s not visible. tangled? %s"%(self,self.is_tangled()))
             return
 
         # get next state
@@ -499,6 +502,7 @@ class StaticCamera(Monster, Talker, CountUp, Shouter, AI):
 
         # if not visible, do nothing
         if not self.is_visible:
+            #print("%s not visible. tangled? %s"%(self,self.is_tangled()))
             return
 
         if self.map.can_see(self):

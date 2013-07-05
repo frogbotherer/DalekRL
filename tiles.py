@@ -5,7 +5,94 @@ from interfaces import Mappable, Traversable, Transparent, TurnTaker, CountUp, P
 from errors import LevelWinError, InvalidMoveError
 from ui import HBar
 
+#possibly belongs in maps.py
+class MapPattern:
+    # static constants used for map generation
+    EMPTY    = 0x0
+    CORRIDOR = 0x1
+    ROOM     = 0x2
+    WALL     = 0x4
+    DOOR     = 0x8
+    FLOOR_SPECIAL   = 0x10 # e.g. charger tile
+    FLOOR_FURNITURE = 0x20 # e.g. boxes and tables
+    WALL_SPECIAL    = 0x40 # e.g. portal
+    WALL_FURNITURE  = 0x80 # e.g. cupboard
+    ANY             = 0xFF # i.e. all of above
+
+
+    DATA_MAP = {
+        ' ': EMPTY,
+        '.': CORRIDOR,
+        ':': ROOM,
+        '#': WALL,
+        '+': DOOR,
+        'X': FLOOR_SPECIAL,
+        'x': FLOOR_FURNITURE,
+        'A': WALL_SPECIAL,
+        'a': WALL_FURNITURE,
+        '?': ANY,
+        }
+
+    def __init__(self,*rows):
+        self.masks = []
+        #  --x,w-->
+        #  |   1 2 3   7 4 1   9 8 7   3 6 9
+        # y,h  4 5 6   8 5 2   6 5 4   2 5 8
+        #  v   7 8 9   9 6 3   3 2 1   1 4 7
+
+        w = len(rows)
+        h = len(rows[0])
+        for m in range(4):
+            self.masks.append([])
+            for ci in range(w):
+                self.masks[m].append([])
+                for ri in range(h):
+                    self.masks[m][ci].append(None)
+        for ci in range(w):
+            for ri in range(h):
+                x = self.DATA_MAP.get(rows[ci][ri],self.EMPTY)
+                self.masks[0][ci][ri]     = x     # 0
+                self.masks[1][w-ri-1][ci] = x     # 90
+                self.masks[2][w-ci-1][h-ri-1] = x # 180
+                self.masks[3][ri][h-ci-1] = x     # 270
+
+        #for m in self.masks:
+        #    for ci in range(w):
+        #        for ri in range(h):
+        #            print("%2x "%m[ci][ri], end="")
+        #        print()
+        #    print("--------")
+
+    def apply_to(self,map_array):
+        r   = []
+        kw2 = len(self.masks[0])//2
+        kh2 = len(self.masks[0][0])//2
+        for mci in range(kw2,len(map_array)-kw2):
+            for mri in range(kh2,len(map_array[mci])-kh2):
+                for mask in self.masks:
+                    ok = True
+                    for kci in range(-kw2,kw2+1):
+                        for kri in range(-kh2,kh2+1):
+                            #print("%2x&%2x "%(map_array[mci+kci][mri+kri], mask[kci+kw2][kri+kh2]), end="")
+                            if not (map_array[mci+kci][mri+kri] & mask[kci+kw2][kri+kh2]) and not(map_array[mci+kci][mri+kri]==0 and mask[kci+kw2][kri+kh2]&MapPattern.WALL):
+                                #print("!", end="")
+                                ok = False
+                                #break
+                        #print()
+                        if not ok:
+                            break
+                    #print("-----------------")
+                    if ok:
+                        #print("WOOOOOO")
+                        r.append(Position(mci,mri))
+                    #return r
+        return r
+
 class Tile(Mappable,Traversable,Transparent):
+    patterns  = []
+    place_min = 1
+    place_max = 10
+
     def __init__(self, pos, symbol, colour, walk_cost=0.0, transparency=0.0, may_block_movement=False):
         """walk_cost == 0.0  =>  can't traverse tile
         walk_cost > 0.0; may_block_movement == True  =>  pathing shouldn't rely on tile being traversable (e.g. teleport tiles, locked doors)"""
@@ -22,19 +109,43 @@ class Tile(Mappable,Traversable,Transparent):
         S = [FloorTeleport,FloorCharger]
         return S[libtcod.random_get_int(rng,0,len(S)-1)](pos)
 
+    @staticmethod
+    def get_all_tiles(rng, map_array, types=None):
+        # for tile in tiles
+        #    tile.place_in(map_array)
+        #    for pattern in tile.patterns:
+        #        # list of pos where tile can be placed
+        #        ps = pattern.apply_to(map_array)
+        #        ps.sort(random_get_float)
+        if types is None:
+            types = [FloorTeleport,FloorCharger,Crate,Window]
+        r = {}
+        for T in types:
+            r[T] = []
+            for pattern in T.patterns:
+                r[T] += pattern.apply_to(map_array)
+            r[T].sort( key = lambda a: libtcod.random_get_float(rng,0.0,1.0) )
+        return r
+
 class Wall(Tile):
     def __init__(self, pos):
         Tile.__init__(self, pos, '#', libtcod.light_grey)
+
+class Cupboard(Tile):
+    def __init__(self, pos):
+        Tile.__init__(self, pos, 'C', libtcod.light_grey)
 
 class Floor(Tile):
     def __init__(self, pos):
         Tile.__init__(self, pos, '.', libtcod.dark_grey, 1.0, 1.0)
 
 class StairsUp(Tile):
+    place_max = 1
     def __init__(self, pos):
         Tile.__init__(self, pos, '<', libtcod.dark_grey, 1.0, 1.0)
 
 class StairsDown(Tile,CountUp,TurnTaker):
+    place_max = 1
     def __init__(self, pos):
         Tile.__init__(self, pos, '>', libtcod.light_grey, 1.0, 1.0)
         CountUp.__init__(self, 11)
@@ -59,6 +170,19 @@ class StairsDown(Tile,CountUp,TurnTaker):
             self.reset()
 
 class Crate(Tile, Activatable):
+    patterns = [
+        # middle of a room
+        MapPattern(":::",
+                   ":::",
+                   ":::"),
+        # or in a wide corridor
+        MapPattern("...",
+                   "...",
+                   "###")
+        ]
+    place_min = 5
+    place_max = 10
+
     def __init__(self, pos):
         Tile.__init__(self, pos, 'N', libtcod.light_grey, 1.0, 0.8)
         Activatable.__init__(self)
@@ -87,9 +211,16 @@ class Crate(Tile, Activatable):
         return not obj is self.owner
 
 
-class Glass(Tile):
+class Window(Tile):
+    patterns = [
+        MapPattern(":::",
+                   "###",
+                   "..."),
+        ]
+    place_min = 0
+    place_max = 10
     def __init__(self, pos):
-        Tile.__init__(self, pos, '0', libtcod.light_grey, 0.0, 1.0)
+        Tile.__init__(self, pos, '\\', libtcod.light_grey, 0.0, 1.0)
 
 class Door(Tile,CountUp,TurnTaker):
     OPEN = {'symbol':'.','colour':libtcod.dark_grey,'transparency':1.0,'walkcost':1.0,
@@ -212,6 +343,19 @@ class Door(Tile,CountUp,TurnTaker):
 
 # implemented using the try_movement() method
 class FloorTeleport(Tile):
+    patterns = [
+        # end of a corridor
+        MapPattern("?#?",
+                   "#..",
+                   "?#?"),
+        # corner of a room
+        MapPattern("##?",
+                   "#::",
+                   "?::")
+        ]
+    place_min = 2
+    place_max = 5
+
     def __init__(self, pos):
         Tile.__init__(self, pos, '^', libtcod.purple, 0.2, 1.0, True)
 
@@ -236,16 +380,25 @@ class FloorTeleport(Tile):
 
 from items import Item
 class FloorCharger(Tile, CountUp):
+    patterns = [
+        # against a room wall
+        MapPattern("###",
+                   ":::",
+                   ":::"),
+        ]
+    place_max = 2
+
     def __init__(self, pos):
         Tile.__init__(self, pos, 'X', libtcod.purple, 1.0, 1.0, False)
         CountUp.__init__(self, 50)
 
     def try_movement(self, obj):
         if isinstance(obj,HasInventory):
+            print (obj.slot_items)
             for i in obj.items + list(obj.slot_items.values()):
                 #print("charging %s (%s!) %d" %(i,i is None and 'None' or i.is_chargable,self.count))
                 if isinstance(i,Item) and i.is_chargable and i.charge():
-                    if not self.inc():
+                    if self.inc():
                         return True
 
         return True
