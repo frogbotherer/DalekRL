@@ -368,7 +368,7 @@ class DoorRelease(LimitedUsesItem):
         return False
 
 class EmergencyHammer(LimitedUsesItem):
-    awesome_weight = 10.8
+    awesome_weight = 0.8
 
     def __str__(self):
         return "Emergency Hammer"
