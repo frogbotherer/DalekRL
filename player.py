@@ -175,7 +175,8 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
         else:
             self.items[item_index] = i
 
-        self.map.remove(i)
+        if not i.pos is None: # if taken from locker or other bonus
+            self.map.remove(i)
         i.take_by(self)
 
     def do_nothing(self):

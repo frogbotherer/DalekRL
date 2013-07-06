@@ -15,10 +15,10 @@ class MapPattern:
     ROOM     = 0x2
     WALL     = 0x4
     DOOR     = 0x8
-    FLOOR_SPECIAL   = 0x10 # e.g. charger tile
-    FLOOR_FURNITURE = 0x20 # e.g. boxes and tables
-    WALL_SPECIAL    = 0x40 # e.g. portal
-    WALL_FURNITURE  = 0x80 # e.g. cupboard
+    SPECIAL  = 0x10 # e.g. charger tile
+#    FLOOR_FURNITURE = 0x20 # e.g. boxes and tables
+#    WALL_SPECIAL    = 0x40 # e.g. portal
+#    WALL_FURNITURE  = 0x80 # e.g. cupboard
     ANY             = 0xFF # i.e. all of above
 
 
@@ -29,10 +29,7 @@ class MapPattern:
         'c': CORRIDOR,
         '#': WALL,
         '+': DOOR,
-        'X': FLOOR_SPECIAL,
-        'x': FLOOR_FURNITURE,
-        'A': WALL_SPECIAL,
-        'a': WALL_FURNITURE,
+        'X': SPECIAL,
         '?': ANY,
         }
 
@@ -135,7 +132,7 @@ class Tile(Mappable,Traversable,Transparent):
         #        ps = pattern.apply_to(map_array)
         #        ps.sort(random_get_float)
         if types is None:
-            types = [FloorTeleport,FloorCharger,Crate,Window]
+            types = [FloorTeleport,FloorCharger,Crate,Window,Table,Locker]
 
         ## naive way to do it (slow)
         #r = {}
@@ -165,18 +162,30 @@ class Tile(Mappable,Traversable,Transparent):
             p_list.sort( key = lambda a: libtcod.random_get_float(rng,0.0,1.0) )
         return r
 
+
 class Wall(Tile):
     def __init__(self, pos):
         Tile.__init__(self, pos, '#', libtcod.light_grey)
 
 class Locker(Tile):
     patterns = [
-        MapPattern("???",
+        MapPattern("...",
                    "###",
                    "???")
         ]
+    place_min = 10
+    place_max = 20
     def __init__(self, pos):
-        Tile.__init__(self, pos, 'L', libtcod.light_grey)
+        Tile.__init__(self, pos, 'L', libtcod.light_green, 0.1, 0.0, True)
+
+    def try_movement(self,obj):
+        if not isinstance(obj,HasInventory):
+            return False
+
+        self.colour = libtcod.light_grey
+        obj.pickup(Item.random(None,None,weight=1.2))
+
+        return False
 
 class Table(Tile):
     patterns = [
@@ -185,7 +194,7 @@ class Table(Tile):
                    "rrr")
         ]
     def __init__(self, pos):
-        Tile.__init__(self, pos, 'T', libtcod.grey)
+        Tile.__init__(self, pos, 'T', libtcod.grey, 1.0, 1.0)
 
 class Floor(Tile):
     def __init__(self, pos):

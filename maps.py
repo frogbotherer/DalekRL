@@ -285,14 +285,13 @@ class Map:
         self.add(self.player)
 
     def _gen_apply_patterns(self,map_array):
-        used = []
         for (T,ps) in Tile.get_all_tiles(self.map_rng,map_array).items():
             T_wanted = libtcod.random_get_int(self.map_rng,T.place_min,T.place_max)
             while len(ps) > 0 and T_wanted > 0:
                 p = ps.pop()
-                if not p in used:
+                if not map_array[p.x][p.y] & MapPattern.SPECIAL:
                     self.add(T(p))
-                    used.append(p)
+                    map_array[p.x][p.y] |= MapPattern.SPECIAL
                     T_wanted -= 1
                 
     def _gen_finish(self):
@@ -737,12 +736,6 @@ class TypeAMap(Map):
         if size.x*size.y > self.ROOM_MAX_AREA:
             return []
 
-        # put some teleports in the corners
-        #if len(r_segs)>0:
-        #    for corner in (tl, br-(1,1), tl+(size.x-1,0), tl+(0,size.y-1)):
-        #        if libtcod.random_get_float(self.map_rng,0.0,1.0) < self.TELEPORT_CHANCE and len(r_segs)>0:
-        #            r_segs.append(self._ME(MapPattern.FLOOR_SPECIAL, corner, Position(1,1)))
-
         return r_segs
 
 
@@ -857,10 +850,6 @@ class TypeAMap(Map):
             if self._gen_get_available_dist( curr_pos, direction ) < self.CORRIDOR_MIN_LENGTH+width+1:
                 direction = o
 
-        # add teleport at end of corridor
-        #if libtcod.random_get_float(self.map_rng,0.0,1.0) < self.TELEPORT_CHANCE and len(c_segs)>0:
-        #    c_segs.append(self._ME(MapPattern.FLOOR_SPECIAL, c_segs[-1].opos+self._gen_pos_from_dir(c_segs[-1].direction,c_segs[-1].length), Position(1,1)))
-
         return c_segs
 
     def generate(self):
@@ -970,6 +959,9 @@ class TypeAMap(Map):
         # * create doors at intersects
         # * use pathing to prove map traversable
         # * populate Map object from _map
+
+        self._gen_apply_patterns(self._map)
+
         misses = 0
         for x in range(len(self._map)):
             for y in range(len(self._map[x])):
@@ -981,8 +973,8 @@ class TypeAMap(Map):
                     if y>0 and y<self.size.y-1:
                         n = self._map[x][y-1]
                         s = self._map[x][y+1]
-                        if n&(MapPattern.CORRIDOR|MapPattern.ROOM|MapPattern.FLOOR_SPECIAL) > 0 \
-                                and s&(MapPattern.CORRIDOR|MapPattern.ROOM|MapPattern.FLOOR_SPECIAL) > 0:
+                        if n&(MapPattern.CORRIDOR|MapPattern.ROOM|MapPattern.SPECIAL) > 0 \
+                                and s&(MapPattern.CORRIDOR|MapPattern.ROOM|MapPattern.SPECIAL) > 0:
                             m_ns = 1
                         if (n&(MapPattern.WALL|MapPattern.DOOR) > 0 or n == 0) \
                                 and (s&(MapPattern.WALL|MapPattern.DOOR) > 0 or s == 0):
@@ -990,8 +982,8 @@ class TypeAMap(Map):
                     if x>0 and x<self.size.x-1:
                         e = self._map[x-1][y]
                         w = self._map[x+1][y]
-                        if e&(MapPattern.CORRIDOR|MapPattern.ROOM|MapPattern.FLOOR_SPECIAL) > 0 \
-                                and w&(MapPattern.CORRIDOR|MapPattern.ROOM|MapPattern.FLOOR_SPECIAL) > 0:
+                        if e&(MapPattern.CORRIDOR|MapPattern.ROOM|MapPattern.SPECIAL) > 0 \
+                                and w&(MapPattern.CORRIDOR|MapPattern.ROOM|MapPattern.SPECIAL) > 0:
                             m_ew = 1
                         if (e&(MapPattern.WALL|MapPattern.DOOR) > 0 or e == 0) \
                                 and (w&(MapPattern.WALL|MapPattern.DOOR) > 0 or w == 0):
@@ -1014,9 +1006,8 @@ class TypeAMap(Map):
                 elif t & MapPattern.WALL:
                     self.add(Wall(Position(x,y)))
 
-#                elif t & MapPattern.FLOOR_SPECIAL:
-#                    #self.add(FloorTeleport(Position(x,y)))
-#                    self.add(Tile.random_special_tile(self.map_rng,Position(x,y)))
+                elif t & MapPattern.SPECIAL:
+                    pass
 
                 elif t == 0:
                     if x>0 and y>0 and x<self.size.x-1 and y<self.size.y-1:
@@ -1071,15 +1062,6 @@ class TypeAMap(Map):
         # * for tile in empty tiles:
         #    * if tile adjoins one walkable tile, it is a wall tile
 
-        self._gen_apply_patterns(self._map)
-
-        # if we only generated one teleport, add another one
-        #if len(self.find_all(FloorTeleport,Tile)) == 1:
-        #    self.add(FloorTeleport(self.find_random_clear(self.map_rng)))
-
-        # place some furniture
-        #for i in range(15):
-        #    self.add(Tile.random_furniture(self.map_rng,self.find_random_clear(self.map_rng)))
 
         # place daleks
         for i in range(15):
