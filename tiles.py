@@ -5,6 +5,8 @@ from interfaces import Mappable, Traversable, Transparent, TurnTaker, CountUp, P
 from errors import LevelWinError, InvalidMoveError
 from ui import HBar
 
+from functools import reduce
+
 #possibly belongs in maps.py
 class MapPattern:
     # static constants used for map generation
@@ -22,8 +24,9 @@ class MapPattern:
 
     DATA_MAP = {
         ' ': EMPTY,
-        '.': CORRIDOR,
-        ':': ROOM,
+        '.': CORRIDOR|ROOM,
+        'r': ROOM,
+        'c': CORRIDOR,
         '#': WALL,
         '+': DOOR,
         'X': FLOOR_SPECIAL,
@@ -35,11 +38,13 @@ class MapPattern:
 
     def __init__(self,*rows):
         self.masks = []
+        self.__hash = hash(reduce( lambda a,b: a+b, [ r for r in rows ], "" ))
         #  --x,w-->
         #  |   1 2 3   7 4 1   9 8 7   3 6 9
         # y,h  4 5 6   8 5 2   6 5 4   2 5 8
         #  v   7 8 9   9 6 3   3 2 1   1 4 7
 
+        # build masks as arrays of arrays
         w = len(rows)
         h = len(rows[0])
         for m in range(4):
@@ -56,12 +61,21 @@ class MapPattern:
                 self.masks[2][w-ci-1][h-ri-1] = x # 180
                 self.masks[3][ri][h-ci-1] = x     # 270
 
-        #for m in self.masks:
-        #    for ci in range(w):
-        #        for ri in range(h):
-        #            print("%2x "%m[ci][ri], end="")
-        #        print()
-        #    print("--------")
+        # remove duplicate masks due to rotational symmetry
+        symmetry_4 = True
+        symmetry_2 = True
+        for ci in range(w):
+            for ri in range(h):
+                if self.masks[0][ci][ri] != self.masks[1][ci][ri]:
+                    symmetry_4 = False
+                if self.masks[0][ci][ri] != self.masks[2][ci][ri]:
+                    symmetry_2 = False
+        if symmetry_4:
+            del self.masks[1:3]
+        elif symmetry_2:
+            del self.masks[2:3]
+
+        # convert each row from list to 
 
     def apply_to(self,map_array):
         r   = []
@@ -87,6 +101,9 @@ class MapPattern:
                         r.append(Position(mci,mri))
                     #return r
         return r
+
+    def __hash__(self):
+        return self.__hash
 
 class Tile(Mappable,Traversable,Transparent):
     patterns  = []
@@ -119,21 +136,56 @@ class Tile(Mappable,Traversable,Transparent):
         #        ps.sort(random_get_float)
         if types is None:
             types = [FloorTeleport,FloorCharger,Crate,Window]
-        r = {}
+
+        ## naive way to do it (slow)
+        #r = {}
+        #for T in types:
+        #    r[T] = []
+        #    for pattern in T.patterns:
+        #        r[T] += pattern.apply_to(map_array)
+        #    r[T].sort( key = lambda a: libtcod.random_get_float(rng,0.0,1.0) )
+        #return r
+
+        # calculate which patterns are used by which objects, and apply each unique pattern once
+        pattern_map = {}
         for T in types:
-            r[T] = []
-            for pattern in T.patterns:
-                r[T] += pattern.apply_to(map_array)
-            r[T].sort( key = lambda a: libtcod.random_get_float(rng,0.0,1.0) )
+            for p in T.patterns:
+                if not p in pattern_map.keys():
+                    pattern_map[p] = []
+                pattern_map[p].append(T)
+        
+        r = {}
+        for (p,T_list) in pattern_map.items():
+            p_list = p.apply_to(map_array)
+            for T in T_list:
+                if not T in r.keys():
+                    r[T] = []
+                r[T] += p_list
+        for p_list in r.values():
+            p_list.sort( key = lambda a: libtcod.random_get_float(rng,0.0,1.0) )
         return r
 
 class Wall(Tile):
     def __init__(self, pos):
         Tile.__init__(self, pos, '#', libtcod.light_grey)
 
-class Cupboard(Tile):
+class Locker(Tile):
+    patterns = [
+        MapPattern("???",
+                   "###",
+                   "???")
+        ]
     def __init__(self, pos):
-        Tile.__init__(self, pos, 'C', libtcod.light_grey)
+        Tile.__init__(self, pos, 'L', libtcod.light_grey)
+
+class Table(Tile):
+    patterns = [
+        MapPattern("rrr",
+                   "rrr",
+                   "rrr")
+        ]
+    def __init__(self, pos):
+        Tile.__init__(self, pos, 'T', libtcod.grey)
 
 class Floor(Tile):
     def __init__(self, pos):
@@ -172,12 +224,12 @@ class StairsDown(Tile,CountUp,TurnTaker):
 class Crate(Tile, Activatable):
     patterns = [
         # middle of a room
-        MapPattern(":::",
-                   ":::",
-                   ":::"),
+        MapPattern("rrr",
+                   "rrr",
+                   "rrr"),
         # or in a wide corridor
-        MapPattern("...",
-                   "...",
+        MapPattern("ccc",
+                   "ccc",
                    "###")
         ]
     place_min = 5
@@ -213,7 +265,7 @@ class Crate(Tile, Activatable):
 
 class Window(Tile):
     patterns = [
-        MapPattern(":::",
+        MapPattern("rrr",
                    "###",
                    "..."),
         ]
@@ -383,8 +435,8 @@ class FloorCharger(Tile, CountUp):
     patterns = [
         # against a room wall
         MapPattern("###",
-                   ":::",
-                   ":::"),
+                   "rrr",
+                   "rrr"),
         ]
     place_max = 2
 

@@ -285,11 +285,15 @@ class Map:
         self.add(self.player)
 
     def _gen_apply_patterns(self,map_array):
+        used = []
         for (T,ps) in Tile.get_all_tiles(self.map_rng,map_array).items():
             T_wanted = libtcod.random_get_int(self.map_rng,T.place_min,T.place_max)
             while len(ps) > 0 and T_wanted > 0:
-                self.add(T(ps.pop()))
-                T_wanted -= 1
+                p = ps.pop()
+                if not p in used:
+                    self.add(T(p))
+                    used.append(p)
+                    T_wanted -= 1
                 
     def _gen_finish(self):
         # calculate path information
