@@ -79,9 +79,9 @@ class Mappable:
     def move_to(self, pos):
         """move by an absolute"""
         assert not self.remains_in_place, "trying to move immovable object %s" % self
-        # test whether movement is valid
-        if not self.map is None and self.map.is_blocked(pos):
-            raise InvalidMoveError( "Can't move %s to %s"%(self,pos) )
+        ## test whether movement is valid # this lives in map.move now
+        #if not self.map is None and self.map.is_blocked(pos):
+        #    raise InvalidMoveError( "Can't move %s to %s"%(self,pos) )
 
         self.map.move(self, pos)
 
@@ -163,7 +163,7 @@ class Traversable:
         return True
 
     def try_movement(self,obj):
-        return True
+        return not self.blocks_movement()
 
     def blocks_movement(self, is_for_mapping=False):
         return (self.walk_cost == 0.0) and (not is_for_mapping or self.may_block_movement)

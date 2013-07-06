@@ -4,7 +4,7 @@ import libtcodpy as libtcod
 
 from functools import reduce
 
-from interfaces import Carryable, Activatable, Activator, CountUp, Mappable, TurnTaker, StatusEffect
+from interfaces import Carryable, Activatable, Activator, CountUp, Mappable, TurnTaker, StatusEffect, Shouter
 from ui import HBar, Message
 from errors import InvalidMoveError
 
@@ -97,7 +97,7 @@ class Item(Carryable, Activatable, Mappable):
         Item.AWESOME_MAP = {}
         for i in range(1,6):
             Item.AWESOME_MAP[i] = [] # need empty entries even if no rank
-        for C in (MemoryWipe,Tangler,TangleMine,HandTeleport,Cloaker,DoorRelease,LevelMap,XRaySpecs):
+        for C in (MemoryWipe,Tangler,TangleMine,HandTeleport,Cloaker,DoorRelease,LevelMap,XRaySpecs,LabCoat,EmergencyHammer):
             Item.AWESOME_MAP[C.awesome_rank].append(C)
         for CL in Item.AWESOME_MAP.values():
             CL.sort(key=lambda x: x.awesome_weight)
@@ -353,7 +353,7 @@ class MemoryWipe(LimitedUsesItem):
             return True
         return False
 
-from tiles import Tile, Door
+from tiles import Tile, Door, Window, Floor
 class DoorRelease(LimitedUsesItem):
     awesome_weight = 0.7
 
@@ -364,6 +364,19 @@ class DoorRelease(LimitedUsesItem):
         d = self.owner.map.find_nearest(self.owner,Door,Tile)
         if not d is None and LimitedUsesItem.activate(self):
             d.to_closing()
+            return True
+        return False
+
+class EmergencyHammer(LimitedUsesItem):
+    awesome_weight = 10.8
+
+    def __str__(self):
+        return "Emergency Hammer"
+
+    def activate(self):
+        w = self.owner.map.find_nearest(self.owner,Window,Tile)
+        if not w is None and self.owner.pos.distance_to(w.pos) < 3 and LimitedUsesItem.activate(self):
+            w.smash()
             return True
         return False
 
@@ -428,7 +441,7 @@ class RunningShoes(RunDownItem):
 
 class LabCoat(SlotItem):
     def __init__(self,owner,item_power=1.0):
-        SlotItem.__init__(owner,0.0,SlotItem.BODY_SLOT)
+        SlotItem.__init__(self,owner,0.0,SlotItem.BODY_SLOT)
 
     def __str__(self):
         return "Lab Coat"

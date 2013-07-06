@@ -290,6 +290,8 @@ class Map:
             while len(ps) > 0 and T_wanted > 0:
                 p = ps.pop()
                 if not map_array[p.x][p.y] & MapPattern.SPECIAL:
+                    if map_array[p.x][p.y] & (MapPattern.CORRIDOR|MapPattern.ROOM):
+                        self.add(Floor(p))
                     self.add(T(p))
                     map_array[p.x][p.y] |= MapPattern.SPECIAL
                     T_wanted -= 1
@@ -967,7 +969,11 @@ class TypeAMap(Map):
             for y in range(len(self._map[x])):
                 t = self._map[x][y]
 
-                if t & MapPattern.DOOR:
+                if t & MapPattern.SPECIAL:
+                    # assume special tiles have already managed floor/wall space, if necessary
+                    pass
+
+                elif t & MapPattern.DOOR:
                     # only draw door if exactly two tiles in compass directions are walkable
                     m_ns = 0; m_ew = 0
                     if y>0 and y<self.size.y-1:
@@ -1005,9 +1011,6 @@ class TypeAMap(Map):
 
                 elif t & MapPattern.WALL:
                     self.add(Wall(Position(x,y)))
-
-                elif t & MapPattern.SPECIAL:
-                    pass
 
                 elif t == 0:
                     if x>0 and y>0 and x<self.size.x-1 and y<self.size.y-1:

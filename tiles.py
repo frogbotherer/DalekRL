@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import libtcodpy as libtcod
-from interfaces import Mappable, Traversable, Transparent, TurnTaker, CountUp, Position, Activatable, HasInventory
+from interfaces import Mappable, Traversable, Transparent, TurnTaker, CountUp, Position, Activatable, HasInventory, Shouter
 from errors import LevelWinError, InvalidMoveError
 from ui import HBar
 
@@ -158,8 +158,12 @@ class Tile(Mappable,Traversable,Transparent):
                 if not T in r.keys():
                     r[T] = []
                 r[T] += p_list
-        for p_list in r.values():
-            p_list.sort( key = lambda a: libtcod.random_get_float(rng,0.0,1.0) )
+
+        # randomize order of positions in list, so caller can just pop() them
+        # NB. keys are sorted because this must be deterministic for map gen
+        for T in sorted(r.keys(), key=lambda a: a.__name__):
+            r[T].sort( key = lambda a: libtcod.random_get_float(rng,0.0,1.0) )
+
         return r
 
 
@@ -171,12 +175,13 @@ class Locker(Tile):
     patterns = [
         MapPattern("...",
                    "###",
-                   "???")
+                   "###")
         ]
-    place_min = 10
-    place_max = 20
+    place_min = 5
+    place_max = 10
     def __init__(self, pos):
-        Tile.__init__(self, pos, 'L', libtcod.light_green, 0.1, 0.0, True)
+        Tile.__init__(self, pos, 'L', libtcod.light_green, 0.0, 0.0, True)
+        self.has_given_item = False
 
     def try_movement(self,obj):
         if not isinstance(obj,HasInventory):
@@ -184,17 +189,42 @@ class Locker(Tile):
 
         self.colour = libtcod.light_grey
         obj.pickup(Item.random(None,None,weight=1.2))
+        self.has_given_item = True
 
         return False
 
-class Table(Tile):
+class Table(Tile,Activatable):
     patterns = [
         MapPattern("rrr",
                    "rrr",
                    "rrr")
         ]
+    place_min = 10
+    place_max = 20
     def __init__(self, pos):
-        Tile.__init__(self, pos, 'T', libtcod.grey, 1.0, 1.0)
+        Tile.__init__(self, pos, 'T', libtcod.light_blue, 1.0, 1.0)
+        Activatable.__init__(self)
+
+    def activate(self, activator=None):
+        # sanity
+        if not (self.owner is None or self.owner is activator):
+            raise InvalidMoveError("Table already occupied by %s" % self.owner)
+        assert not activator is None, "Table activated by None"
+
+        # hide under table
+        if self.owner is None:
+            self.owner = activator
+            self.owner.is_visible = False
+
+        # stop hiding
+        else:
+            self.owner.is_visible = True
+            self.owner = None
+        return True
+
+    def try_leaving(self, obj):
+        # prevent leaving if in crate
+        return not obj is self.owner
 
 class Floor(Tile):
     def __init__(self, pos):
@@ -250,7 +280,6 @@ class Crate(Tile, Activatable):
         self.remains_in_place = False
 
     def activate(self, activator=None):
-        print("activating by %s"%activator)
         # sanity
         if not (self.owner is None or self.owner is activator):
             raise InvalidMoveError("Crate already occupied by %s" % self.owner)
@@ -272,7 +301,7 @@ class Crate(Tile, Activatable):
         return not obj is self.owner
 
 
-class Window(Tile):
+class Window(Tile,Shouter):
     patterns = [
         MapPattern("rrr",
                    "###",
@@ -282,6 +311,13 @@ class Window(Tile):
     place_max = 10
     def __init__(self, pos):
         Tile.__init__(self, pos, '\\', libtcod.light_grey, 0.0, 1.0)
+        Shouter.__init__(self, 20)
+
+    def smash(self):
+        self.shout(self.pos)
+        self.map.add(Floor(self.pos))
+        self.map.remove(self)
+
 
 class Door(Tile,CountUp,TurnTaker):
     OPEN = {'symbol':'.','colour':libtcod.dark_grey,'transparency':1.0,'walkcost':1.0,
@@ -455,9 +491,7 @@ class FloorCharger(Tile, CountUp):
 
     def try_movement(self, obj):
         if isinstance(obj,HasInventory):
-            print (obj.slot_items)
             for i in obj.items + list(obj.slot_items.values()):
-                #print("charging %s (%s!) %d" %(i,i is None and 'None' or i.is_chargable,self.count))
                 if isinstance(i,Item) and i.is_chargable and i.charge():
                     if self.inc():
                         return True
