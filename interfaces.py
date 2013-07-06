@@ -277,6 +277,7 @@ class CanSee:
         raise NotImplementedError
 
 
+# TODO: needs to track who's talking and shut them up the next turn
 class Talker:
     def __init__(self):
         self.__phrases = {}
@@ -301,7 +302,7 @@ class Talker:
         if self.is_talking:
             self.stop_talk()
         if not key in self.__phrases.keys():
-            return
+            return False
         if libtcod.random_get_float(None,0.0,1.0)<self.__phrases[key]['probability']:
             #assert key in self.__phrases.keys(), "Talker %s has no vocab for key %s"%(self,key)
             self.__chat.pos = self.pos-(0,1)
@@ -310,6 +311,8 @@ class Talker:
             self.__chat.is_visible = True
             if isinstance(self,Shouter) and self.__phrases[key]['is_shouting']:
                 self.shout()
+            return True
+        return False
     
 
 class Shouter:

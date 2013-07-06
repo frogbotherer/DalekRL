@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import libtcodpy as libtcod
-from interfaces import Mappable, Traversable, Transparent, TurnTaker, CountUp, Position, Activatable, HasInventory, Shouter
+from interfaces import Mappable, Traversable, Transparent, TurnTaker, CountUp, Position, Activatable, HasInventory, Shouter, Talker
 from errors import LevelWinError, InvalidMoveError
 from ui import HBar
 
@@ -132,7 +132,7 @@ class Tile(Mappable,Traversable,Transparent):
         #        ps = pattern.apply_to(map_array)
         #        ps.sort(random_get_float)
         if types is None:
-            types = [FloorTeleport,FloorCharger,Crate,Window,Table,Locker]
+            types = [FloorTeleport,FloorCharger,Crate,Window,Table,Locker,ClankyFloor]
 
         ## naive way to do it (slow)
         #r = {}
@@ -184,7 +184,7 @@ class Locker(Tile):
         self.has_given_item = False
 
     def try_movement(self,obj):
-        if not isinstance(obj,HasInventory):
+        if not isinstance(obj,HasInventory) or self.has_given_item:
             return False
 
         self.colour = libtcod.light_grey
@@ -229,6 +229,34 @@ class Table(Tile,Activatable):
 class Floor(Tile):
     def __init__(self, pos):
         Tile.__init__(self, pos, '.', libtcod.dark_grey, 1.0, 1.0)
+
+class ClankyFloor(Tile,Talker,Shouter):
+    patterns = [
+        MapPattern("###",
+                   "ccc",
+                   "###")
+        ]
+    place_min = 5
+    place_max = 25
+
+    def __init__(self, pos):
+        Floor.__init__(self, pos)
+        Talker.__init__(self)
+        Shouter.__init__(self, 15)
+        self.add_phrases('ON',['** CLONK **','** CLANK **'],0.8)
+        self.add_phrases('OFF',['** CLUNK **','** CLANG **'],0.8)
+
+    def try_movement(self, obj):
+        if self.talk('ON') and obj is self.map.player:
+            self.shout()
+        #TODO: fixme self.stop_talk()
+        return True
+
+    def try_leaving(self, obj):
+        if self.talk('OFF') and obj is self.map.player:
+            self.shout()
+        #TODO: fixme self.stop_talk()
+        return True
 
 class StairsUp(Tile):
     place_max = 1
