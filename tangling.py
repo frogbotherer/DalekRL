@@ -47,8 +47,8 @@ class Tangle(Monster,Tanglable,AI):
             # create reference to tangle
             monster.tangled_with = self
             # get rid of monster chat if applicable
-            if isinstance(monster,Talker) and monster.is_talking:
-                monster.stop_talk() # this clears chat and sets is_talking to False
+            #if isinstance(monster,Talker) and monster.is_talking:
+            #    monster.stop_talk() # this clears chat and sets is_talking to False
             # hide monster
             monster.is_visible = False
             # increment tangle counter

@@ -8,7 +8,7 @@ import sys
 import libtcodpy as libtcod
 
 # our imports
-from interfaces import Position, TurnTaker
+from interfaces import Position, TurnTaker, Talker
 from ui import UI
 from maps import Map
 from player import Player
@@ -75,4 +75,4 @@ while not libtcod.console_is_window_closed():
     except LevelWinError:
         reset(True)
 
-
+    Talker.stop_all_talk()

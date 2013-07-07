@@ -279,6 +279,8 @@ class CanSee:
 
 # TODO: needs to track who's talking and shut them up the next turn
 class Talker:
+    currently_talking = []
+
     def __init__(self):
         self.__phrases = {}
         self.is_talking = False
@@ -297,6 +299,7 @@ class Talker:
     def stop_talk(self):
         self.__chat.is_visible = False
         self.is_talking = False
+        self.currently_talking.remove(weakref.ref(self))
 
     def talk(self, key=None):
         if self.is_talking:
@@ -309,11 +312,20 @@ class Talker:
             self.__chat.text = self.__phrases[key]['phrases'][libtcod.random_get_int(None,0,len(self.__phrases[key]['phrases'])-1)]
             self.is_talking = True
             self.__chat.is_visible = True
+            self.currently_talking.append(weakref.ref(self))
             if isinstance(self,Shouter) and self.__phrases[key]['is_shouting']:
                 self.shout()
             return True
         return False
     
+    @staticmethod
+    def stop_all_talk():
+        for tref in Talker.currently_talking:
+            t = tref()
+            if t is None:
+                Talker.currently_talking.remove(tref)
+            else:
+                t.stop_talk()
 
 class Shouter:
     def __init__(self,audible_radius=10):

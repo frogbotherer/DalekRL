@@ -155,8 +155,8 @@ class CrateLifter (Monster,Tanglable,Talker,Shouter,AI):
         self.my_crate = None
         self.am_carrying_my_crate = False
 
-        self.add_phrases('default',['doop doop','doop de doop','a boop de doop'],0.1)
-        self.add_phrases('sad',['MY CRATE NOOO!','WHERE CRATE?','NULL CRATE EXCEPTION!'],0.1)
+        self.add_phrases('default',['doop doop','doop de doop','a boop de doop'],0.2)
+        self.add_phrases('sad',['MY CRATE NOOO!','WHERE CRATE?','NULL CRATE EXCEPTION!'],0.4)
         self.add_phrases('angry',['** ILLEGAL CRATE CONTENTS **','** ERROR ** ERROR **'],1.0)
         self.add_phrases('happy',['DONK!','order fulfilled!','Return code: 0'],0.8)
 
@@ -307,10 +307,10 @@ class Dalek (Monster,Tanglable,Talker,Alertable,Shouter,DalekAI):
         Monster.__init__(self,pos,'d',libtcod.red)
         Tanglable.__init__(self,5)
         Talker.__init__(self)
-        self.add_phrases( MS_RecentlyTangled, ['** BZZZT **'], 0.2 )
-        self.add_phrases( MS_SeekingPlayer, ['** EXTERMINATE! **','** DESTROY! **','** HALT! **'], 0.05, True )
-        self.add_phrases( MS_InvestigateSpot, ['** HUNTING **','** I WILL FIND YOU **'], 0.05 )
-        self.add_phrases( MS_Patrolling, ['** BEEP BOOP **','** BOOP BEEP **'], 0.05 )
+        self.add_phrases( MS_RecentlyTangled, ['** BZZZT **'], 0.45 )
+        self.add_phrases( MS_SeekingPlayer, ['** EXTERMINATE! **','** DESTROY! **','** HALT! **'], 0.35, True )
+        self.add_phrases( MS_InvestigateSpot, ['** HUNTING **','** I WILL FIND YOU **'], 0.25 )
+        self.add_phrases( MS_Patrolling, ['** BEEP BOOP **','** BOOP BEEP **'], 0.15 )
 
         Alertable.__init__(self,30)
         Shouter.__init__(self,30)
@@ -382,9 +382,9 @@ class BetterDalek (Monster,Talker,Alertable,Shouter,DalekAI):
     def __init__(self,pos=None):
         Monster.__init__(self,pos,'b',libtcod.red)
         Talker.__init__(self)
-        self.add_phrases( MS_SeekingPlayer, ['** EXTERMINATE! **','** DESTROY! **','** HALT! **'], 0.05, True )
-        self.add_phrases( MS_InvestigateSpot, ['** HUNTING **','** I WILL FIND YOU **'], 0.05 )
-        self.add_phrases( MS_Patrolling, ['** RRRRRRRRRR **','** BZZZZZZZZ **'], 0.05 )
+        self.add_phrases( MS_SeekingPlayer, ['** EXTERMINATE! **','** DESTROY! **','** HALT! **'], 0.25, True )
+        self.add_phrases( MS_InvestigateSpot, ['** HUNTING **','** I WILL FIND YOU **'], 0.15 )
+        self.add_phrases( MS_Patrolling, ['** RRRRRRRRRR **','** BZZZZZZZZ **'], 0.15 )
 
         Alertable.__init__(self,30)
         Shouter.__init__(self,30)
@@ -463,9 +463,9 @@ class SlowDalek (BetterDalek):
     def __init__(self,pos=None):
         Monster.__init__(self,pos,'s',libtcod.red)
         Talker.__init__(self)
-        self.add_phrases( MS_SeekingPlayer, ['** EXXXXX **','** TERRRRR **','** MIIII **'], 0.05, True )
-        self.add_phrases( MS_InvestigateSpot, ['** BUUUU **','** AAAA **'], 0.05 )
-        self.add_phrases( MS_Patrolling, ['** RRRRRRRRRR **','** BZZZZZZZZ **'], 0.05 )
+        self.add_phrases( MS_SeekingPlayer, ['** EXXXXX **','** TERRRRR **','** MIIII **'], 0.15, True )
+        self.add_phrases( MS_InvestigateSpot, ['** BUUUU **','** AAAA **'], 0.15 )
+        self.add_phrases( MS_Patrolling, ['** RRRRRRRRRR **','** BZZZZZZZZ **'], 0.15 )
 
         Alertable.__init__(self,30)
         Shouter.__init__(self,30)
@@ -490,7 +490,7 @@ class StaticCamera(Monster, Talker, CountUp, Shouter, AI):
         Talker.__init__(self)
         self.add_phrases( MS_SeekingPlayer, ['** BLAAARP! BLAAARP! **','** INTRUDER ALERT! **','** WARNING! **'], 0.7, True )
         self.add_phrases( MS_InvestigateSpot, ['beeeeeeee','bip bip bip bip'], 1.0 )
-        self.add_phrases( MS_Stationary, ['bip','whrrrrr'], 0.1 )
+        self.add_phrases( MS_Stationary, ['bip','whrrrrr'], 0.2 )
         Shouter.__init__(self,50)
         CountUp.__init__(self,2)
 
