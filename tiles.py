@@ -132,7 +132,7 @@ class Tile(Mappable,Traversable,Transparent):
         #        ps = pattern.apply_to(map_array)
         #        ps.sort(random_get_float)
         if types is None:
-            types = [FloorTeleport,FloorCharger,Crate,Window,Table,Locker,ClankyFloor,CameraConsole]
+            types = [FloorTeleport,FloorCharger,Crate,Window,Table,Locker,WallPanel,ClankyFloor,CameraConsole]
 
         ## naive way to do it (slow)
         #r = {}
@@ -203,7 +203,7 @@ class Locker(Tile):
                    "###",
                    "###")
         ]
-    place_min = 5
+    place_min = 3
     place_max = 10
     def __init__(self, pos):
         Tile.__init__(self, pos, 'L', libtcod.light_green, 0.0, 0.0, True)
@@ -215,6 +215,31 @@ class Locker(Tile):
 
         self.colour = libtcod.light_grey
         obj.pickup(Item.random(None,None,weight=1.2))
+        self.has_given_item = True
+
+        return False
+
+class WallPanel(Tile):
+    # TODO: factor out common with lockers and subclass
+    patterns = [
+        MapPattern("...",
+                   "###",
+                   "###")
+        ]
+    place_min = 7
+    place_max = 13
+    def __init__(self, pos):
+        Tile.__init__(self, pos, 'P', libtcod.dark_yellow, 0.0, 0.0, True)
+        self.has_given_item = False
+        self.evidence = None # TODO: this panel might contain the evidence?
+
+    def try_movement(self,obj):
+        if not isinstance(obj,HasInventory) or self.has_given_item:
+            return False
+
+        self.colour = libtcod.light_grey
+        if not self.evidence is None:
+            obj.pickup(self.evidence)
         self.has_given_item = True
 
         return False
@@ -541,12 +566,12 @@ class FloorCharger(Tile, CountUp):
 from monsters import Monster, StaticCamera
 class CameraConsole(CountUpTile):
     patterns = [
-        MapPattern("rrr",
+        MapPattern("###",
                    "rrr",
-                   "###")
+                   "rrr")
         ]
-    place_min = 10
-    place_max = 20
+    place_min = 1
+    place_max = 2
 
     cameras_on = True
 
@@ -568,7 +593,8 @@ class CameraConsole(CountUpTile):
             cams = self.map.find_all(StaticCamera,Monster)
 
             if c == '1':
-                pass
+                for cam in cams:
+                    cam.has_been_seen = True
 
             elif c == '2':
                 if CameraConsole.cameras_on:

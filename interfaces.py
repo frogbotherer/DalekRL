@@ -277,7 +277,6 @@ class CanSee:
         raise NotImplementedError
 
 
-# TODO: needs to track who's talking and shut them up the next turn
 class Talker:
     currently_talking = []
 
