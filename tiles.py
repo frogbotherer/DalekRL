@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
 import libtcodpy as libtcod
-from interfaces import Mappable, Traversable, Transparent, TurnTaker, CountUp, Position, Activatable, HasInventory, Shouter, Talker
+from interfaces import Mappable, Traversable, Transparent, TurnTaker, CountUp, Position, Activatable, HasInventory, Shouter, Talker, StatusEffect
 from errors import LevelWinError, InvalidMoveError
-from ui import HBar
+from ui import HBar, Menu
 
 from functools import reduce
 
@@ -132,7 +132,7 @@ class Tile(Mappable,Traversable,Transparent):
         #        ps = pattern.apply_to(map_array)
         #        ps.sort(random_get_float)
         if types is None:
-            types = [FloorTeleport,FloorCharger,Crate,Window,Table,Locker,ClankyFloor]
+            types = [FloorTeleport,FloorCharger,Crate,Window,Table,Locker,ClankyFloor,CameraConsole]
 
         ## naive way to do it (slow)
         #r = {}
@@ -165,6 +165,32 @@ class Tile(Mappable,Traversable,Transparent):
             r[T].sort( key = lambda a: libtcod.random_get_float(rng,0.0,1.0) )
 
         return r
+
+class CountUpTile(Tile,CountUp,TurnTaker):
+
+    def __init__(self, pos, symbol, colour, walk_cost=0.0, transparency=0.0, may_block_movement=False, count_up=10):
+        Tile.__init__(self, pos, symbol, colour, walk_cost, transparency, may_block_movement)
+        CountUp.__init__(self, count_up+1)
+        TurnTaker.__init__(self, 0)
+        self.bar = HBar(Position(pos.x-2,pos.y-1),5,libtcod.light_blue,libtcod.darkest_grey)
+        self.bar.max_value = self.count_to-1
+        self.bar.timeout = 5.0
+
+    def step_on(self):
+
+        if self.pos == self.map.player.pos:
+            if self.count == 0:
+                self.bar.is_visible = True
+            if self.inc():
+                return True
+            else:
+                self.bar.value = self.count_to-self.count
+        elif self.count > 0:
+            self.bar.is_visible = False
+            self.bar.value = 0
+            self.reset()
+
+        return False
 
 
 class Wall(Tile):
@@ -249,13 +275,13 @@ class ClankyFloor(Tile,Talker,Shouter):
     def try_movement(self, obj):
         if self.talk('ON') and obj is self.map.player:
             self.shout()
-        #TODO: fixme self.stop_talk()
+
         return True
 
     def try_leaving(self, obj):
         if self.talk('OFF') and obj is self.map.player:
             self.shout()
-        #TODO: fixme self.stop_talk()
+
         return True
 
 class StairsUp(Tile):
@@ -263,30 +289,15 @@ class StairsUp(Tile):
     def __init__(self, pos):
         Tile.__init__(self, pos, '<', libtcod.dark_grey, 1.0, 1.0)
 
-class StairsDown(Tile,CountUp,TurnTaker):
+class StairsDown(CountUpTile):
     place_max = 1
     def __init__(self, pos):
-        Tile.__init__(self, pos, '>', libtcod.light_grey, 1.0, 1.0)
-        CountUp.__init__(self, 11)
-        TurnTaker.__init__(self, 0)
-
-        self.bar = HBar(Position(pos.x-2,pos.y-1),5,libtcod.light_blue,libtcod.darkest_grey)
-        self.bar.max_value = self.count_to-1
-        self.bar.timeout = 5.0
+        CountUpTile.__init__(self, pos, '>', libtcod.light_grey, 1.0, 1.0, count_up=10)
 
     def take_turn(self):
+        if self.step_on():
+            raise LevelWinError("Escaped!")
 
-        if self.pos == self.map.player.pos:
-            if self.count == 0:
-                self.bar.is_visible = True
-            if self.inc():
-                raise LevelWinError("You have escaped!")
-            else:
-                self.bar.value = self.count_to-self.count
-        elif self.count > 0:
-            self.bar.is_visible = False
-            self.bar.value = 0
-            self.reset()
 
 class Crate(Tile, Activatable):
     patterns = [
@@ -525,3 +536,46 @@ class FloorCharger(Tile, CountUp):
                         return True
 
         return True
+
+
+from monsters import Monster, StaticCamera
+class CameraConsole(CountUpTile):
+    patterns = [
+        MapPattern("rrr",
+                   "rrr",
+                   "###")
+        ]
+    place_min = 10
+    place_max = 20
+
+    cameras_on = True
+
+    def __init__(self,pos):
+        CountUpTile.__init__(self, pos, 'C', libtcod.purple, 1.0, 1.0, count_up=7)
+
+    def take_turn(self):
+        if self.step_on():
+            xu = self.map.size.x//4
+            yu = self.map.size.y//4
+            b = Menu( Position(xu,yu), Position(xu*2,yu*2), title="Camera Control" )
+            b.add('1',"View cameras")
+            b.add('2',"Switch %s cameras" %(CameraConsole.cameras_on and 'off' or 'on'))
+            b.add('x',"Exit")
+
+            c = b.get_key()
+            del b
+
+            cams = self.map.find_all(StaticCamera,Monster)
+
+            if c == '1':
+                pass
+
+            elif c == '2':
+                if CameraConsole.cameras_on:
+                    for cam in cams:
+                        cam.add_effect(StatusEffect.BLIND)
+                else:
+                    for cam in cams:
+                        cam.remove_effect(StatusEffect.BLIND)
+
+                CameraConsole.cameras_on = not CameraConsole.cameras_on

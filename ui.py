@@ -182,7 +182,8 @@ class MenuItem:
 
 class MenuItemSpacer(MenuItem):
     def __init__(self):
-        pass
+        self.hotkey = None
+
     def draw_at(self,pos):
         pass
 
@@ -232,3 +233,26 @@ class Menu(Box):
             return self.sel_prev()
         return True
 
+    def get_key(self):
+        self.is_visible = True
+        r = None
+        while 1:
+            self.draw()
+            libtcod.console_flush()
+            k = libtcod.console_wait_for_keypress(True)
+            if k and k.pressed and k.c:
+                c = chr(k.c)
+                if c in [i.hotkey for i in self.__items]:
+                    r = c
+                    break
+                elif c == 'j':
+                    self.sel_prev()
+                elif c == 'k':
+                    self.sel_next()
+                elif c == ' ':
+                    if self.sel_index() != 0:
+                        r = self.__items[self.sel_index()].hotkey
+                    break
+            self.is_visible = False
+
+        return r

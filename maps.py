@@ -204,6 +204,8 @@ class Map:
         # TODO: handle x-ray vision here
         assert isinstance(obj,Mappable), "%s can't be tested for visibility" % obj
         if target is None or target is self.player:
+            if isinstance(obj,StatusEffect) and obj.has_effect(StatusEffect.BLIND):
+                return False
             #if angle_of_vis<1.0:
             #    print("angle from %s to %s is %f"%(obj,self.player,(obj.pos-obj.last_pos).angle_to(self.player.pos-obj.pos)))
             # 

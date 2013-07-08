@@ -125,43 +125,18 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
         if not None in items:
             # prompt to drop something; drop it
 
-            ###
-            # prompt code [TODO: refactor me!]
             xu = self.map.size.x//4
             yu = self.map.size.y//4
-            b = Menu( Position(xu,yu), Position(xu*2,yu*2), title="Pick up" )
+            b = Menu( Position(xu,yu), Position(xu*2,yu*2), title="Pick Up" )
             b.add('x',str(i))
             b.add_spacer()
             for idx in range(len(items)):
                 v = items[idx]
                 b.add('%d'%(idx+1),str(v))
-            b.is_visible = True
-            while 1:
-                b.draw()
-                libtcod.console_flush()
-                k = libtcod.console_wait_for_keypress(True)
-                if k and k.pressed and k.c:
-                    c = chr(k.c)
-                    if   c == 'x':
-                        break
-                    elif c == '1':
-                        item_index = 0
-                        break
-                    elif c == '2':
-                        item_index = 1
-                        break
-                    elif c == '3':
-                        item_index = 2
-                        break
-                    elif c == 'j':
-                        b.sel_prev()
-                    elif c == 'k':
-                        b.sel_next()
-                    elif c == ' ':
-                        if b.sel_index() != 0:
-                            item_index = b.sel_index()-1
-                        break
-            b.is_visible = False
+            c = b.get_key()
+            if isinstance(c,str) and c.isnumeric():
+                item_index = int(c) - 1
+
             del b
             if item_index is None or item_index >= len(items):
                 return

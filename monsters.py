@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import libtcodpy as libtcod
-from interfaces import Mappable, Position, Activatable, Activator, CountUp, Talker, TurnTaker, Alertable, Shouter
+from interfaces import Mappable, Position, Activatable, Activator, CountUp, Talker, TurnTaker, Alertable, Shouter, StatusEffect
 from errors import GameOverError, InvalidMoveError, TodoError
 from ui import HBar, Message, Menu
 
@@ -27,7 +27,7 @@ class AI:
         self.state = MS_Stationary(self)
 
 
-class Monster (Mappable, TurnTaker):
+class Monster (Mappable, TurnTaker, StatusEffect):
     # TODO: genericise item generation logic and reuse here
     generator_weight = 1.0
     # put most dangerous to right
@@ -36,6 +36,7 @@ class Monster (Mappable, TurnTaker):
     def __init__(self,pos,symbol,colour):
         Mappable.__init__(self,pos,symbol,colour)
         TurnTaker.__init__(self,10)
+        StatusEffect.__init__(self)
 
     def __str__(self):
         return "%s at %s facing %s" %(self.__class__.__name__,self.pos,self.pos-self.last_pos)
@@ -140,6 +141,46 @@ class MS_Patrolling(Monster_State):
 class MS_Stationary(Monster_State):
     def get_move(self):
         return self.monster.pos
+
+
+class StaticCamera(Monster, Talker, CountUp, Shouter, AI):
+    generator_weight = 0.5
+
+    def __init__(self,pos=None):
+        Monster.__init__(self,pos,'c',libtcod.light_red)
+        self.remains_in_place = True
+        Talker.__init__(self)
+        self.add_phrases( MS_SeekingPlayer, ['** BLAAARP! BLAAARP! **','** INTRUDER ALERT! **','** WARNING! **'], 0.7, True )
+        self.add_phrases( MS_InvestigateSpot, ['beeeeeeee','bip bip bip bip'], 1.0 )
+        self.add_phrases( MS_Stationary, ['bip','whrrrrr'], 0.2 )
+        Shouter.__init__(self,50)
+        CountUp.__init__(self,2)
+
+        AI.__init__(self)
+
+    def take_turn(self):
+        # sanity checks
+        assert not self.map is None, "%s can't take turn without a map" % self
+
+        # if not visible, do nothing
+        if not self.is_visible:
+            #print("%s not visible. tangled? %s"%(self,self.is_tangled()))
+            return
+
+        if self.map.can_see(self):
+            if self.inc():
+                self.state = MS_SeekingPlayer(self)
+
+            elif not isinstance(self.state,MS_InvestigateSpot):
+                self.state = MS_InvestigateSpot( self, self.map.player.pos )
+        
+        else: # can't see player
+            if not isinstance(self.state,MS_Stationary):
+                self.state = MS_Stationary(self)
+                self.reset()
+
+        self.talk(self.state.__class__)
+
 
 from tiles import Tile,Crate
 class CrateLifter (Monster,Tanglable,Talker,Shouter,AI):
@@ -481,41 +522,5 @@ class SlowDalek (BetterDalek):
         else:
             self._tick = True
 
-class StaticCamera(Monster, Talker, CountUp, Shouter, AI):
-    generator_weight = 0.5
 
-    def __init__(self,pos=None):
-        Monster.__init__(self,pos,'c',libtcod.light_red)
-        self.remains_in_place = True
-        Talker.__init__(self)
-        self.add_phrases( MS_SeekingPlayer, ['** BLAAARP! BLAAARP! **','** INTRUDER ALERT! **','** WARNING! **'], 0.7, True )
-        self.add_phrases( MS_InvestigateSpot, ['beeeeeeee','bip bip bip bip'], 1.0 )
-        self.add_phrases( MS_Stationary, ['bip','whrrrrr'], 0.2 )
-        Shouter.__init__(self,50)
-        CountUp.__init__(self,2)
-
-        AI.__init__(self)
-
-    def take_turn(self):
-        # sanity checks
-        assert not self.map is None, "%s can't take turn without a map" % self
-
-        # if not visible, do nothing
-        if not self.is_visible:
-            #print("%s not visible. tangled? %s"%(self,self.is_tangled()))
-            return
-
-        if self.map.can_see(self):
-            if self.inc():
-                self.state = MS_SeekingPlayer(self)
-
-            elif not isinstance(self.state,MS_InvestigateSpot):
-                self.state = MS_InvestigateSpot( self, self.map.player.pos )
-        
-        else: # can't see player
-            if not isinstance(self.state,MS_Stationary):
-                self.state = MS_Stationary(self)
-                self.reset()
-
-        self.talk(self.state.__class__)
 
