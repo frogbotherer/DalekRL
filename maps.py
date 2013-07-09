@@ -6,7 +6,7 @@ from monsters import Monster
 from player import Player
 from interfaces import Mappable, Position, Traversable, Transparent, StatusEffect
 from items import Item, Evidence
-from tiles import Tile, Wall, Floor, Door, StairsDown, StairsUp, FloorTeleport, MapPattern
+from tiles import Tile, Wall, Floor, Door, StairsDown, StairsUp, FloorTeleport, MapPattern, CanHaveEvidence
 from errors import TodoError, InvalidMoveError
 
 from functools import reduce
@@ -269,6 +269,26 @@ class Map:
             self.add(Wall(Position(0,i)))
             self.add(Wall(Position(self.size.x-1,i)))
 
+    def _gen_add_evidence(self):
+        # do some stuff with an evidence object
+        e = Evidence(None)
+
+        # figure out where to put it
+        OPEN_SPACE_P  = 2.0 # probability weight of evidence being in the open
+        hiding_places = self.find_all(CanHaveEvidence,Tile)
+        max_p         = reduce( lambda a,b: a+b, [h.evidence_chance for h in hiding_places], 0.0 )
+        p             = libtcod.random_get_float(self.map_rng, -OPEN_SPACE_P, max_p)
+        if p <= 0.0:
+            e.pos = self.find_random_clear(self.map_rng)
+            self.add(e)
+        
+        else:
+            i = -1
+            while p > 0:
+                i += 1
+                p -= hiding_places[i].evidence_chance
+            hiding_places[i].evidence = e
+
     def _gen_add_key_elements(self):
         up_pos   = self.find_random_clear(self.map_rng)
         down_pos = self.find_random_clear(self.map_rng)
@@ -332,7 +352,7 @@ class EmptyMap(Map):
             self.add(i)
 
         # add evidence
-        self.add(Evidence(self.find_random_clear(self.map_rng)))
+        self._gen_add_evidence()
 
         self._gen_add_key_elements()
         self._gen_finish()
@@ -370,7 +390,7 @@ class DalekMap(Map):
             self.add(i)
 
         # add evidence
-        self.add(Evidence(self.find_random_clear(self.map_rng)))
+        self._gen_add_evidence()
 
         self._gen_add_key_elements()
         self._gen_finish()
@@ -1079,7 +1099,7 @@ class TypeAMap(Map):
             self.add(i)
 
         # add evidence
-        self.add(Evidence(self.find_random_clear(self.map_rng)))
+        self._gen_add_evidence()
 
         self._gen_add_key_elements()
         self._gen_finish()

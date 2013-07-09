@@ -200,12 +200,21 @@ class CountUpTile(Tile,CountUp,Activatable):
         self.reset()
         return Tile.try_leaving(self,obj)
 
+# TODO: move to interfaces?
+class CanHaveEvidence:
+    evidence_chance = 1.0
+    def __init__(self):
+        self.evidence = None
+
+    def has_evidence(self):
+        return not self.evidence is None
+    
 
 class Wall(Tile):
     def __init__(self, pos):
         Tile.__init__(self, pos, '#', libtcod.light_grey)
 
-class Locker(Tile):
+class Locker(Tile,CanHaveEvidence):
     patterns = [
         MapPattern("...",
                    "###",
@@ -215,19 +224,24 @@ class Locker(Tile):
     place_max = 10
     def __init__(self, pos):
         Tile.__init__(self, pos, 'L', libtcod.light_green, 0.0, 0.0, True)
+        CanHaveEvidence.__init__(self)
         self.has_given_item = False
 
     def try_movement(self,obj):
         if not isinstance(obj,HasInventory) or self.has_given_item:
             return False
 
-        self.colour = libtcod.light_grey
-        obj.pickup(Item.random(None,None,weight=1.2))
-        self.has_given_item = True
+        if self.has_evidence():
+            obj.pickup(self.evidence)
 
+        else:
+            obj.pickup(Item.random(None,None,weight=1.2))
+
+        self.colour = libtcod.light_grey
+        self.has_given_item = True
         return False
 
-class WallPanel(Tile):
+class WallPanel(Tile,CanHaveEvidence):
     # TODO: factor out common with lockers and subclass
     patterns = [
         MapPattern("...",
@@ -239,15 +253,16 @@ class WallPanel(Tile):
     def __init__(self, pos):
         Tile.__init__(self, pos, 'P', libtcod.dark_yellow, 0.0, 0.0, True)
         self.has_given_item = False
-        self.evidence = None # TODO: this panel might contain the evidence?
+        CanHaveEvidence.__init__(self)
 
     def try_movement(self,obj):
         if not isinstance(obj,HasInventory) or self.has_given_item:
             return False
 
-        self.colour = libtcod.light_grey
-        if not self.evidence is None:
+        if self.has_evidence():
             obj.pickup(self.evidence)
+
+        self.colour = libtcod.light_grey
         self.has_given_item = True
 
         return False

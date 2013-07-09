@@ -115,7 +115,8 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
 
         if isinstance(i,Evidence):
             self.evidence.append(i)
-            self.map.remove(i)
+            if not i.pos is None: # found it in a locker
+                self.map.remove(i)
             return
 
         item_index = None
