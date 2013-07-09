@@ -166,12 +166,13 @@ class Tile(Mappable,Traversable,Transparent):
 
         return r
 
-class CountUpTile(Tile,CountUp,TurnTaker):
+class CountUpTile(Tile,CountUp,Activatable):
 
     def __init__(self, pos, symbol, colour, walk_cost=0.0, transparency=0.0, may_block_movement=False, count_up=10):
         Tile.__init__(self, pos, symbol, colour, walk_cost, transparency, may_block_movement)
         CountUp.__init__(self, count_up+1)
-        TurnTaker.__init__(self, 0)
+        #TurnTaker.__init__(self, 0)
+        Activatable.__init__(self)
         self.bar = HBar(Position(pos.x-2,pos.y-1),5,libtcod.light_blue,libtcod.darkest_grey)
         self.bar.max_value = self.count_to-1
         self.bar.timeout = 5.0
@@ -185,12 +186,19 @@ class CountUpTile(Tile,CountUp,TurnTaker):
                 return True
             else:
                 self.bar.value = self.count_to-self.count
-        elif self.count > 0:
-            self.bar.is_visible = False
-            self.bar.value = 0
-            self.reset()
+
+       # elif self.count > 0:
+       #     self.bar.is_visible = False
+       #     self.bar.value = 0
+       #     self.reset()
 
         return False
+
+    def try_leaving(self,obj):
+        self.bar.is_visible = False
+        self.bar.value = 0
+        self.reset()
+        return Tile.try_leaving(self,obj)
 
 
 class Wall(Tile):
@@ -319,7 +327,7 @@ class StairsDown(CountUpTile):
     def __init__(self, pos):
         CountUpTile.__init__(self, pos, '>', libtcod.light_grey, 1.0, 1.0, count_up=10)
 
-    def take_turn(self):
+    def activate(self,activator=None):
         if self.step_on():
             raise LevelWinError("Escaped!")
 
@@ -578,7 +586,7 @@ class CameraConsole(CountUpTile):
     def __init__(self,pos):
         CountUpTile.__init__(self, pos, 'C', libtcod.purple, 1.0, 1.0, count_up=7)
 
-    def take_turn(self):
+    def activate(self, activator=None):
         if self.step_on():
             xu = self.map.size.x//4
             yu = self.map.size.y//4
