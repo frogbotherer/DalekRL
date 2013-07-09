@@ -669,7 +669,7 @@ class TypeAMap(Map):
 
                             #  * put a door at collision point
                             self.debug_print("    Door added in corner at %s"%(target_pos+self._gen_pos_from_dir( self._gen_get_compass_right(direction), 1 )))
-                            r_segs.append(self._ME(MapPattern.DOOR|MapPattern.WALL, target_pos+self._gen_pos_from_dir( self._gen_get_compass_right(direction), 1 ), Position(1,1), Position(x,y)))
+                            r_segs.append(self._ME(MapPattern.DOOR, target_pos+self._gen_pos_from_dir( self._gen_get_compass_right(direction), 1 ), Position(1,1), Position(x,y)))
                             t = self._gen_get_compass_left(direction)
                             if bounds[t] == self.BOUNDARY_UNSET:
                                 if t in ('N','S'):
@@ -702,7 +702,7 @@ class TypeAMap(Map):
 
                             #  * put a door at collision point
                             self.debug_print("        Door added at %s"%(Position(x,y)-self._gen_pos_from_dir(direction,1)))
-                            r_segs.append(self._ME(MapPattern.DOOR|MapPattern.WALL, Position(x,y)-self._gen_pos_from_dir(direction,1), Position(1,1), Position(x,y)))
+                            r_segs.append(self._ME(MapPattern.DOOR, Position(x,y)-self._gen_pos_from_dir(direction,1), Position(1,1), Position(x,y)))
 
                         #  * record this position as the bound for this direction
                         if bounds[direction] == self.BOUNDARY_UNSET:
