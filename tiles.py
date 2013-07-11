@@ -235,7 +235,11 @@ class Locker(Tile,CanHaveEvidence):
             obj.pickup(self.evidence)
 
         else:
-            obj.pickup(Item.random(None,None,weight=1.2))
+            i = Item.random(None,None,weight=1.2)
+            if not obj.pickup(i):
+                i.pos = obj.pos
+                i.is_visible = True
+                self.map.add(i)
 
         self.colour = libtcod.light_grey
         self.has_given_item = True

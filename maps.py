@@ -274,10 +274,10 @@ class Map:
         e = Evidence(None)
 
         # figure out where to put it
-        OPEN_SPACE_P  = 2.0 # probability weight of evidence being in the open
+        OPEN_SPACE_P  = 0.3 # probability weight of evidence being in the open
         hiding_places = self.find_all(CanHaveEvidence,Tile)
         max_p         = reduce( lambda a,b: a+b, [h.evidence_chance for h in hiding_places], 0.0 )
-        p             = libtcod.random_get_float(self.map_rng, -OPEN_SPACE_P, max_p)
+        p             = libtcod.random_get_float(self.map_rng, -OPEN_SPACE_P*max_p, max_p)
         if p <= 0.0:
             e.pos = self.find_random_clear(self.map_rng)
             self.add(e)

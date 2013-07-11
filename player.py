@@ -110,6 +110,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
             return self.map.prepare_fov(self.pos,0)
 
     def pickup(self,i):
+        """returns True if i picked up successfully"""
         # TODO: move all this into HasInventory interface
         assert isinstance(i,Item), "Can't pick up a %s"%i
 
@@ -117,7 +118,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
             self.evidence.append(i)
             if not i.pos is None: # found it in a locker
                 self.map.remove(i)
-            return
+            return True
 
         item_index = None
         items      = self.items
@@ -140,7 +141,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
 
             del b
             if item_index is None or item_index >= len(items):
-                return
+                return False
             items[item_index].drop_at(self.pos)
             self.map.add(items[item_index])
         else:
@@ -154,6 +155,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
         if not i.pos is None: # if taken from locker or other bonus
             self.map.remove(i)
         i.take_by(self)
+        return True
 
     def do_nothing(self):
         self.move( (0,0) ) # triggers try_movement on current square
