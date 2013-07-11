@@ -378,27 +378,27 @@ class Dalek (Monster,Tanglable,Talker,Alertable,Shouter,DalekAI):
             m = self.map.find_all_at_pos(new_pos,Monster)
 
             ## this logic stops the monster from entering the same square as a non-tanglable
-            ## ... with the side-effect that the player can stand on static cameras and be
-            ##     untouchable :(
-            #if len(m) == 0:
-            #    self.move_to(new_pos)
-            #
-            #elif len([mi for mi in m if isinstance(mi,Tanglable)]) > 0:
-            #    # tangle if poss
-            #    self.move_to(new_pos)
-            #    self.tangle(m[0])
-            #    self.state = MS_RecentlyTangled(self)
-            #
-            #else:
-            #    # don't move if can't tangle with dest monster
-            #    #print("%s can't tangle with %s" % (self,m[0]))
-            #    pass
-            self.move_to(new_pos)
-
-            ms = [mi for mi in m if isinstance(mi,Tanglable)]
-            if len(ms) > 0:
-                self.tangle(ms[0])
+            ## it also makes sure that the player can't stand on static cameras and be
+            ## untouchable
+            if len(m) == 0 or len([mi for mi in m if not mi.remains_in_place]) == 0:
+                self.move_to(new_pos)
+            
+            elif len([mi for mi in m if isinstance(mi,Tanglable)]) > 0:
+                # tangle if poss
+                self.move_to(new_pos)
+                self.tangle([mi for mi in m if isinstance(mi,Tanglable)][0])
                 self.state = MS_RecentlyTangled(self)
+            
+            else:
+                # don't move if can't tangle with dest monster
+                #print("%s can't tangle with %s" % (self,m[0]))
+                pass
+
+            #self.move_to(new_pos)
+            #ms = [mi for mi in m if isinstance(mi,Tanglable)]
+            #if len(ms) > 0:
+            #    self.tangle(ms[0])
+            #    self.state = MS_RecentlyTangled(self)
 
         except InvalidMoveError:
             pass

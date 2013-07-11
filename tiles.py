@@ -392,7 +392,7 @@ class Crate(Tile, Activatable):
         return not obj is self.owner
 
 
-class Window(Tile,Shouter):
+class Window(Tile,Shouter,Talker):
     patterns = [
         MapPattern("rrr",
                    "###",
@@ -402,10 +402,12 @@ class Window(Tile,Shouter):
     place_max = 10
     def __init__(self, pos):
         Tile.__init__(self, pos, '\\', libtcod.light_grey, 0.0, 1.0)
+        Talker.__init__(self)
         Shouter.__init__(self, 20)
+        self.add_phrases(None, ["// SMASH //","// CRASH //"], 1.0, True)
 
     def smash(self):
-        self.shout(self.pos)
+        self.talk()
         self.map.add(Floor(self.pos))
         self.map.remove(self)
 
