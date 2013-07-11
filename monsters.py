@@ -39,7 +39,7 @@ class Monster (Mappable, TurnTaker, StatusEffect):
         StatusEffect.__init__(self)
 
     def __str__(self):
-        return "%s at %s facing %s" %(self.__class__.__name__,self.pos,self.pos-self.last_pos)
+        return "%s at %s facing %s" %(self.__class__.__name__,self.pos,(self.pos is None or self.last_pos is None) and 'nowhere' or (self.pos-self.last_pos))
 
     def random(rng,pos,weight=1.0):
         if Monster.GENERATOR == []:
