@@ -349,7 +349,7 @@ class Dalek (Monster,Tanglable,Talker,Alertable,Shouter,DalekAI):
         Tanglable.__init__(self,5)
         Talker.__init__(self)
         self.add_phrases( MS_RecentlyTangled, ['** BZZZT **'], 0.45 )
-        self.add_phrases( MS_SeekingPlayer, ['** EXTERMINATE! **','** DESTROY! **','** HALT! **'], 0.35, True )
+        self.add_phrases( MS_SeekingPlayer, ['** EXTERMINATE! **','** DESTROY! **','** HALT! **'], 0.2, True )
         self.add_phrases( MS_InvestigateSpot, ['** HUNTING **','** I WILL FIND YOU **'], 0.25 )
         self.add_phrases( MS_Patrolling, ['** BEEP BOOP **','** BOOP BEEP **'], 0.15 )
 

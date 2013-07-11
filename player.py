@@ -2,8 +2,8 @@
 
 import libtcodpy as libtcod
 
-from interfaces import Mappable, Activator, Activatable, TurnTaker, Position, StatusEffect, HasInventory
-from items import Item, SlotItem, Evidence, XRaySpecs, RunningShoes
+from interfaces import Mappable, Activator, Activatable, TurnTaker, Position, StatusEffect, HasInventory, Talker
+from items import Item, SlotItem, Evidence, XRaySpecs, RunningShoes, EmergencyHammer
 from tiles import Tile
 from ui import UI, Menu
 from errors import GameOverError, InvalidMoveError
@@ -22,7 +22,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
         StatusEffect.__init__(self)
         TurnTaker.__init__(self,1)
         HasInventory.__init__(self,3,(SlotItem.HEAD_SLOT,SlotItem.BODY_SLOT,SlotItem.FEET_SLOT))
-        self.items = [Item.random(None,self,2,1.5),Item.random(None,self,1),None]
+        self.items = [Item.random(None,self,2,1.5),Item.random(None,self,1),EmergencyHammer(self)]
         self.slot_items = {
             SlotItem.HEAD_SLOT: XRaySpecs(self),
             SlotItem.BODY_SLOT: None,
@@ -205,6 +205,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
         except InvalidMoveError:
             pass # sometimes this is ok, like teleporting
             #print("You can't move like that")
+        Talker.stop_all_talk()
         self.reset_fov()
 
     def handle_keys(self):

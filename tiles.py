@@ -392,7 +392,7 @@ class Crate(Tile, Activatable):
         return not obj is self.owner
 
 
-class Window(Tile,Shouter,Talker):
+class Window(Tile,Talker,Shouter):
     patterns = [
         MapPattern("rrr",
                    "###",
@@ -405,12 +405,15 @@ class Window(Tile,Shouter,Talker):
         Talker.__init__(self)
         Shouter.__init__(self, 20)
         self.add_phrases(None, ["// SMASH //","// CRASH //"], 1.0, True)
+        self.is_smashed = False
 
     def smash(self):
-        self.talk()
-        self.map.add(Floor(self.pos))
-        self.map.remove(self)
-
+        print("SMASH")
+        if self.talk():
+            print("... TALK OK")
+        self.symbol = '.'
+        self.walk_cost = 1.0
+        self.is_smashed = True
 
 class Door(Tile,CountUp,TurnTaker):
     OPEN = {'symbol':'.','colour':libtcod.dark_grey,'transparency':1.0,'walkcost':1.0,

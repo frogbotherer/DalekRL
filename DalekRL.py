@@ -74,5 +74,3 @@ while not libtcod.console_is_window_closed():
         reset(False)
     except LevelWinError:
         reset(True)
-
-    Talker.stop_all_talk()

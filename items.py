@@ -226,7 +226,7 @@ class LimitedUsesItem(Item):
     awesome_rank   = 1
     awesome_weight = 1.0
 
-    def __init__(self,owner,item_power,item_colour=libtcod.orange,bar_colour=libtcod.red):
+    def __init__(self,owner,item_power=1.0,item_colour=libtcod.orange,bar_colour=libtcod.red):
         Item.__init__(self,owner,item_power,item_colour)
         uses = int(1 + 3*item_power)
         self.max_uses = uses
@@ -374,10 +374,10 @@ class EmergencyHammer(LimitedUsesItem):
         return "Emergency Hammer"
 
     def activate(self):
-        w = self.owner.map.find_nearest(self.owner,Window,Tile)
-        if not w is None and self.owner.pos.distance_to(w.pos) < 3 and LimitedUsesItem.activate(self):
-            w.smash()
-            return True
+        for w in self.owner.map.find_all_within_r(self.owner,Window,3):
+            if not w.is_smashed and LimitedUsesItem.activate(self):
+                w.smash()
+                return True
         return False
 
 class LevelMap(LimitedUsesItem):
