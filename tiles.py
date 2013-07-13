@@ -620,7 +620,6 @@ class CameraConsole(CountUpTile):
             b.add('x',"Exit")
 
             c = b.get_key()
-            self.map.player.redraw_screen()
             del b
 
             cams = self.map.find_all(StaticCamera,Monster)
@@ -628,8 +627,7 @@ class CameraConsole(CountUpTile):
             if c == '1':
                 for cam in cams:
                     self.map.prepare_fov(cam.pos,reset=False)
-                self.map.player.redraw_screen()
-                libtcod.console_wait_for_keypress(True)
+                self.map.player.handle_keys()
 
             elif c == '2':
                 if CameraConsole.cameras_on:

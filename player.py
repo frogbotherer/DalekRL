@@ -201,7 +201,8 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
         self.turns += 1
         try:
             # handle player input (and redraw screen)
-            self.handle_keys()
+            f = self.handle_keys()
+            f()
         except InvalidMoveError:
             pass # sometimes this is ok, like teleporting
             #print("You can't move like that")
@@ -209,6 +210,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
         self.reset_fov()
 
     def handle_keys(self):
+        """returns pointer to function to call"""
         k = libtcod.Key()
         m = libtcod.Mouse()
 
@@ -218,7 +220,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
 
             ev = libtcod.sys_check_for_event(libtcod.EVENT_KEY_PRESS, k, m)
             if ev and k and k.pressed and chr(k.c) in self.KEYMAP:
-                return self.KEYMAP.get(chr(k.c))()
+                return self.KEYMAP.get(chr(k.c))
 
         # redraw screen after first second after keypress
         self.redraw_screen(Player.MAX_TIMEOUT)
@@ -228,7 +230,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
 
         while True:
             if k and k.pressed and chr(k.c) in self.KEYMAP:
-                return self.KEYMAP.get(chr(k.c))()
+                return self.KEYMAP.get(chr(k.c))
             k = libtcod.console_wait_for_keypress(True)
 
     def redraw_screen(self,t=0):
