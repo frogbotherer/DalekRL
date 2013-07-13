@@ -318,7 +318,13 @@ class Map:
         self.add(self.player)
 
     def _gen_apply_patterns(self,map_array):
-        for (T,ps) in Tile.get_all_tiles(self.map_rng,map_array).items():
+        # won't return consistently ordered list!
+        #for (T,ps) in Tile.get_all_tiles(self.map_rng,map_array).items():
+        Tgat = Tile.get_all_tiles(self.map_rng,map_array)
+        Ts = [k for k in Tgat.keys()]
+        Ts.sort(key = lambda T: T.__name__)
+        for T in Ts:
+            ps = Tgat[T]
             T_wanted = libtcod.random_get_int(self.map_rng,T.place_min,T.place_max)
             while len(ps) > 0 and T_wanted > 0:
                 p = ps.pop()

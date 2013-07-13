@@ -610,6 +610,7 @@ class CameraConsole(CountUpTile):
 
     def __init__(self,pos):
         CountUpTile.__init__(self, pos, 'C', libtcod.purple, 1.0, 1.0, count_up=7)
+        CameraConsole.cameras_on = True # expect this only to be called during map generation
 
     def activate(self, activator=None):
         if self.step_on():
