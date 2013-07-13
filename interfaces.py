@@ -67,6 +67,8 @@ class Mappable:
 
         self.is_visible = True
         self.has_been_seen = False
+        self.visible_to_player = False
+
         self.unseen_symbol = (unseen_symbol is None) and self.symbol or unseen_symbol
         self.unseen_colour = unseen_colour
 
@@ -93,8 +95,8 @@ class Mappable:
             return
         colour = self.colour
         symbol = self.unseen_symbol
-        #if False and not self.map._drawing_can_see(self.pos):
-        if not self.map._drawing_can_see(self.pos):
+
+        if not (self.visible_to_player):
             if self.has_been_seen and self.remains_in_place:
                 colour = self.unseen_colour
                 symbol = self.unseen_symbol
@@ -102,7 +104,6 @@ class Mappable:
                 return
         libtcod.console_put_char_ex(0, self.pos.x, self.pos.y, self.symbol, colour, libtcod.BKGND_NONE)
         self.has_been_seen = True
-
 
 class TurnTaker:
     turn_takers = []

@@ -138,7 +138,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
             c = b.get_key()
             if isinstance(c,str) and c.isnumeric():
                 item_index = int(c) - 1
-
+            self.redraw_screen()
             del b
             if item_index is None or item_index >= len(items):
                 return False
@@ -231,7 +231,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
                 return self.KEYMAP.get(chr(k.c))()
             k = libtcod.console_wait_for_keypress(True)
 
-    def redraw_screen(self,t):
+    def redraw_screen(self,t=0):
         # draw and flush screen
         if not UI.need_update(t):
             # clearly one of the libtcod functions here causes the wait for the next frame

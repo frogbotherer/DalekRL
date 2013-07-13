@@ -195,9 +195,20 @@ class Map:
         #self.__tcod_pathfinder = libtcod.path_new_using_map(self.__tcod_map)
         self.__tcod_pathfinder = libtcod.dijkstra_new(self.__tcod_map)
 
-    def prepare_fov(self, pos, radius=0):
+    def prepare_fov(self, pos, radius=0, reset=True):
+        """recalculate player fov; set reset=False to add to player fov"""
         libtcod.map_compute_fov(self.__tcod_map_empty, pos.x, pos.y, radius, True, libtcod.FOV_BASIC)
         libtcod.map_compute_fov(self.__tcod_map, pos.x, pos.y, radius, True, libtcod.FOV_BASIC)
+
+        for layer in self.__layer_order:
+            for (pos,ts) in self.__layers[layer].items():
+                if self._drawing_can_see(pos):
+                    for t in ts:
+                        t.visible_to_player = True
+                elif reset:
+                    for t in ts:
+                        t.visible_to_player = False
+                
 
     def can_see(self, obj, target=None, angle_of_vis=1.0):
         """default is: can obj see player? angle_of_vis between 0.0 and 1.0 where 0.0 is blind and 1.0 can see all around"""

@@ -255,4 +255,6 @@ class Menu(Box):
                     break
             self.is_visible = False
 
+        # TODO: player.redraw_screen()
+
         return r
