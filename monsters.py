@@ -447,7 +447,8 @@ class BetterDalek (Monster,Talker,Alertable,Shouter,DalekAI):
         # try to move
         try:
             new_pos = self.state.get_move()
-            if new_pos != self.pos and len(self.map.find_all_at_pos(new_pos,Monster))>0:
+            ms = [m for m in self.map.find_all_at_pos(new_pos,Monster) if not m.remains_in_place]
+            if new_pos != self.pos and len(ms)>0:
                 # TODO: complain about path being blocked
                 # attempt a different move
                 #  * get a vector representing the direction we tried
