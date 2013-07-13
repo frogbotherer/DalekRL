@@ -345,6 +345,7 @@ class StairsDown(CountUpTile):
     place_max = 1
     def __init__(self, pos):
         CountUpTile.__init__(self, pos, '>', libtcod.light_grey, 1.0, 1.0, count_up=10)
+        self.unseen_colour = libtcod.light_grey # so you can find it on-screen again
 
     def activate(self,activator=None):
         if self.step_on():
