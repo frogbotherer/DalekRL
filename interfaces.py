@@ -94,7 +94,7 @@ class Mappable:
         if not self.is_visible:
             return
         colour = self.colour
-        symbol = self.unseen_symbol
+        symbol = self.symbol
 
         if not (self.visible_to_player):
             if self.has_been_seen and self.remains_in_place:
@@ -102,7 +102,7 @@ class Mappable:
                 symbol = self.unseen_symbol
             else:
                 return
-        libtcod.console_put_char_ex(0, self.pos.x, self.pos.y, self.symbol, colour, libtcod.BKGND_NONE)
+        libtcod.console_put_char_ex(0, self.pos.x, self.pos.y, symbol, colour, libtcod.BKGND_NONE)
         self.has_been_seen = True
 
 class TurnTaker:

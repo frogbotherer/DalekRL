@@ -132,7 +132,7 @@ class Tile(Mappable,Traversable,Transparent):
         #        ps = pattern.apply_to(map_array)
         #        ps.sort(random_get_float)
         if types is None:
-            types = [FloorTeleport,FloorCharger,Crate,Window,Table,Locker,WallPanel,ClankyFloor,CameraConsole]
+            types = [FloorTeleport,FloorCharger,Crate,Window,Table,Locker,WallPanel,ClankyFloor,TripWire,CameraConsole]
 
         ## naive way to do it (slow)
         #r = {}
@@ -335,6 +335,63 @@ class ClankyFloor(Tile,Talker,Shouter):
             self.shout()
 
         return True
+
+
+class TripWire(Floor,Talker,Shouter,TurnTaker):
+    patterns = [
+        MapPattern("###",
+                   "ccc",
+                   "###")
+        ]
+    place_min = 3
+    place_max = 7
+
+    def __init__(self, pos):
+        Floor.__init__(self, pos)
+        Talker.__init__(self)
+        Shouter.__init__(self, 30)
+        TurnTaker.__init__(self,0)
+        self.tripped = False
+        self.add_phrases(None,["** BORK! BORK! **","** BEEEEEEE! **"],0.9,True)
+        self.show_probability = 0.05
+
+    def try_movement(self, obj):
+        if obj is self.map.player:
+            self.trip()
+
+        elif self.tripped: # monster and tripped
+            # reset alarm
+            self.reset()
+        return True
+
+    def draw(self):
+        if libtcod.random_get_float(None,0.0,1.0) < self.show_probability:
+            self._show_wire()
+        else:
+            self._hide_wire()
+        return Floor.draw(self)
+
+    def trip(self):
+        self.tripped = True
+        self._show_wire()
+
+    def reset(self):
+        self.tripped = False
+        self._hide_wire()
+
+    def _show_wire(self):
+        self.symbol  = '\\'
+        self.colour  = libtcod.red
+
+    def _hide_wire(self):
+        self.symbol  = '.'
+        self.colour  = libtcod.dark_grey
+
+    def take_turn(self):
+        if self.tripped:
+            self.talk()
+
+
 
 class StairsUp(Tile):
     place_max = 1

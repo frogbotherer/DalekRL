@@ -43,6 +43,7 @@ class Tangle(Monster,Tanglable,AI):
             if self.pos is None:
                 self.pos = monster.pos
                 monster.map.add(self)
+                self.visible_to_player = self.map._drawing_can_see(self.pos)
             self.__dogpile.append(monster)
             # create reference to tangle
             monster.tangled_with = self
