@@ -97,7 +97,7 @@ class Item(Carryable, Activatable, Mappable):
         Item.AWESOME_MAP = {}
         for i in range(1,6):
             Item.AWESOME_MAP[i] = [] # need empty entries even if no rank
-        for C in (MemoryWipe,Tangler,TangleMine,HandTeleport,Cloaker,DoorRelease,LevelMap,XRaySpecs,LabCoat,EmergencyHammer):
+        for C in (MemoryWipe,Tangler,TangleMine,HandTeleport,Cloaker,DoorRelease,LevelMap,XRaySpecs,LabCoat,EmergencyHammer,RemoteControl):
             Item.AWESOME_MAP[C.awesome_rank].append(C)
         for CL in Item.AWESOME_MAP.values():
             CL.sort(key=lambda x: x.awesome_weight)
@@ -305,6 +305,42 @@ class Cloaker(CoolDownItem):
             self.hidden_at = None
 
 
+class RemoteTimer(LimitedUsesItem):
+    pass # TODO: same as R/C but counts down from activation
+
+class RemoteControl(LimitedUsesItem):
+    awesome_weight = 100.8
+
+    def __init__(self,owner,item_power,item_colour=libtcod.orange,bar_colour=libtcod.red):
+        # only a few uses permitted!
+        self.connected_to = None
+        LimitedUsesItem.__init__(self,owner,item_power*0.5,item_colour=item_colour,bar_colour=bar_colour)
+
+    def __str__(self):
+        if self.connected_to is None:
+            return "Remote Control"
+        else:
+            return "R/C for %s" % self.connected_to
+
+    def activate(self):
+        # sanity
+        if self.owner is None or self.uses == 0:
+            return False
+
+        # set something to activate
+        if self.connected_to is None:
+            activatables = [a for a in self.owner.map.find_all_at_pos(self.owner.pos) if isinstance(a,Activatable)]
+            if len(activatables)>0:
+                self.connected_to = activatables[0]
+                return True
+            return False
+
+        # activate the thing
+        else:
+            if self.connected_to.activate():
+                self.connected_to = None
+                return LimitedUsesItem.activate(self)
+            return False
 
 from tangling import Tanglable, Tangle
 from monsters import Monster

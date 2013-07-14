@@ -132,7 +132,7 @@ class Tile(Mappable,Traversable,Transparent):
         #        ps = pattern.apply_to(map_array)
         #        ps.sort(random_get_float)
         if types is None:
-            types = [FloorTeleport,FloorCharger,Crate,Window,Table,Locker,WallPanel,ClankyFloor,TripWire,CameraConsole]
+            types = [FloorTeleport,FloorCharger,Crate,Window,Table,Locker,WallPanel,ClankyFloor,TripWire,CameraConsole,TrapConsole]
 
         ## naive way to do it (slow)
         #r = {}
@@ -337,7 +337,19 @@ class ClankyFloor(Tile,Talker,Shouter):
         return True
 
 
-class TripWire(Floor,Talker,Shouter,TurnTaker):
+class Trap:
+    def __init__(self):
+        self.tripped = False
+        self.enabled = True
+
+    def trip(self):
+        if self.enabled:
+            self.tripped = True
+
+    def reset(self):
+        self.tripped = False
+
+class TripWire(Floor,Talker,Shouter,TurnTaker,Trap):
     patterns = [
         MapPattern("###",
                    "ccc",
@@ -351,7 +363,7 @@ class TripWire(Floor,Talker,Shouter,TurnTaker):
         Talker.__init__(self)
         Shouter.__init__(self, 30)
         TurnTaker.__init__(self,0)
-        self.tripped = False
+        Trap.__init__(self)
         self.add_phrases(None,["** BORK! BORK! **","** BEEEEEEE! **"],0.9,True)
         self.show_probability = 0.05
 
@@ -372,11 +384,11 @@ class TripWire(Floor,Talker,Shouter,TurnTaker):
         return Floor.draw(self)
 
     def trip(self):
-        self.tripped = True
+        Trap.trip(self)
         self._show_wire()
 
     def reset(self):
-        self.tripped = False
+        Trap.reset(self)
         self._hide_wire()
 
     def _show_wire(self):
@@ -697,3 +709,49 @@ class CameraConsole(CountUpTile):
                         cam.remove_effect(StatusEffect.BLIND)
 
                 CameraConsole.cameras_on = not CameraConsole.cameras_on
+
+
+class TrapConsole(CountUpTile):
+    patterns = [
+        MapPattern("###",
+                   "rrr",
+                   "rrr")
+        ]
+    place_min = 1
+    place_max = 2
+
+    traps_on = True
+
+    def __init__(self,pos):
+        CountUpTile.__init__(self, pos, 'T', libtcod.purple, 1.0, 1.0, count_up=7)
+        TrapConsole.traps_on = True # expect this only to be called during map generation
+
+    def activate(self, activator=None):
+        if self.step_on():
+            xu = self.map.size.x//4
+            yu = self.map.size.y//4
+            b = Menu( Position(xu,yu), Position(xu*2,yu*2), title="Trap Control" )
+            b.add('1',"View traps")
+            b.add('2',"%s traps" %(TrapConsole.traps_on and 'Disable' or 'Enable'))
+            b.add('3',"Set off traps")
+            b.add('x',"Exit")
+
+            c = b.get_key()
+            del b
+
+            traps = self.map.find_all(Trap,Tile)
+
+            if c == '1':
+                for t in traps:
+                    t.visible_to_player = True
+                self.map.player.handle_keys()
+
+            elif c == '2':
+                for trap in traps:
+                    trap.enabled = TrapConsole.traps_on
+
+                TrapConsole.traps_on = not TrapConsole.traps_on
+
+            elif c == '3':
+                for trap in traps:
+                    trap.trip()

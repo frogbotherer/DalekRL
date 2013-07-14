@@ -57,7 +57,6 @@ class Tangle(Monster,Tanglable,AI):
 
     def take_turn(self):
         if self.tangle_counter == 0 or len(self.__dogpile) == 0:
-            print( "%s still taking turns" % self)
             return
 
         self.tangle_counter -= 1
