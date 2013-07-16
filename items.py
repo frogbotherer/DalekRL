@@ -143,7 +143,7 @@ class RunDownItem(SlotItem, CountUp, TurnTaker):
 
         return True
 
-    def activate(self):
+    def activate(self,activator=None):
         if self.is_active:
             # deactivate an active item
             self.is_active = False
@@ -195,7 +195,7 @@ class CoolDownItem(Item, CountUp, TurnTaker):
     def take_turn(self):
         return self.inc()
 
-    def activate(self):
+    def activate(self,activator=None):
         if not self.full():
             print ("%s still on cooldown, %d turns remaining"%(self,self.count_to-self.count))
             # still on cooldown
@@ -241,7 +241,7 @@ class LimitedUsesItem(Item):
         self.bar.max_value = self.max_uses
         self.bar.is_visible = True
 
-    def activate(self):
+    def activate(self,activator=None):
         if self.uses == 0:
             return False
 
@@ -263,7 +263,7 @@ class HandTeleport(CoolDownItem):
     def __str__(self):
         return "Hand Teleport"
 
-    def activate(self):
+    def activate(self,activator=None):
         if not CoolDownItem.activate(self):
             return False
 
@@ -272,6 +272,7 @@ class HandTeleport(CoolDownItem):
         except InvalidMoveError:
             print("Can't teleport from %s" % self.owner.pos)
             return False
+        self.owner.reset_fov()
         return True
 
 
@@ -285,7 +286,7 @@ class Cloaker(CoolDownItem):
     def __str__(self):
         return "Cloaker"
 
-    def activate(self):
+    def activate(self,activator=None):
         if not CoolDownItem.activate(self):
             return False
         self.owner.is_visible = False
@@ -309,7 +310,7 @@ class RemoteTimer(LimitedUsesItem):
     pass # TODO: same as R/C but counts down from activation
 
 class RemoteControl(LimitedUsesItem):
-    awesome_weight = 100.8
+    awesome_weight = 1.8
 
     def __init__(self,owner,item_power,item_colour=libtcod.orange,bar_colour=libtcod.red):
         # only a few uses permitted!
@@ -322,14 +323,16 @@ class RemoteControl(LimitedUsesItem):
         else:
             return "R/C for %s" % self.connected_to
 
-    def activate(self):
+    def activate(self,activator=None):
         # sanity
         if self.owner is None or self.uses == 0:
+            print("sanity failed")
             return False
 
         # set something to activate
         if self.connected_to is None:
-            activatables = [a for a in self.owner.map.find_all_at_pos(self.owner.pos) if isinstance(a,Activatable)]
+            activatables = [a for a in self.owner.map.find_all_at_pos(self.owner.pos) if isinstance(a,Activatable) and a.can_be_remote_controlled]
+            print(activatables)
             if len(activatables)>0:
                 self.connected_to = activatables[0]
                 return True
@@ -337,9 +340,9 @@ class RemoteControl(LimitedUsesItem):
 
         # activate the thing
         else:
-            if self.connected_to.activate():
+            if self.connected_to.activate(self.owner):
                 self.connected_to = None
-                return LimitedUsesItem.activate(self)
+                return LimitedUsesItem.activate(self,self.owner)
             return False
 
 from tangling import Tanglable, Tangle
@@ -351,7 +354,7 @@ class Tangler(LimitedUsesItem):
     def __str__(self):
         return "Tangler"
 
-    def activate(self):
+    def activate(self,activator=None):
         # TODO: make this find the nearest untangled tanglable
         m = self.owner.map.find_nearest(self.owner,Tanglable,Monster)
         if isinstance(m, Tanglable) and not m.is_tangled() and LimitedUsesItem.activate(self):
@@ -367,7 +370,7 @@ class TangleMine(LimitedUsesItem):
     def __str__(self):
         return "Tangle Mine"
 
-    def activate(self):
+    def activate(self,activator=None):
         if LimitedUsesItem.activate(self):
             t = Tangle(self.owner.pos)
             t.tangle_counter = 10 # stays until something collides with it
@@ -381,7 +384,7 @@ class MemoryWipe(LimitedUsesItem):
     def __str__(self):
         return "Memory Wipe"
 
-    def activate(self):
+    def activate(self,activator=None):
         ms = self.owner.map.find_all_within_r(self.owner, Monster, 30, False)
         if len(ms)>0 and LimitedUsesItem.activate(self):
             for m in ms:
@@ -396,7 +399,7 @@ class DoorRelease(LimitedUsesItem):
     def __str__(self):
         return "Door Release"
 
-    def activate(self):
+    def activate(self,activator=None):
         d = self.owner.map.find_nearest(self.owner,Door,Tile)
         if not d is None and LimitedUsesItem.activate(self):
             d.to_closing()
@@ -409,7 +412,7 @@ class EmergencyHammer(LimitedUsesItem):
     def __str__(self):
         return "Emergency Hammer"
 
-    def activate(self):
+    def activate(self,activator=None):
         for w in self.owner.map.find_all_within_r(self.owner,Window,3):
             if not w.is_smashed and LimitedUsesItem.activate(self):
                 w.smash()
@@ -425,7 +428,7 @@ class LevelMap(LimitedUsesItem):
     def __str__(self):
         return "Map"
 
-    def activate(self):
+    def activate(self,activator=None):
         if LimitedUsesItem.activate(self):
             for t in self.owner.map.find_all(Tile):
                 t.has_been_seen = True
@@ -448,7 +451,7 @@ class XRaySpecs(RunDownItem):
     def __str__(self):
         return "X-Ray Specs"
 
-    def activate(self):
+    def activate(self,activator=None):
         if not RunDownItem.activate(self):
             return False
 
@@ -465,7 +468,7 @@ class RunningShoes(RunDownItem):
     def __str__(self):
         return "Running Shoes"
 
-    def activate(self):
+    def activate(self,activator=None):
         if not RunDownItem.activate(self):
             return False
 

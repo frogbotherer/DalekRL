@@ -60,20 +60,20 @@ class Map:
     def move(self, obj, pos, layer=None):
         """move object on map. NB. setting a Mappable's pos directly will break stuff"""
         assert isinstance(obj,Mappable), "%s cannot appear on map"%obj
+        r = 0.0
 
         # check that we can move from current pos
         srcs  = self.find_all_at_pos(obj.pos,Tile) # probably just Tiles
         for src in srcs:
             if isinstance(src,Traversable):
                 if not src.try_leaving(obj):
-                    raise InvalidMoveError
+                    raise InvalidMoveError # TODO: convert to use walk_cost
 
         # check that we can move to pos
         dests = self.find_all_at_pos(pos,Tile) # probably just Tiles
         for dest in dests:
             if isinstance(dest,Traversable):
-                if not dest.try_movement(obj):
-                    raise InvalidMoveError
+                r += dest.try_movement(obj)  # may raise InvalidMoveError
 
         if layer is None:
             layer = self.__get_layer_from_obj(obj)
@@ -87,6 +87,9 @@ class Map:
         # update obj position
         obj.last_pos = obj.pos
         obj.pos      = pos
+
+        # this is awkward; we want large r to mean "no more turns to have"; but a walk cost of 0.0 means no move
+        return r>0.0 and r<=1.0 and 1.0-r or r
 
     def find_all(self, otype, layer=None):
         """find all type otype in layer"""

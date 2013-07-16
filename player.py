@@ -3,7 +3,7 @@
 import libtcodpy as libtcod
 
 from interfaces import Mappable, Activator, Activatable, TurnTaker, Position, StatusEffect, HasInventory, Talker
-from items import Item, SlotItem, Evidence, XRaySpecs, RunningShoes
+from items import Item, SlotItem, Evidence, XRaySpecs, RunningShoes, RemoteControl
 from tiles import Tile
 from ui import UI, Menu
 from errors import GameOverError, InvalidMoveError
@@ -17,12 +17,16 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
     LIMIT_FPS = 15
     MAX_TIMEOUT = 5
 
+    # these do though
+    ITEM_ACTIVATE_COST = 0.6
+    ITEM_PICKUP_COST   = 1.0
+
     def __init__(self,pos=None):
         Mappable.__init__(self,pos,'@',libtcod.white)
         StatusEffect.__init__(self)
         TurnTaker.__init__(self,1)
         HasInventory.__init__(self,3,(SlotItem.HEAD_SLOT,SlotItem.BODY_SLOT,SlotItem.FEET_SLOT))
-        self.items = [Item.random(None,self,2,1.5),Item.random(None,self,1),None]
+        self.items = [Item.random(None,self,2,1.5),Item.random(None,self,1),RemoteControl(self,1.0)]
         self.slot_items = {
             SlotItem.HEAD_SLOT: XRaySpecs(self),
             SlotItem.BODY_SLOT: None,
@@ -71,7 +75,10 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
             return
         assert isinstance(item,Activatable)
         
-        return item.activate()
+        if item.activate(self):
+            return Player.ITEM_ACTIVATE_COST
+        else:
+            return 0.0
 
     def draw_ui(self,pos,max_size=80):
         # UI constants TODO: move them
@@ -155,57 +162,65 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
         if not i.pos is None: # if taken from locker or other bonus
             self.map.remove(i)
         i.take_by(self)
-        return True
+        return Player.ITEM_PICKUP_COST
 
     def do_nothing(self):
-        self.move( (0,0) ) # triggers try_movement on current square
+        return self.move( (0,0) ) # triggers try_movement on current square
     def reset_game(self):
         raise GameOverError
     def move_n(self):
-        self.move( (0,-1) )
+        return self.move( (0,-1) )
     def move_s(self):
-        self.move( (0,1) )
+        return self.move( (0,1) )
     def move_w(self):
-        self.move( (-1,0) )
+        return self.move( (-1,0) )
     def move_e(self):
-        self.move( (1,0) )
+        return self.move( (1,0) )
     def move_ne(self):
-        self.move( (1,-1) )
+        return self.move( (1,-1) )
     def move_nw(self):
-        self.move( (-1,-1) )
+        return self.move( (-1,-1) )
     def move_se(self):
-        self.move( (1,1) )
+        return self.move( (1,1) )
     def move_sw(self):
-        self.move( (-1,1) )
+        return self.move( (-1,1) )
     def use_item1(self):
-        self.use_item(0)
+        return self.use_item(0)
     def use_item2(self):
-        self.use_item(1)
+        return self.use_item(1)
     def use_item3(self):
-        self.use_item(2)
+        return self.use_item(2)
     def use_head(self):
-        self.use_item(SlotItem.HEAD_SLOT)
+        return self.use_item(SlotItem.HEAD_SLOT)
     def use_body(self):
-        self.use_item(SlotItem.BODY_SLOT)
+        return self.use_item(SlotItem.BODY_SLOT)
     def use_feet(self):
-        self.use_item(SlotItem.FEET_SLOT)
+        return self.use_item(SlotItem.FEET_SLOT)
     def interact(self):
+        r = 0.0
         i = self.map.find_at_pos(self.pos,Item)
         if not i is None:
             self.pickup(i)
         for i in self.map.find_all_at_pos(self.pos,Tile):
             if isinstance(i,Activatable):
                 i.activate(self)
+                r += 1.0
+        return r
 
     def take_turn(self):
         self.turns += 1
-        try:
-            # handle player input (and redraw screen)
-            f = self.handle_keys()
-            f()
-        except InvalidMoveError:
-            pass # sometimes this is ok, like teleporting
-            #print("You can't move like that")
+        t_remaining = 1.0 # TODO: weight this based on passive buffs
+
+        while t_remaining > 0.0:
+            try:
+                # handle player input (and redraw screen)
+                f = self.handle_keys()
+                t_remaining -= f()
+            
+            except InvalidMoveError:
+                t_remaining = 0 # TODO: make genuine illegal moves cost nothing
+                # sometimes this is ok, like teleporting
+                #print("You can't move like that")
         Talker.stop_all_talk()
         self.reset_fov()
 

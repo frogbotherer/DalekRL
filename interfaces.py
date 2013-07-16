@@ -85,7 +85,7 @@ class Mappable:
         #if not self.map is None and self.map.is_blocked(pos):
         #    raise InvalidMoveError( "Can't move %s to %s"%(self,pos) )
 
-        self.map.move(self, pos)
+        return self.map.move(self, pos)
 
     ##
     # drawing
@@ -164,7 +164,9 @@ class Traversable:
         return True
 
     def try_movement(self,obj):
-        return not self.blocks_movement()
+        if self.blocks_movement():
+            raise InvalidMoveError
+        return self.walk_cost
 
     def blocks_movement(self, is_for_mapping=False):
         return (self.walk_cost == 0.0) and (not is_for_mapping or self.may_block_movement)
@@ -253,6 +255,7 @@ class Activatable:
     def __init__(self,owner=None):
         assert isinstance(owner,Activator) or owner is None, "%s can't activate %s"%(owner,self)
         self.owner = owner
+        self.can_be_remote_controlled = False
 
     def activate(self,activator=None):
         assert isinstance(self.owner,Activator) or isinstance(activator,Activator), "%s can't be activated" % self

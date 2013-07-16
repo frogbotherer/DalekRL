@@ -229,7 +229,7 @@ class Locker(Tile,CanHaveEvidence):
 
     def try_movement(self,obj):
         if not isinstance(obj,HasInventory) or self.has_given_item:
-            return False
+            raise InvalidMoveError
 
         if self.has_evidence():
             obj.pickup(self.evidence)
@@ -243,7 +243,7 @@ class Locker(Tile,CanHaveEvidence):
 
         self.colour = libtcod.light_grey
         self.has_given_item = True
-        return False
+        raise InvalidMoveError
 
 class WallPanel(Tile,CanHaveEvidence):
     # TODO: factor out common with lockers and subclass
@@ -261,7 +261,7 @@ class WallPanel(Tile,CanHaveEvidence):
 
     def try_movement(self,obj):
         if not isinstance(obj,HasInventory) or self.has_given_item:
-            return False
+            raise InvalidMoveError
 
         if self.has_evidence():
             obj.pickup(self.evidence)
@@ -269,7 +269,7 @@ class WallPanel(Tile,CanHaveEvidence):
         self.colour = libtcod.light_grey
         self.has_given_item = True
 
-        return False
+        raise InvalidMoveError
 
 class Table(Tile,Activatable):
     patterns = [
@@ -328,7 +328,7 @@ class ClankyFloor(Tile,Talker,Shouter):
         if self.talk('ON') and obj is self.map.player:
             self.shout()
 
-        return True
+        return self.walk_cost
 
     def try_leaving(self, obj):
         if self.talk('OFF') and obj is self.map.player:
@@ -374,7 +374,7 @@ class TripWire(Floor,Talker,Shouter,TurnTaker,Trap):
         elif self.tripped: # monster and tripped
             # reset alarm
             self.reset()
-        return True
+        return self.walk_cost
 
     def draw(self):
         if libtcod.random_get_float(None,0.0,1.0) < self.show_probability:
@@ -531,11 +531,11 @@ class Door(Tile,CountUp,TurnTaker):
 
     def try_movement(self, obj):
         if self.state is Door.OPEN:
-            return True
+            return self.walk_cost
 
         elif self.state is Door.CLOSING:
             self.reset()
-            return True
+            return self.walk_cost
 
         else: # Door.CLOSED
             self._trying_to_open = True
@@ -545,12 +545,12 @@ class Door(Tile,CountUp,TurnTaker):
                 #if obj is self.map.player: # i think we need to do this anyway
                 #    self.map.recalculate_paths()
                 #    self.map.player.reset_fov()
-                return True
+                return self.walk_cost
             else:
                 if self.map.can_see(self):
                     self.bar.is_visible = True
                     self.bar.value = self.count_to-self.count
-                return False
+                raise InvalidMoveError
 
     def take_turn(self):
         if self.state is Door.CLOSED:
@@ -626,7 +626,7 @@ class FloorTeleport(Tile):
 
         if obj.pos.distance_to(self.pos) >= 2:
             # moving to this tile from far away: must be teleporting; don't teleport again!
-            return True
+            return self.walk_cost
 
         try:
             targets = self.map.find_all(FloorTeleport,Tile)
@@ -639,7 +639,7 @@ class FloorTeleport(Tile):
         except InvalidMoveError:
             pass # teleport exit blocked?
 
-        return False # prevent original movement
+        raise InvalidMoveError # prevent original movement
 
 from items import Item
 class FloorCharger(Tile, CountUp):
@@ -660,9 +660,9 @@ class FloorCharger(Tile, CountUp):
             for i in obj.items + list(obj.slot_items.values()):
                 if isinstance(i,Item) and i.is_chargable and i.charge():
                     if self.inc():
-                        return True
+                        return self.walk_cost
 
-        return True
+        return self.walk_cost
 
 
 from monsters import Monster, StaticCamera
@@ -680,6 +680,7 @@ class CameraConsole(CountUpTile):
     def __init__(self,pos):
         CountUpTile.__init__(self, pos, 'C', libtcod.purple, 1.0, 1.0, count_up=7)
         CameraConsole.cameras_on = True # expect this only to be called during map generation
+        self.can_be_remote_controlled = True
 
     def activate(self, activator=None):
         if self.step_on():
@@ -725,6 +726,7 @@ class TrapConsole(CountUpTile):
     def __init__(self,pos):
         CountUpTile.__init__(self, pos, 'T', libtcod.purple, 1.0, 1.0, count_up=7)
         TrapConsole.traps_on = True # expect this only to be called during map generation
+        self.can_be_remote_controlled = True
 
     def activate(self, activator=None):
         if self.step_on():
