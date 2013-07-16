@@ -332,16 +332,20 @@ class RemoteControl(LimitedUsesItem):
         # set something to activate
         if self.connected_to is None:
             activatables = [a for a in self.owner.map.find_all_at_pos(self.owner.pos) if isinstance(a,Activatable) and a.can_be_remote_controlled]
-            print(activatables)
             if len(activatables)>0:
                 self.connected_to = activatables[0]
+                self.bar.text = str(self)
+                self.bar.show_numerator = False # because it doesn't fit
                 return True
             return False
 
         # activate the thing
         else:
-            if self.connected_to.activate(self.owner):
+            t = self.connected_to.activate(self.owner)
+            if t:
                 self.connected_to = None
+                self.bar.text = str(self)
+                self.bar.show_numerator = True
                 return LimitedUsesItem.activate(self,self.owner)
             return False
 
@@ -457,9 +461,15 @@ class XRaySpecs(RunDownItem):
 
         if self.is_active:
             self.owner.add_effect(StatusEffect.X_RAY_VISION)
+            self.owner.reset_fov()
+            #self.owner.redraw_screen()
 
         else:
             self.owner.remove_effect(StatusEffect.X_RAY_VISION)
+            self.owner.reset_fov()
+            #self.owner.redraw_screen()
+
+        return True
 
 class RunningShoes(RunDownItem):
     def __init__(self,owner,item_power=1.0):
@@ -477,6 +487,8 @@ class RunningShoes(RunDownItem):
 
         else:
             TurnTaker.clear_turntaker(self.owner)
+
+        return True
 
 class LabCoat(SlotItem):
     def __init__(self,owner,item_power=1.0):

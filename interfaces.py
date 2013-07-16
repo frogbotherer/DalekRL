@@ -4,7 +4,7 @@ import libtcodpy as libtcod
 from math import hypot, atan2, pi
 import weakref
 
-from errors import InvalidMoveError
+from errors import InvalidMoveError, InvalidMoveContinueError
 from ui import Message
 
 class Position:
@@ -165,7 +165,7 @@ class Traversable:
 
     def try_movement(self,obj):
         if self.blocks_movement():
-            raise InvalidMoveError
+            raise InvalidMoveContinueError
         return self.walk_cost
 
     def blocks_movement(self, is_for_mapping=False):

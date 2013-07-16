@@ -6,7 +6,7 @@ from interfaces import Mappable, Activator, Activatable, TurnTaker, Position, St
 from items import Item, SlotItem, Evidence, XRaySpecs, RunningShoes, RemoteControl
 from tiles import Tile
 from ui import UI, Menu
-from errors import GameOverError, InvalidMoveError
+from errors import GameOverError, InvalidMoveError, InvalidMoveContinueError
 
 import sys
 from time import sleep
@@ -72,7 +72,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
             item = self.items[slot]
 
         if item is None:
-            return
+            return 0.0
         assert isinstance(item,Activatable)
         
         if item.activate(self):
@@ -200,27 +200,40 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
         r = 0.0
         i = self.map.find_at_pos(self.pos,Item)
         if not i is None:
-            self.pickup(i)
+            r += self.pickup(i)
         for i in self.map.find_all_at_pos(self.pos,Tile):
             if isinstance(i,Activatable):
-                i.activate(self)
-                r += 1.0
-        return r
+                if i.activate(self):
+                    r += 1.0
+        #return r # whilst we can calculate cumulative cost of all this stuff; actually want to end turn regardless
+        return 1.0
 
     def take_turn(self):
         self.turns += 1
         t_remaining = 1.0 # TODO: weight this based on passive buffs
+        have_used_item = False
 
         while t_remaining > 0.0:
             try:
                 # handle player input (and redraw screen)
                 f = self.handle_keys()
+
+                # TODO: fix this monstrous way of detecting item use
+                if f.__name__.startswith('use_'):
+                    if not have_used_item:
+                        have_used_item = True
+                    else:
+                        raise InvalidMoveError
+                        
                 t_remaining -= f()
-            
+
+            except InvalidMoveContinueError:
+                print("You can't move like that")
+
             except InvalidMoveError:
-                t_remaining = 0 # TODO: make genuine illegal moves cost nothing
-                # sometimes this is ok, like teleporting
-                #print("You can't move like that")
+                # this is ok, like teleporting
+                t_remaining = 0.0
+
         Talker.stop_all_talk()
         self.reset_fov()
 

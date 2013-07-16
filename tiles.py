@@ -6,6 +6,7 @@ from errors import LevelWinError, InvalidMoveError
 from ui import HBar, Menu
 
 from functools import reduce
+import re # for sub
 
 #possibly belongs in maps.py
 class MapPattern:
@@ -114,6 +115,10 @@ class Tile(Mappable,Traversable,Transparent):
         Traversable.__init__(self,walk_cost,may_block_movement)
         Transparent.__init__(self,transparency)
 
+    def __str__(self):
+        # uncamelcase class name by default
+        return re.sub("([a-z])([A-Z])",r'\1 \2',self.__class__.__name__)
+
     @staticmethod
     def random_furniture(rng, pos):
         return Crate(pos)
@@ -177,28 +182,27 @@ class CountUpTile(Tile,CountUp,Activatable):
         self.bar.max_value = self.count_to-1
         self.bar.timeout = 5.0
 
-    def step_on(self):
+    def activate(self, activator=None):
 
-        if self.pos == self.map.player.pos:
-            if self.count == 0:
-                self.bar.is_visible = True
-            if self.inc():
-                return True
-            else:
-                self.bar.value = self.count_to-self.count
-
-       # elif self.count > 0:
-       #     self.bar.is_visible = False
-       #     self.bar.value = 0
-       #     self.reset()
+        #if self.pos == self.map.player.pos:
+        if self.count == 0:
+            self.bar.is_visible = True
+        if self.inc():
+            self.reset()
+            return True
+        else:
+            self.bar.value = self.count_to-self.count
 
         return False
 
     def try_leaving(self,obj):
-        self.bar.is_visible = False
-        self.bar.value = 0
         self.reset()
         return Tile.try_leaving(self,obj)
+
+    def reset(self):
+        self.bar.is_visible = False
+        self.bar.value = 0
+        CountUp.reset(self)
 
 # TODO: move to interfaces?
 class CanHaveEvidence:
@@ -417,7 +421,7 @@ class StairsDown(CountUpTile):
         self.unseen_colour = libtcod.light_grey # so you can find it on-screen again
 
     def activate(self,activator=None):
-        if self.step_on():
+        if CountUpTile.activate(self,activator):
             raise LevelWinError("Escaped!")
 
 
@@ -683,7 +687,7 @@ class CameraConsole(CountUpTile):
         self.can_be_remote_controlled = True
 
     def activate(self, activator=None):
-        if self.step_on():
+        if CountUpTile.activate(self,activator):
             xu = self.map.size.x//4
             yu = self.map.size.y//4
             b = Menu( Position(xu,yu), Position(xu*2,yu*2), title="Camera Control" )
@@ -711,6 +715,9 @@ class CameraConsole(CountUpTile):
 
                 CameraConsole.cameras_on = not CameraConsole.cameras_on
 
+            return True
+        return False
+
 
 class TrapConsole(CountUpTile):
     patterns = [
@@ -729,7 +736,7 @@ class TrapConsole(CountUpTile):
         self.can_be_remote_controlled = True
 
     def activate(self, activator=None):
-        if self.step_on():
+        if CountUpTile.activate(self,activator):
             xu = self.map.size.x//4
             yu = self.map.size.y//4
             b = Menu( Position(xu,yu), Position(xu*2,yu*2), title="Trap Control" )
@@ -757,3 +764,6 @@ class TrapConsole(CountUpTile):
             elif c == '3':
                 for trap in traps:
                     trap.trip()
+
+            return True
+        return False
