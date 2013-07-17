@@ -30,7 +30,12 @@ libtcod.console_set_custom_font(font, libtcod.FONT_TYPE_GREYSCALE | libtcod.FONT
 libtcod.console_init_root(SCREEN_SIZE.x, SCREEN_SIZE.y, b'DalekRL')
 libtcod.sys_set_fps(LIMIT_FPS)
 
-
+# set default text palette # TODO: merge with UI class statics
+libtcod.console_set_color_control(libtcod.COLCTRL_1,libtcod.red,libtcod.black)
+libtcod.console_set_color_control(libtcod.COLCTRL_2,libtcod.dark_yellow,libtcod.black)
+libtcod.console_set_color_control(libtcod.COLCTRL_3,libtcod.light_green,libtcod.black)
+libtcod.console_set_color_control(libtcod.COLCTRL_4,libtcod.light_blue,libtcod.black)
+libtcod.console_set_color_control(libtcod.COLCTRL_5,libtcod.purple,libtcod.black)
 
 
 def reset(keep_player=False):

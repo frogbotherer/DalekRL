@@ -462,12 +462,10 @@ class XRaySpecs(RunDownItem):
         if self.is_active:
             self.owner.add_effect(StatusEffect.X_RAY_VISION)
             self.owner.reset_fov()
-            #self.owner.redraw_screen()
 
         else:
             self.owner.remove_effect(StatusEffect.X_RAY_VISION)
             self.owner.reset_fov()
-            #self.owner.redraw_screen()
 
         return True
 

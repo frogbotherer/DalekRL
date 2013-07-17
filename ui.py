@@ -8,6 +8,14 @@ class UI:
     ui_elements = []
     timeout_register = {}
 
+    # abstraction of tcod coloured text control constants (also see map in DalekRL.py)
+    COLCTRL_RED    = libtcod.COLCTRL_1
+    COLCTRL_YELLOW = libtcod.COLCTRL_2
+    COLCTRL_GREEN  = libtcod.COLCTRL_3
+    COLCTRL_BLUE   = libtcod.COLCTRL_4
+    COLCTRL_PURPLE = libtcod.COLCTRL_5
+    COLCTRL_STOP   = libtcod.COLCTRL_STOP  # for consistency
+
     def __init__(self):
         UI.ui_elements.append(weakref.ref(self))
         self.is_visible = False
@@ -59,17 +67,21 @@ class UI:
 
 
 class Message(UI):
-    def __init__(self, pos, text, centred=False):
+    def __init__(self, pos, text, centred=False, colour=None):
         UI.__init__(self)
         self.pos = pos
         self.text = text
         self.centred = centred
+        self.colour = colour
 
     def draw(self):
         x = self.pos.x
         if self.centred:
             x -= len(self.text)//2
-        libtcod.console_print(0, x, self.pos.y, self.text) #, libtcod.white, libtcod.BKGND_NONE)
+        if self.colour is None:
+            libtcod.console_print(0, x, self.pos.y, self.text) #, libtcod.white, libtcod.BKGND_NONE)
+        else:
+            libtcod.console_print(0, x, self.pos.y, "%c%s%c"%(self.colour,self.text,self.COLCTRL_STOP))
 
 
 class Bar(UI):
