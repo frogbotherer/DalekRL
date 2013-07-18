@@ -3,7 +3,7 @@
 import libtcodpy as libtcod
 
 from interfaces import Mappable, Activator, Activatable, TurnTaker, Position, StatusEffect, HasInventory, Talker
-from items import Item, SlotItem, Evidence, XRaySpecs, RunningShoes, RemoteControl
+from items import Item, SlotItem, Evidence, XRaySpecs, RunningShoes, AnalysisSpecs
 from tiles import Tile
 from ui import UI, Menu
 from errors import GameOverError, InvalidMoveError, InvalidMoveContinueError
@@ -26,9 +26,9 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
         StatusEffect.__init__(self)
         TurnTaker.__init__(self,1)
         HasInventory.__init__(self,3,(SlotItem.HEAD_SLOT,SlotItem.BODY_SLOT,SlotItem.FEET_SLOT))
-        self.items = [Item.random(None,self,2,1.5),Item.random(None,self,1),RemoteControl(self,1.0)]
+        self.items = [Item.random(None,self,2,1.5),Item.random(None,self,1),None]
         self.slot_items = {
-            SlotItem.HEAD_SLOT: XRaySpecs(self),
+            SlotItem.HEAD_SLOT: AnalysisSpecs(self),
             SlotItem.BODY_SLOT: None,
             SlotItem.FEET_SLOT: RunningShoes(self),
             }
@@ -197,6 +197,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
     def use_feet(self):
         return self.use_item(SlotItem.FEET_SLOT)
     def interact(self):
+        # TODO: manage situation where multiple items are on same tile gracefully
         r = 0.0
         i = self.map.find_at_pos(self.pos,Item)
         if not i is None:

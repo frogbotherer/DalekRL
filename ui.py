@@ -51,6 +51,8 @@ class UI:
                 if e.is_visible:
                     if e.timeout==0.0 or e.timeout>timeout:
                         e.draw()
+        #if timeout == 0.0:
+        #    print("%d UI elements"%len(UI.ui_elements))
 
     @staticmethod
     def clear_all():

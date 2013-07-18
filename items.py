@@ -5,7 +5,7 @@ import libtcodpy as libtcod
 from functools import reduce
 
 from interfaces import Carryable, Activatable, Activator, CountUp, Mappable, TurnTaker, StatusEffect, Shouter
-from ui import HBar, Message
+from ui import UI, HBar, Message
 from errors import InvalidMoveError
 
 class Item(Carryable, Activatable, Mappable):
@@ -97,7 +97,7 @@ class Item(Carryable, Activatable, Mappable):
         Item.AWESOME_MAP = {}
         for i in range(1,6):
             Item.AWESOME_MAP[i] = [] # need empty entries even if no rank
-        for C in (MemoryWipe,Tangler,TangleMine,HandTeleport,Cloaker,DoorRelease,LevelMap,XRaySpecs,LabCoat,EmergencyHammer,RemoteControl):
+        for C in (MemoryWipe,Tangler,TangleMine,HandTeleport,Cloaker,DoorRelease,LevelMap,XRaySpecs,LabCoat,EmergencyHammer,RemoteControl,AnalysisSpecs):
             Item.AWESOME_MAP[C.awesome_rank].append(C)
         for CL in Item.AWESOME_MAP.values():
             CL.sort(key=lambda x: x.awesome_weight)
@@ -126,7 +126,7 @@ class RunDownItem(SlotItem, CountUp, TurnTaker):
         SlotItem.__init__(self,owner,item_power,valid_slot,item_colour,bar_colour)
         count_to = int( 50 + 100*item_power )
         CountUp.__init__(self,count_to)
-        TurnTaker.__init__(self,100)
+        TurnTaker.__init__(self,100,False)
 
         self.bar = HBar(None, None, bar_colour, libtcod.dark_grey, True, False, str(self), str.ljust)
         self.bar.is_visible = False
@@ -135,10 +135,14 @@ class RunDownItem(SlotItem, CountUp, TurnTaker):
         self.is_chargable = True
 
     def take_turn(self):
-        if not self.is_active:
+        assert self.is_active, "Taking turns on inactive RunDownItem %s" % self
+
+        # sanity: if left active and dropped, deactivate
+        if not self.owner:
+            self.activate()
             return False
 
-        elif self.inc():
+        if self.inc():
             self.is_active = False
 
         return True
@@ -147,6 +151,7 @@ class RunDownItem(SlotItem, CountUp, TurnTaker):
         if self.is_active:
             # deactivate an active item
             self.is_active = False
+            TurnTaker.clear_turntaker(self)
             return True
 
         elif self.full():
@@ -155,7 +160,9 @@ class RunDownItem(SlotItem, CountUp, TurnTaker):
 
         else:
             self.is_active = True
+            TurnTaker.add_turntaker(self)
             self.inc(4) # activation costs 4 + 1 for the first turn; discouraging flickering
+            self.take_turn() # so takes effect straight away if any turn taking behaviour
             return True
 
     def charge(self,amount=1):
@@ -187,13 +194,16 @@ class CoolDownItem(Item, CountUp, TurnTaker):
         count_to = int( 30 - 10*item_power )
         Item.__init__(self,owner,item_power,item_colour)
         CountUp.__init__(self,count_to,count_to)
-        TurnTaker.__init__(self,100)
+        TurnTaker.__init__(self,100,False)
         self.bar = HBar(None, None, bar_colour, libtcod.dark_grey, True, False, str(self), str.ljust)
         self.bar.is_visible = False
         self.is_chargable = True
 
     def take_turn(self):
-        return self.inc()
+        if self.inc():
+            TurnTaker.clear_turntaker(self)
+            return True
+        return False
 
     def activate(self,activator=None):
         if not self.full():
@@ -201,6 +211,7 @@ class CoolDownItem(Item, CountUp, TurnTaker):
             # still on cooldown
             return False
         self.reset(-1) # because we immediately inc()
+        TurnTaker.add_turntaker(self)
         return True
 
     def draw_ui(self,pos,max_width=40):
@@ -468,6 +479,49 @@ class XRaySpecs(RunDownItem):
             self.owner.reset_fov()
 
         return True
+
+class AnalysisSpecs(RunDownItem):
+    SYM_W_E   = '-'
+    SYM_N_S   = '|'
+    SYM_NW_SE = '\\'
+    SYM_NE_SW = '/'
+
+    def __init__(self,owner,item_power=1.0):
+        RunDownItem.__init__(self,owner,item_power,SlotItem.HEAD_SLOT)
+        self.messages = []
+
+    def __str__(self):
+        return "Analysis Specs"
+
+    def take_turn(self):
+        self.messages = []
+
+        if not RunDownItem.take_turn(self):
+            return False
+
+        # show the heading of each monster as a line
+        ms = self.owner.map.find_all(Monster,Monster)
+        for m in ms:
+            if m.last_pos is None or m.last_pos == m.pos or not self.owner.map._drawing_can_see(m.pos):
+                continue # nothing to do here
+            v = m.pos-m.last_pos
+
+            # calculate symbol
+            s = self.SYM_NE_SW
+            if v.y == 0:
+                s = self.SYM_W_E
+            elif v.x == 0:
+                s = self.SYM_N_S
+            elif v.x == v.y:
+                s = self.SYM_NW_SE
+
+            g = Message(m.pos+v, s, colour=UI.COLCTRL_GREEN)
+            g.is_visible = True
+            g.timeout    = 5.0
+            self.messages.append(g)
+
+        return True
+
 
 class RunningShoes(RunDownItem):
     def __init__(self,owner,item_power=1.0):

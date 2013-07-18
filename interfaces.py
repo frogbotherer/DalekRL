@@ -108,10 +108,11 @@ class Mappable:
 class TurnTaker:
     turn_takers = []
 
-    def __init__(self, initiative):
+    def __init__(self, initiative, start=True):
         """Lowest initiative goes first"""
         self.initiative = initiative
-        TurnTaker.add_turntaker(self)
+        if start:
+            TurnTaker.add_turntaker(self)
 
     def take_turn(self):
         raise NotImplementedError
