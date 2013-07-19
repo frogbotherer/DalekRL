@@ -238,6 +238,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
         Talker.stop_all_talk()
         self.reset_fov()
 
+
     def handle_keys(self):
         """returns pointer to function to call"""
         k = libtcod.Key()

@@ -4,9 +4,9 @@ import libtcodpy as libtcod
 
 from monsters import Monster
 from player import Player
-from interfaces import Mappable, Position, Traversable, Transparent, StatusEffect
+from interfaces import Mappable, Position, Traversable, Transparent, StatusEffect, LightSource
 from items import Item, Evidence
-from tiles import Tile, Wall, Floor, Door, StairsDown, StairsUp, FloorTeleport, MapPattern, CanHaveEvidence
+from tiles import Tile, Wall, Floor, Light, Door, StairsDown, StairsUp, FloorTeleport, MapPattern, CanHaveEvidence
 from errors import TodoError, InvalidMoveError
 
 from functools import reduce
@@ -26,9 +26,10 @@ class Map:
         self.size = size
         self.__tcod_map_empty  = libtcod.map_new( self.size.x, self.size.y ) # for xray, audio, ghosts(?)
         libtcod.map_clear( self.__tcod_map_empty, True, True )               # clear the map to be traversable and visible
-        self.__tcod_map        = libtcod.map_new( self.size.x, self.size.y )
+        self.__tcod_map        = libtcod.map_new( self.size.x, self.size.y ) # for pathing and rendering
+        self.__tcod_map_light  = libtcod.map_new( self.size.x, self.size.y ) # for light
         self.__tcod_pathfinder = None
-        
+        self.__lighting_map    = {}
 
     def __get_layer_from_obj(self, obj):
         for l in self.__layer_order:
@@ -189,6 +190,8 @@ class Map:
 
     def recalculate_paths(self, is_for_mapping=False):
         """if is_for_mapping is set, don't count things like teleports as traversable"""
+        print("RECALCULATING PATHS!")
+
         libtcod.map_clear(self.__tcod_map)
         for ol in self.__layers[Tile].values():
             for o in ol:
@@ -197,6 +200,13 @@ class Map:
                 libtcod.map_set_properties(self.__tcod_map,o.pos.x,o.pos.y,is_transparent,is_walkable)
         #self.__tcod_pathfinder = libtcod.path_new_using_map(self.__tcod_map)
         self.__tcod_pathfinder = libtcod.dijkstra_new(self.__tcod_map)
+
+        # copy pathing map to light map
+        libtcod.map_copy(self.__tcod_map,self.__tcod_map_light)
+
+        # lighting needs updating too
+        if not is_for_mapping:
+            self.recalculate_lighting()
 
     def prepare_fov(self, pos, radius=0, reset=True):
         """recalculate player fov; set reset=False to add to player fov"""
@@ -212,6 +222,35 @@ class Map:
                     for t in ts:
                         t.visible_to_player = False
                 
+    def recalculate_lighting(self):
+        """recalculate lighting of each mappable."""
+        print("RECALCULATING LIGHTING")
+
+        lights = []
+#        self.__lighting_map = {}
+        # reset light levels to zero and find all the light sources
+        for layer in self.__layer_order:
+            for (pos,ts) in self.__layers[layer].items():
+                for t in ts:
+        #            t.light_level = 0.0
+                    if isinstance(t,LightSource):
+                        lights.append(t)
+                self.__lighting_map[pos] = 0.0
+
+        # for each light source, work out which tiles are lit by it
+        for l in lights:
+            libtcod.map_compute_fov(self.__tcod_map_light, l.pos.x, l.pos.y, l.radius, True, libtcod.FOV_BASIC)
+            for pos in self.__lighting_map.keys():
+                if libtcod.map_is_in_fov(self.__tcod_map_light, pos.x, pos.y):
+                    light_level = l.radius == 0 and l.intensity or \
+                        (l.intensity*0.5 + l.intensity*0.5*((l.radius-l.pos.distance_to(pos))/l.radius)) # linear dropoff after half d
+                    self.__lighting_map[pos] = min(self.__lighting_map[pos]+light_level,LightSource.INTENSITY_CAP)
+
+    def is_lit(self, pos):
+        return self.__lighting_map.get(pos,0.0) > 0.0
+
+    def light_level(self, pos):
+        return self.__lighting_map.get(pos,0.0)
 
     def can_see(self, obj, target=None, angle_of_vis=1.0):
         """default is: can obj see player? angle_of_vis between 0.0 and 1.0 where 0.0 is blind and 1.0 can see all around"""
@@ -225,9 +264,9 @@ class Map:
             # 
             #    travelling S:     pos-last_pos == (0,1)
             #    player in-front:  player.pos-obj.pos  must (0, >0)
-            return self.player.is_visible and libtcod.map_is_in_fov(self.__tcod_map, obj.pos.x, obj.pos.y) and (angle_of_vis==1.0 or (obj.pos-obj.last_pos).angle_to(self.player.pos-obj.pos) <= angle_of_vis)
+            return self.player.is_visible and self.is_lit(self.player.pos) and libtcod.map_is_in_fov(self.__tcod_map, obj.pos.x, obj.pos.y) and (angle_of_vis==1.0 or (obj.pos-obj.last_pos).angle_to(self.player.pos-obj.pos) <= angle_of_vis)
         elif obj is self.player:
-            return obj.is_visible and libtcod.map_is_in_fov(self.__tcod_map, obj.pos.x, obj.pos.y)
+            return obj.is_visible and self.is_lit(obj.pos) and libtcod.map_is_in_fov(self.__tcod_map, obj.pos.x, obj.pos.y)
         else:
             raise NotImplementedError
 
@@ -448,6 +487,8 @@ class TypeAMap(Map):
     SANITY_LIMIT        = 100
     BOUNDARY_UNSET      = -1
     TELEPORT_CHANCE     = 0.2 # just less than 1 per room
+    LIGHT_MIN_RADIUS    = 6
+    LIGHT_MAX_RADIUS    = 25
     DEBUG               = False
 
     def __init__(self, seed, size, player):
@@ -463,7 +504,7 @@ class TypeAMap(Map):
             if not isinstance(pos,Position):
                 pos = Position(pos)
             if not isinstance(size,Position):
-                size = Position(size)
+                size = Position(size[0],size[1])
             self.tile_id = tile_id
             self.pos = pos
             self.size = size
@@ -485,7 +526,7 @@ class TypeAMap(Map):
             for x in range(self.size.x):
                 for y in range(self.size.y):
                     #print(" ... (%d,%d) = %d"%(x+self.pos.x,y+self.pos.y,self.tile_id))
-                    m[x+self.pos.x][y+self.pos.y] = self.tile_id
+                    m[x+self.pos.x][y+self.pos.y] |= self.tile_id
 
     def _gen_get_compass_dir(self):
         return ['N','S','E','W'][ libtcod.random_get_int(self.map_rng,0,3) ]
@@ -780,6 +821,20 @@ class TypeAMap(Map):
         if size.x*size.y > self.ROOM_MAX_AREA:
             return []
 
+        # lighting
+        #  * choose a scheme out of
+        light_roll = libtcod.random_get_float(self.map_rng,0.0,1.0)
+        #       * one central light
+        if light_roll < 0.8:
+            p = tl + (size.x//2,size.y//2)
+            self.debug_print("room light at %s; tl=%s sz=%s" % (p,tl,size))
+            r_segs.append(self._ME(MapPattern.LIGHT, p, Position(1,1), p))
+        #       * grid of lights in middle
+        #       * lights on edges
+        #       * no lights at all
+        else:
+            pass
+
         return r_segs
 
 
@@ -809,7 +864,25 @@ class TypeAMap(Map):
             size = Position( length, width )
         else:
             assert False, "_gen_corridor_seg called with invalid direction %s" % direction
-        return self._ME(MapPattern.CORRIDOR, pos, size, opos, direction, length)
+        r_segs = [self._ME(MapPattern.CORRIDOR, pos, size, opos, direction, length)]
+
+        # lighting
+        # NB. need to insert lighting segs at beginning of return list to help corridor gen
+        light_roll = libtcod.random_get_float(self.map_rng,0.0,1.0)
+        #       * one central light
+        if light_roll < 0.7:
+            p = pos + (size.x//2,size.y//2)
+            self.debug_print("light at %s in corridor %s %s %s"%(p,pos,size,width))
+            r_segs.insert(0, self._ME(MapPattern.LIGHT, p, (1,1), p, 'N', 0))
+        #       * light at each end
+        #elif light_roll < 0.8:
+        #    r_segs.insert(0, self._ME(MapPattern.LIGHT, pos, (1,1), pos, 'N', 0))
+        #    r_segs.insert(0, self._ME(MapPattern.LIGHT, pos+size-Position(1,1), (1,1), pos+size, 'N', 0))
+        #       * no lights at all
+        else:
+            pass
+
+        return r_segs
 
 
     def _gen_corridor_to_area(self, pos, direction, edge, width, bendiness=3):
@@ -830,7 +903,7 @@ class TypeAMap(Map):
             if   num_bends == 1:
                 # get as close to terminating pos as possible
                 d, l = self._gen_dir_from_pos( curr_pos, terminating_pos )
-                c_segs.append( self._gen_corridor_seg( curr_pos, d, l, width ) )
+                c_segs += self._gen_corridor_seg( curr_pos, d, l, width )
                 self.debug_print("Bend 1 (last): pos %s, target %s, dir %s, len %d"%(curr_pos,terminating_pos,d,l))
 
             elif num_bends == 2:
@@ -843,7 +916,7 @@ class TypeAMap(Map):
                     direction = self._gen_get_compass_opposite(direction)
                 if l > self._gen_get_available_dist(curr_pos,direction): # still!
                     l = self._gen_get_available_dist(curr_pos,direction) - self.CORRIDOR_MIN_LENGTH - width
-                c_segs.append( self._gen_corridor_seg( curr_pos, direction, l, width ) )
+                c_segs += self._gen_corridor_seg( curr_pos, direction, l, width )
                 self.debug_print("Bend 2 (pen.): pos %s, target %s, dir %s, len %d"%(curr_pos,terminating_pos,direction,l))
 
             else:
@@ -853,7 +926,7 @@ class TypeAMap(Map):
                     l_min = self.CORRIDOR_MIN_LENGTH+width+1
                 elif l_min <= 0:
                     direction = self._gen_get_compass_opposite(direction)
-                c_segs.append( self._gen_corridor_seg( curr_pos, direction, libtcod.random_get_int(self.map_rng,self.CORRIDOR_MIN_LENGTH+width+1,self._gen_get_available_dist(curr_pos,direction)-self.CORRIDOR_MIN_LENGTH-width), width ) )
+                c_segs += self._gen_corridor_seg( curr_pos, direction, libtcod.random_get_int(self.map_rng,self.CORRIDOR_MIN_LENGTH+width+1,self._gen_get_available_dist(curr_pos,direction)-self.CORRIDOR_MIN_LENGTH-width), width )
                 self.debug_print("Bend >2 (first): pos %s, target %s, dir %s, len %d"%(curr_pos,terminating_pos,direction,c_segs[-1].length))
                 direction = self._gen_get_compass_turn(direction)
             num_bends -= 1
@@ -881,8 +954,7 @@ class TypeAMap(Map):
             len_avail = self._gen_get_available_dist(curr_pos,direction)
 
             if len_avail > len_wanted+1:
-                s = self._gen_corridor_seg( curr_pos, direction, len_wanted, width )
-                c_segs.append( s )
+                c_segs += self._gen_corridor_seg( curr_pos, direction, len_wanted, width )
                 len_used += len_wanted
                 curr_pos += self._gen_pos_from_dir( direction, len_wanted )
                 self.debug_print("iter: %d; pos: %s; dir: %s; used: %d; wanted %d; avail: %d"%(sanity,curr_pos,direction,len_used,len_wanted,len_avail))
@@ -1070,7 +1142,13 @@ class TypeAMap(Map):
                     else:
                         misses += 1
                 else:
-                    assert False, "Invalid _map data"
+                    assert False, "Invalid _map data at pos (%d,%d); flags 0x%x"%(x,y,self._map[x][y])
+
+                # overlay lights
+                if t & MapPattern.LIGHT:
+                    self.add(Light(Position(x,y),libtcod.random_get_int(self.map_rng,self.LIGHT_MIN_RADIUS,self.LIGHT_MAX_RADIUS)))
+
+
 
         if 1.0 - (misses/(self.size.x*self.size.y)) < self.REJECT_COVERAGE_SQ:
             return self.generate()

@@ -210,7 +210,7 @@ class CoolDownItem(Item, CountUp, TurnTaker):
             print ("%s still on cooldown, %d turns remaining"%(self,self.count_to-self.count))
             # still on cooldown
             return False
-        self.reset(-1) # because we immediately inc()
+        self.reset(0) # was -1 because we immediately inc()
         TurnTaker.add_turntaker(self)
         return True
 
@@ -302,7 +302,6 @@ class Cloaker(CoolDownItem):
             return False
         self.owner.is_visible = False
         self.hidden_at = self.owner.pos
-        self.inc()
         return True
     
     def take_turn(self):
@@ -492,6 +491,11 @@ class AnalysisSpecs(RunDownItem):
 
     def __str__(self):
         return "Analysis Specs"
+
+    def activate(self,activator=None):
+        if self.is_active: # i.e. about to be deactivated
+            self.messages = []
+        return RunDownItem.activate(self,activator)
 
     def take_turn(self):
         self.messages = []

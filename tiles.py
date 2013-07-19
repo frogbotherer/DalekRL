@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import libtcodpy as libtcod
-from interfaces import Mappable, Traversable, Transparent, TurnTaker, CountUp, Position, Activatable, HasInventory, Shouter, Talker, StatusEffect
+from interfaces import Mappable, Traversable, Transparent, TurnTaker, CountUp, Position, Activatable, HasInventory, Shouter, Talker, StatusEffect, LightSource
 from errors import LevelWinError, InvalidMoveError
 from ui import HBar, Menu
 
@@ -17,6 +17,7 @@ class MapPattern:
     WALL     = 0x4
     DOOR     = 0x8
     SPECIAL  = 0x10 # e.g. charger tile
+    LIGHT    = 0x20
 #    FLOOR_FURNITURE = 0x20 # e.g. boxes and tables
 #    WALL_SPECIAL    = 0x40 # e.g. portal
 #    WALL_FURNITURE  = 0x80 # e.g. cupboard
@@ -25,9 +26,9 @@ class MapPattern:
 
     DATA_MAP = {
         ' ': EMPTY,
-        '.': CORRIDOR|ROOM,
-        'r': ROOM,
-        'c': CORRIDOR,
+        '.': CORRIDOR|ROOM|LIGHT,
+        'r': ROOM|LIGHT,
+        'c': CORRIDOR|LIGHT,
         '#': WALL,
         '+': DOOR,
         'X': SPECIAL,
@@ -340,7 +341,12 @@ class ClankyFloor(Tile,Talker,Shouter):
 
         return True
 
+class Light(Tile,LightSource):
+    def __init__(self, pos, r=0):
+        Tile.__init__(self, pos, '\'', libtcod.white, 1.0, 1.0)
+        LightSource.__init__(self,r)
 
+# TODO: is this an interface?
 class Trap:
     def __init__(self):
         self.tripped = False

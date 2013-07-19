@@ -88,6 +88,19 @@ class Mappable:
         return self.map.move(self, pos)
 
     ##
+    # lighting
+    @property
+    def is_lit(self):
+        return self.light_level > 0.0
+
+    @property
+    def light_level(self):
+        if self.map is None or self.pos is None:
+            return 0.0
+        else:
+            return self.map.light_level(self.pos)
+
+    ##
     # drawing
     def draw(self):
         # NB. this gets called a lot!
@@ -102,8 +115,17 @@ class Mappable:
                 symbol = self.unseen_symbol
             else:
                 return
-        libtcod.console_put_char_ex(0, self.pos.x, self.pos.y, symbol, colour, libtcod.BKGND_NONE)
+        libtcod.console_put_char_ex(0, self.pos.x, self.pos.y, symbol, colour*self.light_level, libtcod.BKGND_NONE)
         self.has_been_seen = True
+
+class LightSource:
+    INTENSITY_CAP = 1.2
+
+    def __init__(self, radius=0, intensity=1.0):
+        self.radius=radius
+        self.intensity=intensity
+
+
 
 class TurnTaker:
     turn_takers = []
