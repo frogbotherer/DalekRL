@@ -118,13 +118,56 @@ class Mappable:
         libtcod.console_put_char_ex(0, self.pos.x, self.pos.y, symbol, colour*self.light_level, libtcod.BKGND_NONE)
         self.has_been_seen = True
 
-class LightSource:
+class LightSource: #(Mappable):
     INTENSITY_CAP = 1.2
 
     def __init__(self, radius=0, intensity=1.0):
-        self.radius=radius
-        self.intensity=intensity
+        assert isinstance(self,Mappable), "LightSource mixin must be mappable" # TODO: is this right? :D
+        self.radius    = radius == 0 and 100 or radius # TODO: more sensible behaviour for infinite r
+        self.intensity = intensity
+        self.__tcod_light_map = libtcod.map_new(radius*2+1,radius*2+1)
 
+    def prepare_fov(self,light_walls=False):
+        libtcod.map_compute_fov(self.__tcod_light_map, self.radius+1, self.radius+1, self.radius, light_walls, libtcod.FOV_BASIC)
+
+    def reset_map(self,pos=None):
+        assert not self.pos is None and not self.map is None, "resetting LightSource that is not placed on map"
+
+        if pos is None:
+            libtcod.map_clear(self.__tcod_light_map,False,False)
+            for o in self.map.find_all_within_r(self,Transparent,self.radius):
+                # we're using the walkable bit to show that there is a tile that could be lit
+                print("%s lights %s"%(self,o))
+                libtcod.map_set_properties(self.__tcod_light_map,1+self.radius+o.pos.x-self.pos.x,1+self.radius+o.pos.y-self.pos.y,not o.blocks_light(),True)
+        else:
+            for o in self.map.find_all_at_pos(pos):
+                if isinstance(o,Transparent):
+                    libtcod.map_set_properties(self.__tcod_light_map,1+self.radius+o.pos.x-self.pos.x,1+self.radius+o.pos.y-self.pos.y,not o.blocks_light(),True)
+
+        self.prepare_fov(True) # TODO: set this False and then call True only for player FOV
+
+    def get_light(self,pos):
+        dist = self.pos.distance_to(pos)
+        if dist > self.radius:
+            return 0.0
+
+        elif libtcod.map_is_in_fov(self.__tcod_light_map,1+self.radius+pos.x-self.pos.x,1+self.radius+pos.y-self.pos.y):
+            # TODO: cache these values
+            return self.intensity*0.5 + self.intensity*0.5*((self.radius-dist)/self.radius) # linear dropoff after half d
+
+        return 0.0
+
+    def is_lightable(self,pos):
+        if self.pos.distance_to(pos) > self.radius:
+            return False
+        else:
+            return libtcod.map_is_walkable(self.__tcod_light_map,pos.x,pos.y)
+
+    def close(self):
+        libtcod.map_delete(self.__tcod_light_map)
+
+    def __del__(self):
+        self.close()
 
 
 class TurnTaker:

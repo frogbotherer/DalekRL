@@ -10,6 +10,7 @@ from tiles import Tile, Wall, Floor, Light, Door, StairsDown, StairsUp, FloorTel
 from errors import TodoError, InvalidMoveError
 
 from functools import reduce
+import weakref
 
 class Map:
     __layer_order = [Tile,Item,Monster,Player]
@@ -27,9 +28,10 @@ class Map:
         self.__tcod_map_empty  = libtcod.map_new( self.size.x, self.size.y ) # for xray, audio, ghosts(?)
         libtcod.map_clear( self.__tcod_map_empty, True, True )               # clear the map to be traversable and visible
         self.__tcod_map        = libtcod.map_new( self.size.x, self.size.y ) # for pathing and rendering
-        self.__tcod_map_light  = libtcod.map_new( self.size.x, self.size.y ) # for light
+        #self.__tcod_map_light  = libtcod.map_new( self.size.x, self.size.y ) # for light # now do one for each light
         self.__tcod_pathfinder = None
         self.__lighting_map    = {}
+        self.__light_ref_cache = {}
 
     def __get_layer_from_obj(self, obj):
         for l in self.__layer_order:
@@ -122,11 +124,11 @@ class Map:
                 ro = o
         return ro
 
-    def find_all_within_r(self, obj, otype, radius, must_be_visible=True):
+    def find_all_within_r(self, obj, otype, radius, must_be_visible=True, layer=None):
         """find all type otype in radius of obj"""
         # TODO: there might be a more efficient way to do this using another FOV map from TCOD
         ret = []
-        for o in self.find_all(otype):
+        for o in self.find_all(otype,layer):
             if obj is o or (must_be_visible and not o.is_visible):
                 continue
             if obj.pos.distance_to(o.pos) < radius:
@@ -188,25 +190,32 @@ class Map:
                 for o in d:
                     o.draw()
 
-    def recalculate_paths(self, is_for_mapping=False):
+    def recalculate_paths(self, pos=None, is_for_mapping=False):
         """if is_for_mapping is set, don't count things like teleports as traversable"""
-        print("RECALCULATING PATHS!")
+        print("%d: RECALCULATING PATHS%s!"%(self.player.turns,pos is None and " FOR ALL" or " AT %s"%pos))
 
-        libtcod.map_clear(self.__tcod_map)
-        for ol in self.__layers[Tile].values():
-            for o in ol:
+        if pos is None:
+            libtcod.map_clear(self.__tcod_map)
+            for ol in self.__layers[Tile].values():
+                for o in ol:
+                    is_walkable = (isinstance(o,Traversable) and (not o.blocks_movement(is_for_mapping)))
+                    is_transparent = (isinstance(o,Transparent) and not o.blocks_light())
+                    libtcod.map_set_properties(self.__tcod_map,o.pos.x,o.pos.y,is_transparent,is_walkable)
+        else:
+            for o in self.__layers[Tile].get(pos,[]):
                 is_walkable = (isinstance(o,Traversable) and (not o.blocks_movement(is_for_mapping)))
                 is_transparent = (isinstance(o,Transparent) and not o.blocks_light())
                 libtcod.map_set_properties(self.__tcod_map,o.pos.x,o.pos.y,is_transparent,is_walkable)
+
         #self.__tcod_pathfinder = libtcod.path_new_using_map(self.__tcod_map)
         self.__tcod_pathfinder = libtcod.dijkstra_new(self.__tcod_map)
 
         # copy pathing map to light map
-        libtcod.map_copy(self.__tcod_map,self.__tcod_map_light)
+        #libtcod.map_copy(self.__tcod_map,self.__tcod_map_light)
 
         # lighting needs updating too
         if not is_for_mapping:
-            self.recalculate_lighting()
+            self.recalculate_lighting(pos)
 
     def prepare_fov(self, pos, radius=0, reset=True):
         """recalculate player fov; set reset=False to add to player fov"""
@@ -222,28 +231,38 @@ class Map:
                     for t in ts:
                         t.visible_to_player = False
                 
-    def recalculate_lighting(self):
+    def recalculate_lighting(self,pos=None):
         """recalculate lighting of each mappable."""
-        print("RECALCULATING LIGHTING")
-
         lights = []
-#        self.__lighting_map = {}
-        # reset light levels to zero and find all the light sources
-        for layer in self.__layer_order:
-            for (pos,ts) in self.__layers[layer].items():
-                for t in ts:
-        #            t.light_level = 0.0
-                    if isinstance(t,LightSource):
-                        lights.append(t)
-                self.__lighting_map[pos] = 0.0
+
+        if pos is None:
+            # reset light levels to zero and find all the light sources
+            lights = self.find_all(LightSource)
+            for l in lights:
+                l.reset_map()
+
+            for layer in [Tile]:
+                for pos in self.__layers[layer].keys():
+                    self.__lighting_map[pos] = 0.0
+                    self.__light_ref_cache[pos] = []
+                    for l in lights:
+                        if l.is_lightable(pos):
+                            self.__light_ref_cache[pos].append(weakref.ref(l))
+        else:
+            for lr in self.__light_ref_cache[pos]:
+                l = lr()
+                if l is None:
+                    self.__light_ref_cache[pos].remove(lr)
+                l.reset_map(pos)
+                lights.append(l)
+
+        print("%d: RECALCULATING %d LIGHT(S) FROM %s"%(self.player.turns,len(lights),pos))
 
         # for each light source, work out which tiles are lit by it
         for l in lights:
-            libtcod.map_compute_fov(self.__tcod_map_light, l.pos.x, l.pos.y, l.radius, True, libtcod.FOV_BASIC)
             for pos in self.__lighting_map.keys():
-                if libtcod.map_is_in_fov(self.__tcod_map_light, pos.x, pos.y):
-                    light_level = l.radius == 0 and l.intensity or \
-                        (l.intensity*0.5 + l.intensity*0.5*((l.radius-l.pos.distance_to(pos))/l.radius)) # linear dropoff after half d
+                light_level = l.get_light(pos)
+                if light_level > 0.0:
                     self.__lighting_map[pos] = min(self.__lighting_map[pos]+light_level,LightSource.INTENSITY_CAP)
 
     def is_lit(self, pos):
@@ -346,7 +365,7 @@ class Map:
         up_pos   = self.find_random_clear(self.map_rng)
         down_pos = self.find_random_clear(self.map_rng)
 
-        self.recalculate_paths(True)
+        self.recalculate_paths(is_for_mapping=True)
         while len(self.get_path(up_pos,down_pos)) < 1:
             up_pos   = self.find_random_clear(self.map_rng)
             down_pos = self.find_random_clear(self.map_rng)

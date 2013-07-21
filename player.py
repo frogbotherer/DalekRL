@@ -57,7 +57,13 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
             ' ': self.interact,
             }
 
-
+    @property
+    def light_level(self):
+        # cap min light level
+        l = self.map.light_level(self.pos)
+        if l < 0.2:
+            return 0.2
+        return l
 
     def __str__(self):
         return "Player at %s" % self.pos

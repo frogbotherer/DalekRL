@@ -118,7 +118,7 @@ class Tile(Mappable,Traversable,Transparent):
 
     def __str__(self):
         # uncamelcase class name by default
-        return re.sub("([a-z])([A-Z])",r'\1 \2',self.__class__.__name__)
+        return "%s at %s" % (re.sub("([a-z])([A-Z])",r'\1 \2',self.__class__.__name__), self.pos)
 
     @staticmethod
     def random_furniture(rng, pos):
@@ -494,6 +494,7 @@ class Window(Tile,Talker,Shouter):
         self.symbol = '.'
         self.walk_cost = 1.0
         self.is_smashed = True
+        self.map.recalculate_paths(self.pos)
 
 class Door(Tile,CountUp,TurnTaker):
     OPEN = {'symbol':'.','colour':libtcod.dark_grey,'transparency':1.0,'walkcost':1.0,
@@ -518,12 +519,12 @@ class Door(Tile,CountUp,TurnTaker):
 
     def to_open(self):
         self.__change(Door.OPEN)
-        self.map.recalculate_paths()
+        self.map.recalculate_paths(self.pos)
         self.map.player.reset_fov()
 
     def to_closed(self):
         self.__change(Door.CLOSED)
-        self.map.recalculate_paths()
+        self.map.recalculate_paths(self.pos)
         self.map.player.reset_fov()
 
     def to_closing(self):
@@ -553,7 +554,7 @@ class Door(Tile,CountUp,TurnTaker):
                 self.bar.is_visible = False
                 self.to_open()
                 #if obj is self.map.player: # i think we need to do this anyway
-                #    self.map.recalculate_paths()
+                #    self.map.recalculate_paths(self.pos)
                 #    self.map.player.reset_fov()
                 return self.walk_cost
             else:
