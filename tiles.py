@@ -219,6 +219,12 @@ class Wall(Tile):
     def __init__(self, pos):
         Tile.__init__(self, pos, '#', libtcod.light_grey)
 
+    #@property
+    #def light_level(self):
+    #    l = super().light_level
+    #    return l == libtcod.black and self.unseen_colour or l
+
+
 class Locker(Tile,CanHaveEvidence):
     patterns = [
         MapPattern("...",

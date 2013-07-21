@@ -2,7 +2,7 @@
 
 import libtcodpy as libtcod
 
-from interfaces import Mappable, Activator, Activatable, TurnTaker, Position, StatusEffect, HasInventory, Talker
+from interfaces import Mappable, Activator, Activatable, TurnTaker, Position, StatusEffect, HasInventory, Talker, LightSource
 from items import Item, SlotItem, Evidence, XRaySpecs, RunningShoes, AnalysisSpecs
 from tiles import Tile
 from ui import UI, Menu
@@ -11,7 +11,7 @@ from errors import GameOverError, InvalidMoveError, InvalidMoveContinueError
 import sys
 from time import sleep
 
-class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
+class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory,LightSource):
     # these don't really belong here
     SCREEN_SIZE = Position(80,50)
     LIMIT_FPS = 15
@@ -26,6 +26,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
         StatusEffect.__init__(self)
         TurnTaker.__init__(self,1)
         HasInventory.__init__(self,3,(SlotItem.HEAD_SLOT,SlotItem.BODY_SLOT,SlotItem.FEET_SLOT))
+        LightSource.__init__(self,2,0.6)
         self.items = [Item.random(None,self,2,1.5),Item.random(None,self,1),None]
         self.slot_items = {
             SlotItem.HEAD_SLOT: AnalysisSpecs(self),
@@ -58,13 +59,13 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
             'L': self.debug_lighting,
             }
 
-    @property
-    def light_level(self):
-        # cap min light level
-        l = self.map.light_level(self.pos)
-        if libtcod.color_get_hsv(l)[2] < 0.2:
-            return libtcod.dark_grey
-        return l
+    #@property
+    #def light_level(self):
+    #    # cap min light level
+    #    l = self.map.light_level(self.pos)
+    #    if libtcod.color_get_hsv(l)[2] < 0.2:
+    #        return libtcod.dark_grey
+    #    return l
 
     def __str__(self):
         return "Player at %s" % self.pos
@@ -221,6 +222,12 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
         return 1.0
 
     def take_turn(self):
+        # runs just before handle_keys, so expensive ops run whilst player chooses what to do
+        Talker.stop_all_talk()
+        self.reset_fov()
+        self.map.recalculate_dirty()
+        self.map.recalculate_lighting()
+
         self.turns += 1
         t_remaining = 1.0 # TODO: weight this based on passive buffs
         have_used_item = False
@@ -245,9 +252,6 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
             except InvalidMoveError:
                 # this is ok, like teleporting
                 t_remaining = 0.0
-
-        Talker.stop_all_talk()
-        self.reset_fov()
 
 
     def handle_keys(self):

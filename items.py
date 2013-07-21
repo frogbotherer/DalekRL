@@ -320,7 +320,7 @@ class RemoteTimer(LimitedUsesItem):
     pass # TODO: same as R/C but counts down from activation
 
 class RemoteControl(LimitedUsesItem):
-    awesome_weight = 1.8
+    awesome_weight = 0.8
 
     def __init__(self,owner,item_power,item_colour=libtcod.orange,bar_colour=libtcod.red):
         # only a few uses permitted!

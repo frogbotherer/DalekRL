@@ -109,7 +109,7 @@ class Mappable:
         # NB. this gets called a lot!
         if not self.is_visible:
             return
-        colour = self.colour
+        colour = self.colour*self.light_level
         symbol = self.symbol
 
         if not (self.visible_to_player):
@@ -118,7 +118,7 @@ class Mappable:
                 symbol = self.unseen_symbol
             else:
                 return
-        libtcod.console_put_char_ex(0, self.pos.x, self.pos.y, symbol, colour*self.light_level, libtcod.BKGND_NONE)
+        libtcod.console_put_char_ex(0, self.pos.x, self.pos.y, symbol, colour, libtcod.BKGND_NONE)
         self.has_been_seen = True
 
 class LightSource: #(Mappable):
@@ -149,17 +149,27 @@ class LightSource: #(Mappable):
                 # we're using the walkable bit to show that there is a tile that could be lit
                 libtcod.map_set_properties(self.__tcod_light_map,1+self.radius+p.x-self.pos.x,1+self.radius+p.y-self.pos.y,is_transparent,True)
 
-        elif self.pos.distance_to(pos) > self.radius:
-            # pos isn't covered by this light; do nothing
-            return
-
         else:
-            is_transparent = True
-            for o in self.map.find_all_at_pos(pos):
-                if isinstance(o,Transparent) and o.blocks_light():
-                    is_transparent = False
-                    break
-            libtcod.map_set_properties(self.__tcod_light_map,1+self.radius+o.pos.x-self.pos.x,1+self.radius+o.pos.y-self.pos.y,is_transparent,True)
+            if not isinstance(pos,list):
+                pos = [pos]
+            skip_calc = True
+            for p in pos:
+                if self.pos.distance_to(p) > self.radius:
+                    # pos isn't covered by this light; do nothing
+                    pass
+
+                else:
+                    skip_calc      = False
+                    is_transparent = True
+                    for o in self.map.find_all_at_pos(p):
+                        if isinstance(o,Transparent) and o.blocks_light():
+                            is_transparent = False
+                            break
+                    libtcod.map_set_properties(self.__tcod_light_map,1+self.radius+p.x-self.pos.x,1+self.radius+p.y-self.pos.y,is_transparent,True)
+
+            if skip_calc:
+                # all pos were outside of light radius!
+                return
 
         self.prepare_fov(True) # TODO: set this False and then call True only for player FOV
 
@@ -180,10 +190,6 @@ class LightSource: #(Mappable):
 
     def blit_to(self,tcod_console):
         libtcod.image_blit_rect(self.__tcod_light_image, tcod_console, self.pos.x-self.radius-1, self.pos.y-self.radius-1, -1, -1, libtcod.BKGND_ADD)
-
-
-    def is_lightable(self,pos):
-        return self.pos.distance_to(pos) < self.radius+1
 
     def close(self):
         libtcod.map_delete(self.__tcod_light_map)

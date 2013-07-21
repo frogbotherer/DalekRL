@@ -30,6 +30,7 @@ class Map:
         self.__tcod_map            = libtcod.map_new( self.size.x, self.size.y ) # for pathing and rendering
         self.__tcod_pathfinder     = None
         self.__tcod_light_console  = libtcod.console_new( self.size.x, self.size.y )  # stores cumulative light data
+        self._dirty_pos            = []
 
     def __get_layer_from_obj(self, obj):
         for l in self.__layer_order:
@@ -188,7 +189,12 @@ class Map:
                 for o in d:
                     o.draw()
 
-    def recalculate_paths(self, pos=None, is_for_mapping=False):
+    def recalculate_dirty(self):
+        if len(self._dirty_pos)>0:
+            self.recalculate_paths(self._dirty_pos,force_now=True)
+            self._dirty_pos = []
+
+    def recalculate_paths(self, pos=None, is_for_mapping=False, force_now=False):
         """if is_for_mapping is set, don't count things like teleports as traversable"""
         print("%d: RECALCULATING PATHS%s!"%(self.player.turns,pos is None and " FOR ALL" or " AT %s"%pos))
 
@@ -200,20 +206,24 @@ class Map:
                     is_transparent = (isinstance(o,Transparent) and not o.blocks_light())
                     libtcod.map_set_properties(self.__tcod_map,o.pos.x,o.pos.y,is_transparent,is_walkable)
         else:
-            for o in self.__layers[Tile].get(pos,[]):
-                is_walkable = (isinstance(o,Traversable) and (not o.blocks_movement(is_for_mapping)))
-                is_transparent = (isinstance(o,Transparent) and not o.blocks_light())
-                libtcod.map_set_properties(self.__tcod_map,o.pos.x,o.pos.y,is_transparent,is_walkable)
+            if not isinstance(pos,list):
+                pos = [pos]
+            if not force_now:
+                self._dirty_pos += pos
+                return
+            for p in pos:
+                for o in self.__layers[Tile].get(p,[]):
+                    is_walkable = (isinstance(o,Traversable) and (not o.blocks_movement(is_for_mapping)))
+                    is_transparent = (isinstance(o,Transparent) and not o.blocks_light())
+                    libtcod.map_set_properties(self.__tcod_map,o.pos.x,o.pos.y,is_transparent,is_walkable)
 
         #self.__tcod_pathfinder = libtcod.path_new_using_map(self.__tcod_map)
         self.__tcod_pathfinder = libtcod.dijkstra_new(self.__tcod_map)
 
-        # copy pathing map to light map
-        #libtcod.map_copy(self.__tcod_map,self.__tcod_map_light)
-
         # lighting needs updating too
-        if not is_for_mapping:
-            self.recalculate_lighting(pos)
+        # called every turn now
+        #if not is_for_mapping:
+        #    self.recalculate_lighting(pos)
 
     def prepare_fov(self, pos, radius=0, reset=True):
         """recalculate player fov; set reset=False to add to player fov"""
@@ -237,6 +247,7 @@ class Map:
         # reset light levels for every light source
         libtcod.console_clear(self.__tcod_light_console)
         lights = self.find_all(LightSource)
+
         for l in lights:
             l.reset_map(pos)
             l.blit_to(self.__tcod_light_console)
