@@ -551,12 +551,8 @@ class Door(Tile,CountUp,TurnTaker):
         else: # Door.CLOSED
             self._trying_to_open = True
             if self.inc():
-                if obj is self.map.player:
-                    print("DEBUGGING FROM HERE ... ")
                 self.bar.is_visible = False
                 self.to_open()
-                if obj is self.map.player:
-                    print(" ... TO HERE")
                 return self.walk_cost
             else:
                 if self.map.can_see(self):

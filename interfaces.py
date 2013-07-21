@@ -91,12 +91,15 @@ class Mappable:
     # lighting
     @property
     def is_lit(self):
-        return self.light_level > 0.0
+        if self.map is None or self.pos is None:
+            return libtcod.black
+        else:
+            return self.map.is_lit(self.pos)
 
     @property
     def light_level(self):
         if self.map is None or self.pos is None:
-            return 0.0
+            return libtcod.black
         else:
             return self.map.light_level(self.pos)
 
@@ -119,14 +122,13 @@ class Mappable:
         self.has_been_seen = True
 
 class LightSource: #(Mappable):
-    INTENSITY_CAP = 1.2
-
-    def __init__(self, radius=0, intensity=1.0):
+    def __init__(self, radius=0, intensity=1.0, light_colour=libtcod.white):
         assert isinstance(self,Mappable), "LightSource mixin must be mappable" # TODO: is this right? :D
-        self.radius    = radius == 0 and 100 or radius # TODO: more sensible behaviour for infinite r
-        self.intensity = intensity
-        self.__tcod_light_map = libtcod.map_new(radius*2+1,radius*2+1)
-        self.coverage  = []
+        self.radius       = radius == 0 and 100 or radius # TODO: more sensible behaviour for infinite r
+        self.intensity    = intensity
+        self.light_colour = light_colour
+        self.__tcod_light_map   = libtcod.map_new(radius*2+1,radius*2+1)
+        self.__tcod_light_image = libtcod.image_new(radius*2+1,radius*2+1)
 
     def prepare_fov(self,light_walls=False):
         libtcod.map_compute_fov(self.__tcod_light_map, self.radius+1, self.radius+1, self.radius, light_walls, libtcod.FOV_BASIC)
@@ -134,9 +136,10 @@ class LightSource: #(Mappable):
     def reset_map(self,pos=None):
         assert not self.pos is None and not self.map is None, "resetting LightSource that is not placed on map"
 
+        # [re-]calculating FOV of light within its map
         if pos is None:
-            cov = {}
             libtcod.map_clear(self.__tcod_light_map,False,False)
+            cov = {}
             for o in self.map.find_all_within_r(self,Transparent,self.radius):
                 # if there's something here already and it blocks light, light is blocked at pos
                 if cov.get(o.pos,True):
@@ -145,7 +148,11 @@ class LightSource: #(Mappable):
             for (p, is_transparent) in cov.items():
                 # we're using the walkable bit to show that there is a tile that could be lit
                 libtcod.map_set_properties(self.__tcod_light_map,1+self.radius+p.x-self.pos.x,1+self.radius+p.y-self.pos.y,is_transparent,True)
-            self.coverage = cov.keys()
+
+        elif self.pos.distance_to(pos) > self.radius:
+            # pos isn't covered by this light; do nothing
+            return
+
         else:
             is_transparent = True
             for o in self.map.find_all_at_pos(pos):
@@ -154,29 +161,33 @@ class LightSource: #(Mappable):
                     break
             libtcod.map_set_properties(self.__tcod_light_map,1+self.radius+o.pos.x-self.pos.x,1+self.radius+o.pos.y-self.pos.y,is_transparent,True)
 
-        print("%s COVERAGE SIZE = %d; SANITY=%d" %(self,len(self.coverage),(self.radius*2+1)**2))
-
         self.prepare_fov(True) # TODO: set this False and then call True only for player FOV
 
-    def get_light(self,pos):
-        dist = self.pos.distance_to(pos)
-        if dist > self.radius:
-            return 0.0
+        # use FOV data to create an image of light intensity, masked by opaque tiles
+        libtcod.image_clear(self.__tcod_light_image,libtcod.black)
+        libtcod.image_set_key_color(self.__tcod_light_image,libtcod.black)
+        r   = self.radius
+        rd2 = r/2
+        for x in range(r*2+1):
+            for y in range(r*2+1):
+                if libtcod.map_is_in_fov(self.__tcod_light_map,x,y):
+                    d = hypot(r-x,r-y)
+                    if d < rd2:
+                        libtcod.image_put_pixel(self.__tcod_light_image,x,y,self.light_colour*self.intensity)
+                    else:
+                        libtcod.image_put_pixel(self.__tcod_light_image,x,y,
+                                                self.light_colour * self.intensity * (1.0-d/r))
 
-        elif libtcod.map_is_in_fov(self.__tcod_light_map,1+self.radius+pos.x-self.pos.x,1+self.radius+pos.y-self.pos.y):
-            # TODO: cache these values
-            return self.intensity*0.67 + self.intensity*0.33*((self.radius-dist)/self.radius) # linear dropoff after 2/3 d
+    def blit_to(self,tcod_console):
+        libtcod.image_blit_rect(self.__tcod_light_image, tcod_console, self.pos.x-self.radius-1, self.pos.y-self.radius-1, -1, -1, libtcod.BKGND_ADD)
 
-        return 0.0
 
     def is_lightable(self,pos):
-        if self.pos.distance_to(pos) > self.radius:
-            return False
-        else:
-            return libtcod.map_is_walkable(self.__tcod_light_map,pos.x,pos.y)
+        return self.pos.distance_to(pos) < self.radius+1
 
     def close(self):
         libtcod.map_delete(self.__tcod_light_map)
+        libtcod.image_delete(self.__tcod_light_image)
 
     def __del__(self):
         self.close()

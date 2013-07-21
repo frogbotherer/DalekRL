@@ -55,14 +55,15 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
             'q': sys.exit,
             'r': self.reset_game,
             ' ': self.interact,
+            'L': self.debug_lighting,
             }
 
     @property
     def light_level(self):
         # cap min light level
         l = self.map.light_level(self.pos)
-        if l < 0.2:
-            return 0.2
+        if libtcod.color_get_hsv(l)[2] < 0.2:
+            return libtcod.dark_grey
         return l
 
     def __str__(self):
@@ -174,6 +175,10 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory):
         return self.move( (0,0) ) # triggers try_movement on current square
     def reset_game(self):
         raise GameOverError
+    def debug_lighting(self):
+        if not self.map is None:
+            self.map.debug_lighting()
+        return 0.0
     def move_n(self):
         return self.move( (0,-1) )
     def move_s(self):

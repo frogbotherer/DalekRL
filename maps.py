@@ -25,13 +25,11 @@ class Map:
             }
         self.map_rng = libtcod.random_new_from_seed(seed)
         self.size = size
-        self.__tcod_map_empty  = libtcod.map_new( self.size.x, self.size.y ) # for xray, audio, ghosts(?)
+        self.__tcod_map_empty      = libtcod.map_new( self.size.x, self.size.y ) # for xray, audio, ghosts(?)
         libtcod.map_clear( self.__tcod_map_empty, True, True )               # clear the map to be traversable and visible
-        self.__tcod_map        = libtcod.map_new( self.size.x, self.size.y ) # for pathing and rendering
-        #self.__tcod_map_light  = libtcod.map_new( self.size.x, self.size.y ) # for light # now do one for each light
-        self.__tcod_pathfinder = None
-        self.__lighting_map    = {}
-        self.__light_ref_cache = {}
+        self.__tcod_map            = libtcod.map_new( self.size.x, self.size.y ) # for pathing and rendering
+        self.__tcod_pathfinder     = None
+        self.__tcod_light_console  = libtcod.console_new( self.size.x, self.size.y )  # stores cumulative light data
 
     def __get_layer_from_obj(self, obj):
         for l in self.__layer_order:
@@ -233,41 +231,27 @@ class Map:
                 
     def recalculate_lighting(self,pos=None):
         """recalculate lighting of each mappable."""
-        lights = []
 
-        if pos is None:
-            # reset light levels for every light source
-            lights = self.find_all(LightSource)
-            for l in lights:
-                l.reset_map()
-                for p in l.coverage:
-                    if not p in self.__light_ref_cache.keys():
-                        self.__light_ref_cache[p] = []
-                        self.__lighting_map[p]    = 0.0
-                    self.__light_ref_cache[p].append(weakref.ref(l))
-                    self.__lighting_map[p] = min(self.__lighting_map[p]+l.get_light(p),LightSource.INTENSITY_CAP)
+        # TODO: optimise for pos=foo
 
-        else:
-            hits = []
-            for lr in self.__light_ref_cache[pos]:
-                l = lr()
-                if l is None:
-                    self.__light_ref_cache[pos].remove(lr)
-                l.reset_map(pos)
-
-                # for each light source, work out which tiles are lit by it
-                for p in l.coverage:
-                    if not p in hits:
-                        print("testing %s in hits (size %d) coverage of %s=%d; cache=%d"%(p,len(hits),l,len(l.coverage),len(self.__light_ref_cache[pos])))
-                        hits.append(p)
-                        self.__lighting_map[p] = 0.0
-                    self.__lighting_map[p] = min(self.__lighting_map[p]+l.get_light(p),LightSource.INTENSITY_CAP)
+        # reset light levels for every light source
+        libtcod.console_clear(self.__tcod_light_console)
+        lights = self.find_all(LightSource)
+        for l in lights:
+            l.reset_map(pos)
+            l.blit_to(self.__tcod_light_console)
 
     def is_lit(self, pos):
-        return self.__lighting_map.get(pos,0.0) > 0.0
+        return self.light_level(pos) != libtcod.black
 
     def light_level(self, pos):
-        return self.__lighting_map.get(pos,0.0)
+        """returns a tcod colour representing light level/colour"""
+        return libtcod.console_get_char_background(self.__tcod_light_console,pos.x,pos.y)
+
+    def debug_lighting(self):
+        libtcod.console_blit(self.__tcod_light_console,0,0,0,0, 0,0,0, 0.5, 1.0)
+        libtcod.console_flush()
+        libtcod.console_wait_for_keypress(True)
 
     def can_see(self, obj, target=None, angle_of_vis=1.0):
         """default is: can obj see player? angle_of_vis between 0.0 and 1.0 where 0.0 is blind and 1.0 can see all around"""
@@ -316,6 +300,7 @@ class Map:
         libtcod.dijkstra_delete(self.__tcod_pathfinder)
         libtcod.map_delete(self.__tcod_map)
         libtcod.map_delete(self.__tcod_map_empty)
+        libtcod.console_delete(self.__tcod_light_console)
         print("MAP CLOSED!")
 
     def __del__(self):
@@ -504,8 +489,8 @@ class TypeAMap(Map):
     SANITY_LIMIT        = 100
     BOUNDARY_UNSET      = -1
     TELEPORT_CHANCE     = 0.2 # just less than 1 per room
-    LIGHT_MIN_RADIUS    = 6
-    LIGHT_MAX_RADIUS    = 20
+    LIGHT_MIN_RADIUS    = 8
+    LIGHT_MAX_RADIUS    = 25
     DEBUG               = False
 
     def __init__(self, seed, size, player):
