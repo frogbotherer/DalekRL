@@ -226,7 +226,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory,LightSource
         Talker.stop_all_talk()
         self.reset_fov()
         self.map.recalculate_dirty()
-        self.map.recalculate_lighting()
+        #self.map.recalculate_lighting()
 
         self.turns += 1
         t_remaining = 1.0 # TODO: weight this based on passive buffs

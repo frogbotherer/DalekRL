@@ -181,7 +181,7 @@ class LightSource: #(Mappable):
         for x in range(r*2+1):
             for y in range(r*2+1):
                 if libtcod.map_is_in_fov(self.__tcod_light_map,x,y):
-                    d = hypot(r-x,r-y)
+                    d = hypot(1+r-x,1+r-y)
                     if d < rd2:
                         libtcod.image_put_pixel(self.__tcod_light_image,x,y,self.light_colour*self.intensity)
                     else:
@@ -189,7 +189,7 @@ class LightSource: #(Mappable):
                                                 self.light_colour * self.intensity * (1.0-d/r))
 
     def blit_to(self,tcod_console):
-        libtcod.image_blit_rect(self.__tcod_light_image, tcod_console, self.pos.x-self.radius-1, self.pos.y-self.radius-1, -1, -1, libtcod.BKGND_ADD)
+        libtcod.image_blit_rect(self.__tcod_light_image, tcod_console, self.pos.x-self.radius-1, self.pos.y-self.radius-1, self.radius*2+1, self.radius*2+1, libtcod.BKGND_ADD)
 
     def close(self):
         libtcod.map_delete(self.__tcod_light_map)

@@ -221,9 +221,8 @@ class Map:
         self.__tcod_pathfinder = libtcod.dijkstra_new(self.__tcod_map)
 
         # lighting needs updating too
-        # called every turn now
-        #if not is_for_mapping:
-        #    self.recalculate_lighting(pos)
+        if not is_for_mapping:
+            self.recalculate_lighting(pos)
 
     def prepare_fov(self, pos, radius=0, reset=True):
         """recalculate player fov; set reset=False to add to player fov"""
