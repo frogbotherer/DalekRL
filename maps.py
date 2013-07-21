@@ -236,34 +236,32 @@ class Map:
         lights = []
 
         if pos is None:
-            # reset light levels to zero and find all the light sources
+            # reset light levels for every light source
             lights = self.find_all(LightSource)
             for l in lights:
                 l.reset_map()
+                for p in l.coverage:
+                    if not p in self.__light_ref_cache.keys():
+                        self.__light_ref_cache[p] = []
+                        self.__lighting_map[p]    = 0.0
+                    self.__light_ref_cache[p].append(weakref.ref(l))
+                    self.__lighting_map[p] = min(self.__lighting_map[p]+l.get_light(p),LightSource.INTENSITY_CAP)
 
-            for layer in [Tile]:
-                for pos in self.__layers[layer].keys():
-                    self.__lighting_map[pos] = 0.0
-                    self.__light_ref_cache[pos] = []
-                    for l in lights:
-                        if l.is_lightable(pos):
-                            self.__light_ref_cache[pos].append(weakref.ref(l))
         else:
+            hits = []
             for lr in self.__light_ref_cache[pos]:
                 l = lr()
                 if l is None:
                     self.__light_ref_cache[pos].remove(lr)
                 l.reset_map(pos)
-                lights.append(l)
 
-        print("%d: RECALCULATING %d LIGHT(S) FROM %s"%(self.player.turns,len(lights),pos))
-
-        # for each light source, work out which tiles are lit by it
-        for l in lights:
-            for pos in self.__lighting_map.keys():
-                light_level = l.get_light(pos)
-                if light_level > 0.0:
-                    self.__lighting_map[pos] = min(self.__lighting_map[pos]+light_level,LightSource.INTENSITY_CAP)
+                # for each light source, work out which tiles are lit by it
+                for p in l.coverage:
+                    if not p in hits:
+                        print("testing %s in hits (size %d) coverage of %s=%d; cache=%d"%(p,len(hits),l,len(l.coverage),len(self.__light_ref_cache[pos])))
+                        hits.append(p)
+                        self.__lighting_map[p] = 0.0
+                    self.__lighting_map[p] = min(self.__lighting_map[p]+l.get_light(p),LightSource.INTENSITY_CAP)
 
     def is_lit(self, pos):
         return self.__lighting_map.get(pos,0.0) > 0.0
@@ -507,7 +505,7 @@ class TypeAMap(Map):
     BOUNDARY_UNSET      = -1
     TELEPORT_CHANCE     = 0.2 # just less than 1 per room
     LIGHT_MIN_RADIUS    = 6
-    LIGHT_MAX_RADIUS    = 25
+    LIGHT_MAX_RADIUS    = 20
     DEBUG               = False
 
     def __init__(self, seed, size, player):
