@@ -25,12 +25,13 @@ class Map:
             }
         self.map_rng = libtcod.random_new_from_seed(seed)
         self.size = size
-        self.__tcod_map_empty      = libtcod.map_new( self.size.x, self.size.y ) # for xray, audio, ghosts(?)
+        self.__tcod_map_empty             = libtcod.map_new( self.size.x, self.size.y ) # for xray, audio, ghosts(?)
         libtcod.map_clear( self.__tcod_map_empty, True, True )               # clear the map to be traversable and visible
-        self.__tcod_map            = libtcod.map_new( self.size.x, self.size.y ) # for pathing and rendering
-        self.__tcod_pathfinder     = None
-        self.__tcod_light_console  = libtcod.console_new( self.size.x, self.size.y )  # stores cumulative light data
-        self._dirty_pos            = []
+        self.__tcod_map                   = libtcod.map_new( self.size.x, self.size.y ) # for pathing and rendering
+        self.__tcod_pathfinder            = None
+        self.__tcod_static_light_console  = libtcod.console_new( self.size.x, self.size.y )  # stores cumulative light data
+        self.__tcod_moving_light_console  = libtcod.console_new( self.size.x, self.size.y )
+        self._dirty_pos                   = []
 
     def __get_layer_from_obj(self, obj):
         for l in self.__layer_order:
@@ -193,6 +194,7 @@ class Map:
         if len(self._dirty_pos)>0:
             self.recalculate_paths(self._dirty_pos,force_now=True)
             self._dirty_pos = []
+        self.recalculate_lighting(self.player.pos,statics=False)
 
     def recalculate_paths(self, pos=None, is_for_mapping=False, force_now=False):
         """if is_for_mapping is set, don't count things like teleports as traversable"""
@@ -238,28 +240,44 @@ class Map:
                     for t in ts:
                         t.visible_to_player = False
                 
-    def recalculate_lighting(self,pos=None):
+    def recalculate_lighting(self,pos=None,statics=True):
         """recalculate lighting of each mappable."""
+        # there are two maps for light; one of static objects that only gets refreshed when tiles and other fixed
+        # mappables change state (e.g. doors opening); and one for moving objects, that gets refreshed every turn
+        #
+        #  * individual light coverage maps are handled as images that are blitted to a console
+        #  * the console is subsequently queried by the map for LOS and drawing
+        #  * moving lights need to be calculating using whole map LOS
+
+        lights = self.find_all(LightSource)
 
         # TODO: optimise for pos=foo
 
         # reset light levels for every light source
-        libtcod.console_clear(self.__tcod_light_console)
-        lights = self.find_all(LightSource)
+        if statics:
+            libtcod.console_clear(self.__tcod_static_light_console)
+        libtcod.console_clear(self.__tcod_moving_light_console)
 
         for l in lights:
-            l.reset_map(pos)
-            l.blit_to(self.__tcod_light_console)
+            if l.remains_in_place:
+                if statics:
+                    l.reset_map(pos)
+                    l.blit_to(self.__tcod_static_light_console)
+            else:
+                # TODO: optimise!
+                l.reset_map()
+                l.blit_to(self.__tcod_moving_light_console)
 
     def is_lit(self, pos):
         return self.light_level(pos) != libtcod.black
 
     def light_level(self, pos):
         """returns a tcod colour representing light level/colour"""
-        return libtcod.console_get_char_background(self.__tcod_light_console,pos.x,pos.y)
+        return libtcod.console_get_char_background(self.__tcod_static_light_console,pos.x,pos.y) \
+            + libtcod.console_get_char_background(self.__tcod_moving_light_console,pos.x,pos.y)
 
     def debug_lighting(self):
-        libtcod.console_blit(self.__tcod_light_console,0,0,0,0, 0,0,0, 0.5, 1.0)
+        libtcod.console_blit(self.__tcod_static_light_console,0,0,0,0, 0,0,0, 0.5, 1.0)
         libtcod.console_flush()
         libtcod.console_wait_for_keypress(True)
 
@@ -310,7 +328,8 @@ class Map:
         libtcod.dijkstra_delete(self.__tcod_pathfinder)
         libtcod.map_delete(self.__tcod_map)
         libtcod.map_delete(self.__tcod_map_empty)
-        libtcod.console_delete(self.__tcod_light_console)
+        libtcod.console_delete(self.__tcod_static_light_console)
+        libtcod.console_delete(self.__tcod_moving_light_console)
         print("MAP CLOSED!")
 
     def __del__(self):

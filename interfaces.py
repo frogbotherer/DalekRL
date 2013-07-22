@@ -124,16 +124,34 @@ class Mappable:
 class LightSource: #(Mappable):
     def __init__(self, radius=0, intensity=1.0, light_colour=libtcod.white):
         assert isinstance(self,Mappable), "LightSource mixin must be mappable" # TODO: is this right? :D
-        self.radius       = radius == 0 and 100 or radius # TODO: more sensible behaviour for infinite r
+        self._radius      = radius == 0 and 100 or radius # TODO: more sensible behaviour for infinite r
         self.intensity    = intensity
         self.light_colour = light_colour
+        self.light_enabled= True
         self.__tcod_light_map   = libtcod.map_new(radius*2+1,radius*2+1)
         self.__tcod_light_image = libtcod.image_new(radius*2+1,radius*2+1)
+
+    @property
+    def radius(self):
+        return self._radius
+    @radius.setter
+    def radius(self,r):
+        if r == self._radius:
+            return # because this is slow!
+        self.close()
+        self._radius            = r
+        self.__tcod_light_map   = libtcod.map_new(r*2+1,r*2+1)
+        self.__tcod_light_image = libtcod.image_new(r*2+1,r*2+1)
+        self.reset_map()
 
     def prepare_fov(self,light_walls=False):
         libtcod.map_compute_fov(self.__tcod_light_map, self.radius+1, self.radius+1, self.radius, light_walls, libtcod.FOV_BASIC)
 
     def reset_map(self,pos=None):
+        if not self.light_enabled:
+            libtcod.image_clear(self.__tcod_light_image,libtcod.black)
+            libtcod.image_set_key_color(self.__tcod_light_image,libtcod.black)
+            return
         assert not self.pos is None and not self.map is None, "resetting LightSource that is not placed on map"
 
         # [re-]calculating FOV of light within its map
@@ -171,9 +189,17 @@ class LightSource: #(Mappable):
                 # all pos were outside of light radius!
                 return
 
-        self.prepare_fov(True) # TODO: set this False and then call True only for player FOV
+        self.prepare_fov(True) # TODO: calculate both True and False; use True only if light in LOS of player
 
         # use FOV data to create an image of light intensity, masked by opaque tiles
+        # can optimise based on pos P: only need to recalculate area X
+        #   ---        ---XX            ---        --XXX
+        #  /   \      /   XX           /   \      /  XXX     do this by splitting into quarters
+        # |    P|    |    PX          |     |    |   XXX     and working out which to recalculate
+        # |  L  |    |  L  |          |  LP |    |  LPXX     based on P-L
+        # |     |    |     |          |     |    |   XXX
+        #  \   /      \   /            \   /      \  XXX
+        #   ---        ---              ---        --XXX
         libtcod.image_clear(self.__tcod_light_image,libtcod.black)
         libtcod.image_set_key_color(self.__tcod_light_image,libtcod.black)
         r   = self.radius
@@ -188,8 +214,13 @@ class LightSource: #(Mappable):
                         libtcod.image_put_pixel(self.__tcod_light_image,x,y,
                                                 self.light_colour * self.intensity * (1.0-d/r))
 
-    def blit_to(self,tcod_console):
-        libtcod.image_blit_rect(self.__tcod_light_image, tcod_console, self.pos.x-self.radius-1, self.pos.y-self.radius-1, self.radius*2+1, self.radius*2+1, libtcod.BKGND_ADD)
+    def blit_to(self,tcod_console,ox=0,oy=0,sx=-1,sy=-1):
+        libtcod.image_blit_rect(self.__tcod_light_image, tcod_console,
+                                self.pos.x+ox-self.radius-1, 
+                                self.pos.y+oy-self.radius-1, 
+                                #self.radius*2+1-ox, self.radius*2+1-oy, 
+                                sx, sy,
+                                libtcod.BKGND_ADD)
 
     def close(self):
         libtcod.map_delete(self.__tcod_light_map)

@@ -4,7 +4,7 @@ import libtcodpy as libtcod
 
 from functools import reduce
 
-from interfaces import Carryable, Activatable, Activator, CountUp, Mappable, TurnTaker, StatusEffect, Shouter
+from interfaces import Carryable, Activatable, Activator, CountUp, Mappable, TurnTaker, StatusEffect, Shouter, LightSource
 from ui import UI, HBar, Message
 from errors import InvalidMoveError
 
@@ -97,7 +97,7 @@ class Item(Carryable, Activatable, Mappable):
         Item.AWESOME_MAP = {}
         for i in range(1,6):
             Item.AWESOME_MAP[i] = [] # need empty entries even if no rank
-        for C in (MemoryWipe,Tangler,TangleMine,HandTeleport,Cloaker,DoorRelease,LevelMap,XRaySpecs,LabCoat,EmergencyHammer,RemoteControl,AnalysisSpecs):
+        for C in (MemoryWipe,Tangler,TangleMine,HandTeleport,Cloaker,DoorRelease,LevelMap,XRaySpecs,LabCoat,EmergencyHammer,RemoteControl,AnalysisSpecs,TorchHelmet):
             Item.AWESOME_MAP[C.awesome_rank].append(C)
         for CL in Item.AWESOME_MAP.values():
             CL.sort(key=lambda x: x.awesome_weight)
@@ -457,6 +457,68 @@ class Evidence(Item):
 
     def __init__(self,pos):
         Item.__init__(self,pos,0.0,libtcod.yellow)
+
+class TorchHelmet(RunDownItem):
+    def __init__(self,owner,item_power=1.0):
+        RunDownItem.__init__(self,owner,item_power*3.0,SlotItem.HEAD_SLOT)
+        self.old_intensity = None
+        self.old_radius    = None
+        self.intensity     = 1.2
+        self.radius        = 8
+
+    def activate(self,activator=None):
+        if not isinstance(self.owner,LightSource):
+            return False
+
+        if not RunDownItem.activate(self):
+            return False
+
+        if self.is_active:
+            self.old_intensity   = self.owner.intensity
+            self.old_radius      = self.owner.radius
+            self.owner.intensity = self.intensity
+            self.owner.radius    = self.radius
+
+        else:
+            self.owner.intensity = self.old_intensity
+            self.owner.radius    = self.old_radius
+
+        #self.owner.map.recalculate_lighting(statics=False)
+        return True
+
+    def __str__(self):
+        return "Torch Helmet"
+
+## implemented as a light source (overkill!!)
+#class TorchHelmet(RunDownItem,LightSource):
+#    def activate(self,activator=None):
+#        if not RunDownItem.activate(self):
+#            return False
+#
+#        if self.is_active:
+#            if isinstance(self.owner,LightSource):
+#                self.owner.light_enabled = False
+#            self.light_enabled = True
+#            self.pos = self.owner.pos
+#            self.map = self.owner.map
+#            self.is_visible = False
+#            self.map.add(self)
+#
+#        else:
+#            if isinstance(self.owner,LightSource):
+#                self.owner.light_enabled = True
+#            self.light_enabled = False
+#            self.map.remove(self)
+#            self.is_visible = True
+#            self.pos = None
+#            self.map = None
+#
+#        self.owner.map.recalculate_lighting(statics=False)
+#        return True
+#
+#    def reset_map(self,pos=None):
+#        self.move_to(self.owner.pos)
+#        return LightSource.reset_map(self,pos)
 
 class XRaySpecs(RunDownItem):
     def __init__(self,owner,item_power=1.0):

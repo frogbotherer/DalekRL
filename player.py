@@ -3,7 +3,7 @@
 import libtcodpy as libtcod
 
 from interfaces import Mappable, Activator, Activatable, TurnTaker, Position, StatusEffect, HasInventory, Talker, LightSource
-from items import Item, SlotItem, Evidence, XRaySpecs, RunningShoes, AnalysisSpecs
+from items import Item, SlotItem, Evidence, RunningShoes, TorchHelmet
 from tiles import Tile
 from ui import UI, Menu
 from errors import GameOverError, InvalidMoveError, InvalidMoveContinueError
@@ -29,7 +29,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory,LightSource
         LightSource.__init__(self,2,0.6)
         self.items = [Item.random(None,self,2,1.5),Item.random(None,self,1),None]
         self.slot_items = {
-            SlotItem.HEAD_SLOT: AnalysisSpecs(self),
+            SlotItem.HEAD_SLOT: TorchHelmet(self),
             SlotItem.BODY_SLOT: None,
             SlotItem.FEET_SLOT: RunningShoes(self),
             }
@@ -225,7 +225,6 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory,LightSource
         # runs just before handle_keys, so expensive ops run whilst player chooses what to do
         Talker.stop_all_talk()
         self.reset_fov()
-        self.map.recalculate_dirty()
         #self.map.recalculate_lighting()
 
         self.turns += 1
@@ -233,6 +232,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory,LightSource
         have_used_item = False
 
         while t_remaining > 0.0:
+            self.map.recalculate_dirty()
             try:
                 # handle player input (and redraw screen)
                 f = self.handle_keys()
@@ -242,6 +242,8 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory,LightSource
                     if not have_used_item:
                         have_used_item = True
                     else:
+                        # TODO: this is wrong! two consecutive item uses should
+                        #       register as two valid keypresses
                         raise InvalidMoveError
                         
                 t_remaining -= f()
@@ -300,6 +302,10 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory,LightSource
         for i in self.items + list(self.slot_items.values()):
             if isinstance(i,TurnTaker):
                 i.refresh_turntaker()
+
+            # switch off active items before level transition
+            if isinstance(i,Activatable) and i.is_active:
+                i.activate()
 
             # TODO: this isn't great :(
             if hasattr(i,'bar') and isinstance(i.bar,UI):
