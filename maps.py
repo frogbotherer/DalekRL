@@ -31,6 +31,8 @@ class Map:
         self.__tcod_pathfinder            = None
         self.__tcod_static_light_console  = libtcod.console_new( self.size.x, self.size.y )  # stores cumulative light data
         self.__tcod_moving_light_console  = libtcod.console_new( self.size.x, self.size.y )
+        libtcod.console_set_default_background(self.__tcod_static_light_console, Mappable.LIGHT_L_CLAMP)
+        #litbcod.console_set_default_background(self.__tcod_moving_light_console, Mappable.LIGHT_L_CLAMP)
         self._dirty_pos                   = []
 
     def __get_layer_from_obj(self, obj):
@@ -198,7 +200,7 @@ class Map:
 
     def recalculate_paths(self, pos=None, is_for_mapping=False, force_now=False):
         """if is_for_mapping is set, don't count things like teleports as traversable"""
-        print("%d: RECALCULATING PATHS%s!"%(self.player.turns,pos is None and " FOR ALL" or " AT %s"%pos))
+        #print("%d: RECALCULATING PATHS%s!"%(self.player.turns,pos is None and " FOR ALL" or " AT %s"%pos))
 
         if pos is None:
             libtcod.map_clear(self.__tcod_map)
@@ -269,15 +271,20 @@ class Map:
                 l.blit_to(self.__tcod_moving_light_console)
 
     def is_lit(self, pos):
-        return self.light_level(pos) != libtcod.black
+        return self.light_level(pos) >= LightSource.INTENSITY_VISIBLE #INTENSITY_L_CLAMP
 
     def light_level(self, pos):
         """returns a tcod colour representing light level/colour"""
-        return libtcod.console_get_char_background(self.__tcod_static_light_console,pos.x,pos.y) \
-            + libtcod.console_get_char_background(self.__tcod_moving_light_console,pos.x,pos.y)
+        return libtcod.color_get_hsv( \
+                  libtcod.console_get_char_background(self.__tcod_static_light_console,pos.x,pos.y) \
+                + libtcod.console_get_char_background(self.__tcod_moving_light_console,pos.x,pos.y) \
+                      )[2]
 
     def debug_lighting(self):
         libtcod.console_blit(self.__tcod_static_light_console,0,0,0,0, 0,0,0, 0.5, 1.0)
+        libtcod.console_flush()
+        libtcod.console_wait_for_keypress(True)
+        libtcod.console_blit(self.__tcod_moving_light_console,0,0,0,0, 0,0,0, 0.5, 1.0)
         libtcod.console_flush()
         libtcod.console_wait_for_keypress(True)
 

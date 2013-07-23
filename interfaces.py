@@ -56,8 +56,12 @@ class Position:
 
 class Mappable:
     """Can appear on the map"""
+    UNSEEN_COLOUR = libtcod.darkest_grey
+    LIGHT_L_CLAMP = libtcod.darkest_grey
+    LIGHT_H_CLAMP = libtcod.white
+    LIGHT_VISIBLE = libtcod.dark_grey
 
-    def __init__(self, pos, symbol, colour, remains_in_place=False, unseen_symbol=None, unseen_colour=libtcod.darkest_grey):
+    def __init__(self, pos, symbol, colour, remains_in_place=False, unseen_symbol=None, unseen_colour=UNSEEN_COLOUR):
         self.map = None
         self.pos = pos
         self.last_pos = pos
@@ -92,14 +96,14 @@ class Mappable:
     @property
     def is_lit(self):
         if self.map is None or self.pos is None:
-            return libtcod.black
+            return False
         else:
             return self.map.is_lit(self.pos)
 
     @property
     def light_level(self):
         if self.map is None or self.pos is None:
-            return libtcod.black
+            return LightSource.INTENSITY_L_CLAMP
         else:
             return self.map.light_level(self.pos)
 
@@ -109,10 +113,19 @@ class Mappable:
         # NB. this gets called a lot!
         if not self.is_visible:
             return
-        colour = self.colour*self.light_level
-        symbol = self.symbol
 
-        if not (self.visible_to_player):
+        if self.visible_to_player:
+            l = self.light_level # this is slow
+            if l > LightSource.INTENSITY_L_CLAMP:
+                colour = self.colour*l
+                symbol = self.symbol
+            else:
+                if self.has_been_seen and self.remains_in_place:
+                    colour = self.unseen_colour
+                    symbol = self.unseen_symbol
+                else:
+                    return
+        else:
             if self.has_been_seen and self.remains_in_place:
                 colour = self.unseen_colour
                 symbol = self.unseen_symbol
@@ -121,8 +134,13 @@ class Mappable:
         libtcod.console_put_char_ex(0, self.pos.x, self.pos.y, symbol, colour, libtcod.BKGND_NONE)
         self.has_been_seen = True
 
+
 class LightSource: #(Mappable):
-    def __init__(self, radius=0, intensity=1.0, light_colour=libtcod.white):
+    INTENSITY_L_CLAMP = libtcod.color_get_hsv(Mappable.LIGHT_L_CLAMP)[2]
+    INTENSITY_H_CLAMP = libtcod.color_get_hsv(Mappable.LIGHT_H_CLAMP)[2]
+    INTENSITY_VISIBLE = libtcod.color_get_hsv(Mappable.LIGHT_VISIBLE)[2]
+
+    def __init__(self, radius=0, intensity=1.0, light_colour=Mappable.LIGHT_H_CLAMP):
         assert isinstance(self,Mappable), "LightSource mixin must be mappable" # TODO: is this right? :D
         self._radius      = radius == 0 and 100 or radius # TODO: more sensible behaviour for infinite r
         self.intensity    = intensity
@@ -204,15 +222,15 @@ class LightSource: #(Mappable):
         libtcod.image_set_key_color(self.__tcod_light_image,libtcod.black)
         r   = self.radius
         rd2 = r/2
+        i1  = self.light_colour * self.intensity
         for x in range(r*2+1):
             for y in range(r*2+1):
                 if libtcod.map_is_in_fov(self.__tcod_light_map,x,y):
                     d = hypot(1+r-x,1+r-y)
-                    if d < rd2:
-                        libtcod.image_put_pixel(self.__tcod_light_image,x,y,self.light_colour*self.intensity)
+                    if d > rd2:
+                        libtcod.image_put_pixel(self.__tcod_light_image,x,y,i1*(1.0-(d-rd2)/rd2))
                     else:
-                        libtcod.image_put_pixel(self.__tcod_light_image,x,y,
-                                                self.light_colour * self.intensity * (1.0-d/r))
+                        libtcod.image_put_pixel(self.__tcod_light_image,x,y,i1)
 
     def blit_to(self,tcod_console,ox=0,oy=0,sx=-1,sy=-1):
         libtcod.image_blit_rect(self.__tcod_light_image, tcod_console,

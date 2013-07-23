@@ -26,7 +26,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory,LightSource
         StatusEffect.__init__(self)
         TurnTaker.__init__(self,1)
         HasInventory.__init__(self,3,(SlotItem.HEAD_SLOT,SlotItem.BODY_SLOT,SlotItem.FEET_SLOT))
-        LightSource.__init__(self,2,0.6)
+        LightSource.__init__(self,2,0.1)
         self.items = [Item.random(None,self,2,1.5),Item.random(None,self,1),None]
         self.slot_items = {
             SlotItem.HEAD_SLOT: TorchHelmet(self),
