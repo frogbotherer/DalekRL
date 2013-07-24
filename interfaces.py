@@ -104,6 +104,8 @@ class Mappable:
     def light_level(self):
         if self.map is None or self.pos is None:
             return LightSource.INTENSITY_L_CLAMP
+        elif isinstance(self,Transparent):
+            return self.transparent_light_level
         else:
             return self.map.light_level(self.pos)
 
@@ -111,6 +113,8 @@ class Mappable:
     def light_colour(self):
         if self.map is None or self.pos is None:
             return Mappable.LIGHT_L_CLAMP
+        elif isinstance(self,Transparent):
+            return self.transparent_light_colour
         else:
             return self.map.light_colour(self.pos)
 
@@ -215,7 +219,7 @@ class LightSource: #(Mappable):
                 # all pos were outside of light radius!
                 return
 
-        self.prepare_fov(True) # TODO: calculate both True and False; use True only if light in LOS of player
+        self.prepare_fov(False)#True) # TODO: calculate both True and False; use True only if light in LOS of player
 
         # use FOV data to create an image of light intensity, masked by opaque tiles
         # can optimise based on pos P: only need to recalculate area X
@@ -331,6 +335,31 @@ class Transparent:
 
     def blocks_light(self):
         return self.transparency == 0.0
+
+    # TODO: these should override Mappable properties using inheritance, not bodgerance
+    @property
+    def transparent_light_level(self):
+        if not self.blocks_light():
+            return self.map.light_level(self.pos)
+
+        else:
+            # copy light value from next cell towards player
+            v = self.map.player.pos - self.pos
+            m = max(abs(v.x),abs(v.y))
+            v.x /= m; v.y /= m
+            return self.map.light_level(self.pos+v)
+
+    @property
+    def transparent_light_colour(self):
+        if not self.blocks_light():
+            return self.map.light_colour(self.pos)
+
+        else:
+            # copy light value from next cell towards player
+            v = self.map.player.pos - self.pos
+            m = max(abs(v.x),abs(v.y))
+            v.x //= m; v.y //= m
+            return self.map.light_colour(self.pos+v)
 
 
 class StatusEffect:
