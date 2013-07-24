@@ -274,8 +274,9 @@ class Map:
         return self.light_level(pos) >= LightSource.INTENSITY_VISIBLE #INTENSITY_L_CLAMP
 
     def light_level(self, pos):
-        """returns a tcod colour representing light level/colour"""
-        return libtcod.color_get_hsv( self.light_colour(pos) )[2]
+        """returns a float representing light level/colour"""
+        return libtcod.color_get_hsv( libtcod.console_get_char_background(self.__tcod_static_light_console,pos.x,pos.y) )[2] \
+            + libtcod.color_get_hsv( libtcod.console_get_char_background(self.__tcod_moving_light_console,pos.x,pos.y) )[2]
 
     def light_colour(self, pos):
         return libtcod.console_get_char_background(self.__tcod_static_light_console,pos.x,pos.y) \

@@ -421,14 +421,14 @@ class LitDalek(Dalek,LightSource):
     generator_weight = 1.2 #0.6
     def __init__(self,pos=None):
         Dalek.__init__(self,pos)
-        LightSource.__init__(self,6,1.0,libtcod.red) # TODO: light isn't red??
+        LightSource.__init__(self,6,1.0,libtcod.red)
         self.light_enabled = False
 
     def take_turn(self):
         if not self.map.is_lit(self.pos) and not self.light_enabled:
             self.light_enabled = True
             self.map.recalculate_lighting(statics=False)
-        elif self.map.is_lit(self.pos) and self.light_enabled:
+        elif self.map.light_level(self.pos)-self.intensity > LightSource.INTENSITY_VISIBLE and self.light_enabled:
             # TODO: this doesn't work because the dalek's light lights the map bright enough to trigger
             self.light_enabled = False
             self.map.recalculate_lighting(statics=False)
