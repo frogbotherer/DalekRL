@@ -107,6 +107,13 @@ class Mappable:
         else:
             return self.map.light_level(self.pos)
 
+    @property
+    def light_colour(self):
+        if self.map is None or self.pos is None:
+            return Mappable.LIGHT_L_CLAMP
+        else:
+            return self.map.light_colour(self.pos)
+
     ##
     # drawing
     def draw(self):
@@ -115,9 +122,10 @@ class Mappable:
             return
 
         if self.visible_to_player:
-            l = self.light_level # this is slow
+            c = self.light_colour            # this is slow
+            l = libtcod.color_get_hsv(c)[2]  # this is copied from .light_level for performance
             if l > LightSource.INTENSITY_L_CLAMP:
-                colour = self.colour*l
+                colour = self.colour*c
                 symbol = self.symbol
             else:
                 if self.has_been_seen and self.remains_in_place:
@@ -142,10 +150,10 @@ class LightSource: #(Mappable):
 
     def __init__(self, radius=0, intensity=1.0, light_colour=Mappable.LIGHT_H_CLAMP):
         assert isinstance(self,Mappable), "LightSource mixin must be mappable" # TODO: is this right? :D
-        self._radius      = radius == 0 and 100 or radius # TODO: more sensible behaviour for infinite r
-        self.intensity    = intensity
-        self.light_colour = light_colour
-        self.light_enabled= True
+        self._radius            = radius == 0 and 100 or radius # TODO: more sensible behaviour for infinite r
+        self.intensity          = intensity
+        self.raw_light_colour   = light_colour
+        self.light_enabled      = True
         self.__tcod_light_map   = libtcod.map_new(radius*2+1,radius*2+1)
         self.__tcod_light_image = libtcod.image_new(radius*2+1,radius*2+1)
 
@@ -222,7 +230,7 @@ class LightSource: #(Mappable):
         libtcod.image_set_key_color(self.__tcod_light_image,libtcod.black)
         r   = self.radius
         rd2 = r/2
-        i1  = self.light_colour * self.intensity
+        i1  = self.raw_light_colour * self.intensity
         for x in range(r*2+1):
             for y in range(r*2+1):
                 if libtcod.map_is_in_fov(self.__tcod_light_map,x,y):

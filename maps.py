@@ -275,10 +275,11 @@ class Map:
 
     def light_level(self, pos):
         """returns a tcod colour representing light level/colour"""
-        return libtcod.color_get_hsv( \
-                  libtcod.console_get_char_background(self.__tcod_static_light_console,pos.x,pos.y) \
-                + libtcod.console_get_char_background(self.__tcod_moving_light_console,pos.x,pos.y) \
-                      )[2]
+        return libtcod.color_get_hsv( self.light_colour(pos) )[2]
+
+    def light_colour(self, pos):
+        return libtcod.console_get_char_background(self.__tcod_static_light_console,pos.x,pos.y) \
+            + libtcod.console_get_char_background(self.__tcod_moving_light_console,pos.x,pos.y)
 
     def debug_lighting(self):
         libtcod.console_blit(self.__tcod_static_light_console,0,0,0,0, 0,0,0, 0.5, 1.0)
