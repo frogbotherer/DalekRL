@@ -97,7 +97,7 @@ class Item(Carryable, Activatable, Mappable):
         Item.AWESOME_MAP = {}
         for i in range(1,6):
             Item.AWESOME_MAP[i] = [] # need empty entries even if no rank
-        for C in (MemoryWipe,Tangler,TangleMine,HandTeleport,Cloaker,DoorRelease,LevelMap,XRaySpecs,LabCoat,EmergencyHammer,RemoteControl,AnalysisSpecs,TorchHelmet):
+        for C in (MemoryWipe,Tangler,TangleMine,HandTeleport,Cloaker,DoorRelease,LevelMap,XRaySpecs,LabCoat,EmergencyHammer,RemoteControl,AnalysisSpecs,TorchHelmet,InfraSpecs):
             Item.AWESOME_MAP[C.awesome_rank].append(C)
         for CL in Item.AWESOME_MAP.values():
             CL.sort(key=lambda x: x.awesome_weight)
@@ -540,6 +540,27 @@ class XRaySpecs(RunDownItem):
             self.owner.reset_fov()
 
         return True
+
+
+class InfraSpecs(RunDownItem):
+    def __init__(self,owner,item_power=1.0):
+        RunDownItem.__init__(self,owner,item_power,SlotItem.HEAD_SLOT)
+
+    def __str__(self):
+        return "Infra Specs"
+
+    def activate(self,activator=None):
+        if not RunDownItem.activate(self):
+            return False
+
+        if self.is_active:
+            self.owner.add_effect(StatusEffect.INFRAVISION)
+
+        else:
+            self.owner.remove_effect(StatusEffect.INFRAVISION)
+
+        return True
+
 
 class AnalysisSpecs(RunDownItem):
     SYM_W_E   = '-'

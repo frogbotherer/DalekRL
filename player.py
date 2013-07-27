@@ -3,7 +3,7 @@
 import libtcodpy as libtcod
 
 from interfaces import Mappable, Activator, Activatable, TurnTaker, Position, StatusEffect, HasInventory, Talker, LightSource
-from items import Item, SlotItem, Evidence, RunningShoes, TorchHelmet
+from items import Item, SlotItem, Evidence, RunningShoes, InfraSpecs
 from tiles import Tile
 from ui import UI, Menu
 from errors import GameOverError, InvalidMoveError, InvalidMoveContinueError
@@ -29,7 +29,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory,LightSource
         LightSource.__init__(self,2,0.1)
         self.items = [Item.random(None,self,2,1.5),Item.random(None,self,1),None]
         self.slot_items = {
-            SlotItem.HEAD_SLOT: TorchHelmet(self),
+            SlotItem.HEAD_SLOT: InfraSpecs(self),
             SlotItem.BODY_SLOT: None,
             SlotItem.FEET_SLOT: RunningShoes(self),
             }
