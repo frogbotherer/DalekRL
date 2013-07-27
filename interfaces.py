@@ -134,6 +134,9 @@ class Mappable:
             else:
                 c = self.light_colour        # this is slow
             l = libtcod.color_get_hsv(c)[2]  # this is copied from .light_level for performance
+            if self.map.player.has_effect(StatusEffect.NIGHT_VISION):
+                l = 1.0-l
+                c = libtcod.white-c
             if l > LightSource.INTENSITY_L_CLAMP:
                 colour = self.colour*c
                 symbol = self.symbol
@@ -374,6 +377,7 @@ class StatusEffect:
     X_RAY_VISION = 100
     FAST         = 101
     INFRAVISION  = 102
+    NIGHT_VISION = 103
 
     # debuffs
     BLIND        = 200

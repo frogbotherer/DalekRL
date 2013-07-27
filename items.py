@@ -97,7 +97,7 @@ class Item(Carryable, Activatable, Mappable):
         Item.AWESOME_MAP = {}
         for i in range(1,6):
             Item.AWESOME_MAP[i] = [] # need empty entries even if no rank
-        for C in (MemoryWipe,Tangler,TangleMine,HandTeleport,Cloaker,DoorRelease,LevelMap,XRaySpecs,LabCoat,EmergencyHammer,RemoteControl,AnalysisSpecs,TorchHelmet,InfraSpecs):
+        for C in (MemoryWipe,Tangler,TangleMine,HandTeleport,Cloaker,DoorRelease,LevelMap,XRaySpecs,LabCoat,EmergencyHammer,RemoteControl,AnalysisSpecs,TorchHelmet,InfraSpecs,NightVisionGoggles):
             Item.AWESOME_MAP[C.awesome_rank].append(C)
         for CL in Item.AWESOME_MAP.values():
             CL.sort(key=lambda x: x.awesome_weight)
@@ -558,6 +558,26 @@ class InfraSpecs(RunDownItem):
 
         else:
             self.owner.remove_effect(StatusEffect.INFRAVISION)
+
+        return True
+
+
+class NightVisionGoggles(RunDownItem):
+    def __init__(self,owner,item_power=1.0):
+        RunDownItem.__init__(self,owner,item_power,SlotItem.HEAD_SLOT)
+
+    def __str__(self):
+        return "Night Vision Goggles"
+
+    def activate(self,activator=None):
+        if not RunDownItem.activate(self):
+            return False
+
+        if self.is_active:
+            self.owner.add_effect(StatusEffect.NIGHT_VISION)
+
+        else:
+            self.owner.remove_effect(StatusEffect.NIGHT_VISION)
 
         return True
 
