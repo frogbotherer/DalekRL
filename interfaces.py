@@ -268,6 +268,47 @@ class LightSource: #(Mappable):
     def __del__(self):
         self.close()
 
+class FlatLightSource(LightSource):
+    def __init__(self, size, intensity=1.0, light_colour=Mappable.LIGHT_H_CLAMP):
+        assert isinstance(self,Mappable), "LightSource mixin must be mappable" # TODO: is this right? :D
+        self.size               = size
+        self.intensity          = intensity
+        self.raw_light_colour   = light_colour
+        self.light_enabled      = True
+        self.__tcod_light_map   = libtcod.map_new(size.x,size.y)
+        self.__tcod_light_image = libtcod.image_new(size.x,size.y)
+
+    @property
+    def radius(self):
+        return 0
+    @radius.setter
+    def radius(self,r):
+        pass
+
+    def prepare_fov(self,light_walls=False):
+        libtcod.map_compute_fov(self.__tcod_light_map, self.pos.x+self.size.x//2, self.pos.y+self.size.y//2, max(self.size.x//2,self.size.y//2), light_walls, libtcod.FOV_BASIC)
+
+    def reset_map(self,pos=None):
+        if self.light_enabled:
+            libtcod.image_clear(self.__tcod_light_image,self.raw_light_colour)
+            libtcod.image_set_key_color(self.__tcod_light_image,libtcod.black)
+        else:
+            libtcod.image_clear(self.__tcod_light_image,libtcod.black)
+            libtcod.image_set_key_color(self.__tcod_light_image,libtcod.black)
+
+    def blit_to(self,tcod_console,ox=0,oy=0,sx=-1,sy=-1):
+        libtcod.image_blit_rect(self.__tcod_light_image, tcod_console,
+                                self.pos.x+ox, 
+                                self.pos.y+oy, 
+                                sx, sy,
+                                libtcod.BKGND_ADD)
+
+    def close(self):
+        libtcod.map_delete(self.__tcod_light_map)
+        libtcod.image_delete(self.__tcod_light_image)
+
+    def __del__(self):
+        self.close()
 
 class TurnTaker:
     turn_takers = []

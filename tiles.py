@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import libtcodpy as libtcod
-from interfaces import Mappable, Traversable, Transparent, TurnTaker, CountUp, Position, Activatable, HasInventory, Shouter, Talker, StatusEffect, LightSource
+from interfaces import Mappable, Traversable, Transparent, TurnTaker, CountUp, Position, Activatable, HasInventory, Shouter, Talker, StatusEffect, LightSource, FlatLightSource
 from errors import LevelWinError, InvalidMoveError
 from ui import HBar, Menu
 
@@ -351,6 +351,11 @@ class Light(Tile,LightSource):
     def __init__(self, pos, r=0):
         Tile.__init__(self, pos, '\'', libtcod.white, 1.0, 1.0)
         LightSource.__init__(self,r)
+
+class FlatLight(Tile,FlatLightSource):
+    def __init__(self, pos, size):
+        Tile.__init__(self, pos, ' ', libtcod.white, 1.0, 1.0)
+        FlatLightSource.__init__(self,size)
 
 # TODO: is this an interface?
 class Trap:

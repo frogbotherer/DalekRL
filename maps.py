@@ -6,7 +6,7 @@ from monsters import Monster
 from player import Player
 from interfaces import Mappable, Position, Traversable, Transparent, StatusEffect, LightSource
 from items import Item, Evidence
-from tiles import Tile, Wall, Floor, Light, Door, StairsDown, StairsUp, FloorTeleport, MapPattern, CanHaveEvidence
+from tiles import Tile, Wall, Floor, Light, FlatLight, Door, StairsDown, StairsUp, FloorTeleport, MapPattern, CanHaveEvidence
 from errors import TodoError, InvalidMoveError
 
 from functools import reduce
@@ -552,6 +552,7 @@ class TypeAMap(Map):
             self.opos = opos
             self.direction = direction
             self.length = length
+            self.flat_light = False
 
         def __str__(self):
             if self.direction is None:
@@ -864,8 +865,12 @@ class TypeAMap(Map):
         # lighting
         #  * choose a scheme out of
         light_roll = libtcod.random_get_float(self.map_rng,0.0,1.0)
+        #       * flat light
+        if light_roll < 0.4:
+            for s in r_segs:
+                s.flat_light = True
         #       * one central light
-        if light_roll < 0.8:
+        elif light_roll < 0.9:
             p = tl + (size.x//2,size.y//2)
             self.debug_print("room light at %s; tl=%s sz=%s" % (p,tl,size))
             r_segs.append(self._ME(MapPattern.LIGHT, p, Position(1,1), p))
@@ -909,8 +914,12 @@ class TypeAMap(Map):
         # lighting
         # NB. need to insert lighting segs at beginning of return list to help corridor gen
         light_roll = libtcod.random_get_float(self.map_rng,0.0,1.0)
+        #       * flat lighting
+        if   light_roll < 0.4:
+            for r in r_segs:
+                r.flat_light = True
         #       * one central light
-        if light_roll < 0.7:
+        elif light_roll < 0.9:
             p = pos + (size.x//2,size.y//2)
             self.debug_print("light at %s in corridor %s %s %s"%(p,pos,size,width))
             r_segs.insert(0, self._ME(MapPattern.LIGHT, p, (1,1), p, 'N', 0))
@@ -1188,7 +1197,10 @@ class TypeAMap(Map):
                 if t & MapPattern.LIGHT:
                     self.add(Light(Position(x,y),libtcod.random_get_int(self.map_rng,self.LIGHT_MIN_RADIUS,self.LIGHT_MAX_RADIUS)))
 
-
+        # add remaining lights
+        for s in corridors + rooms:
+            if s.flat_light:
+                self.add(FlatLight(s.pos,s.size))
 
         if 1.0 - (misses/(self.size.x*self.size.y)) < self.REJECT_COVERAGE_SQ:
             return self.generate()
