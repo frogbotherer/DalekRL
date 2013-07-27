@@ -228,7 +228,7 @@ class LightSource: #(Mappable):
                 # all pos were outside of light radius!
                 return
 
-        self.prepare_fov(False)#True) # TODO: calculate both True and False; use True only if light in LOS of player
+        self.prepare_fov(False) # TODO: calculate both True and False; use True only if light in LOS of player
 
         # use FOV data to create an image of light intensity, masked by opaque tiles
         # can optimise based on pos P: only need to recalculate area X
@@ -261,12 +261,27 @@ class LightSource: #(Mappable):
                                 sx, sy,
                                 libtcod.BKGND_ADD)
 
+    def lights(self,pos,test_los=True):
+        if not self.light_enabled:
+            return False
+        if self.pos.distance_to(pos) > self.radius:
+            return False
+        if not test_los:
+            return True
+
+        print("does %s light pos %s?"%(self,pos))
+        print("%d < %d" %(self.pos.distance_to(pos),self.radius))
+        print("%d,%d"%(1+self.radius+pos.x-self.pos.x,1+self.radius+pos.y-self.pos.y))
+
+        return libtcod.map_is_in_fov(self.__tcod_light_map,1+self.radius+pos.x-self.pos.x,1+self.radius+pos.y-self.pos.y)
+
     def close(self):
         libtcod.map_delete(self.__tcod_light_map)
         libtcod.image_delete(self.__tcod_light_image)
 
     def __del__(self):
         self.close()
+
 
 class FlatLightSource(LightSource):
     def __init__(self, size, intensity=1.0, light_colour=Mappable.LIGHT_H_CLAMP):
@@ -275,8 +290,8 @@ class FlatLightSource(LightSource):
         self.intensity          = intensity
         self.raw_light_colour   = light_colour
         self.light_enabled      = True
-        self.__tcod_light_map   = libtcod.map_new(size.x,size.y)
-        self.__tcod_light_image = libtcod.image_new(size.x,size.y)
+        self.__tcod_light_map   = libtcod.map_new(size.x+2,size.y+2)
+        self.__tcod_light_image = libtcod.image_new(size.x+2,size.y+2)
 
     @property
     def radius(self):
@@ -286,7 +301,7 @@ class FlatLightSource(LightSource):
         pass
 
     def prepare_fov(self,light_walls=False):
-        libtcod.map_compute_fov(self.__tcod_light_map, self.pos.x+self.size.x//2, self.pos.y+self.size.y//2, max(self.size.x//2,self.size.y//2), light_walls, libtcod.FOV_BASIC)
+        libtcod.map_compute_fov(self.__tcod_light_map, self.pos.x+self.size.x//2, self.pos.y+self.size.y//2, max(self.size.x//2,self.size.y//2)+1, light_walls, libtcod.FOV_BASIC)
 
     def reset_map(self,pos=None):
         if self.light_enabled:
@@ -298,10 +313,13 @@ class FlatLightSource(LightSource):
 
     def blit_to(self,tcod_console,ox=0,oy=0,sx=-1,sy=-1):
         libtcod.image_blit_rect(self.__tcod_light_image, tcod_console,
-                                self.pos.x+ox, 
-                                self.pos.y+oy, 
+                                self.pos.x+ox-1,
+                                self.pos.y+oy-1,
                                 sx, sy,
                                 libtcod.BKGND_ADD)
+
+    def lights(self,pos,test_los=True):
+        return pos >= self.pos-Position(1,1) and pos <= self.pos+self.size+Position(1,1)
 
     def close(self):
         libtcod.map_delete(self.__tcod_light_map)
@@ -395,8 +413,11 @@ class Transparent:
         else:
             # copy light value from next cell towards player
             v = self.map.player.pos - self.pos
-            m = max(abs(v.x),abs(v.y))
-            v.x /= m; v.y /= m
+            # converting v to a unit vector needs to favour diagonals to get better looking lighting
+            #m = max(abs(v.x),abs(v.y))
+            #v.x /= m; v.y /= m
+            v.x = v.x > 0 and 1 or v.x < 0 and -1 or 0
+            v.y = v.y > 0 and 1 or v.y < 0 and -1 or 0
             return self.map.light_level(self.pos+v)
 
     @property
@@ -407,8 +428,11 @@ class Transparent:
         else:
             # copy light value from next cell towards player
             v = self.map.player.pos - self.pos
-            m = max(abs(v.x),abs(v.y))
-            v.x //= m; v.y //= m
+            # see comment above
+            #m = max(abs(v.x),abs(v.y))
+            #v.x //= m; v.y //= m
+            v.x = v.x > 0 and 1 or v.x < 0 and -1 or 0
+            v.y = v.y > 0 and 1 or v.y < 0 and -1 or 0
             return self.map.light_colour(self.pos+v)
 
 

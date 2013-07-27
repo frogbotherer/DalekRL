@@ -7,6 +7,7 @@ from ui import HBar, Menu
 
 from functools import reduce
 import re # for sub
+import weakref
 
 #possibly belongs in maps.py
 class MapPattern:
@@ -138,7 +139,7 @@ class Tile(Mappable,Traversable,Transparent):
         #        ps = pattern.apply_to(map_array)
         #        ps.sort(random_get_float)
         if types is None:
-            types = [FloorTeleport,FloorCharger,Crate,Window,Table,Locker,WallPanel,ClankyFloor,TripWire,CameraConsole,TrapConsole]
+            types = [FloorTeleport,FloorCharger,Crate,Window,Table,Locker,EvidencePanel,LightSwitch,ClankyFloor,TripWire,CameraConsole,TrapConsole]
 
         ## naive way to do it (slow)
         #r = {}
@@ -225,62 +226,100 @@ class Wall(Tile):
     #    return l == libtcod.black and self.unseen_colour or l
 
 
-class Locker(Tile,CanHaveEvidence):
+class WallPanel(Tile):
     patterns = [
         MapPattern("...",
                    "###",
                    "###")
         ]
+    def __init__(self, pos, symbol, colour):
+        Tile.__init__(self, pos, symbol, colour)
+        self.has_given_item = False
+
+    def try_movement(self,obj):
+        if not isinstance(obj,HasInventory) or self.has_given_item:
+            return False
+        self.colour = libtcod.light_grey
+        self.has_given_item = True
+        return True
+
+
+class LightSwitch(WallPanel,Shouter):
+    place_min = 5
+    place_max = 15
+
+    ON_COLOUR  = libtcod.white
+    OFF_COLOUR = libtcod.dark_grey
+
+    def __init__(self, pos):
+        WallPanel.__init__(self, pos, 'S', self.ON_COLOUR)
+        Shouter.__init__(self,15)
+        self.switch_lights = None
+
+    def try_movement(self,obj):
+        if self.switch_lights is None:
+            self.switch_lights = weakref.WeakSet()
+
+            for l in self.map.find_all(LightSource):
+                if l.remains_in_place and l.lights(self.pos,test_los=False):
+                    self.switch_lights.add(l)
+
+        for l in self.switch_lights:
+            l.light_enabled = not l.light_enabled
+
+        if self.colour == self.ON_COLOUR:
+            self.colour = self.OFF_COLOUR
+        else:
+            self.colour = self.ON_COLOUR
+
+        self.map.recalculate_lighting(statics=True)
+
+        # alert enemies to people switching stuff on and off
+        if obj is self.map.player:
+            self.shout()
+
+        raise InvalidMoveError
+
+class Locker(WallPanel,CanHaveEvidence):
     place_min = 3
     place_max = 10
-    def __init__(self, pos):
-        Tile.__init__(self, pos, 'L', libtcod.light_green, 0.0, 0.0, True)
+
+    def __init__(self,pos):
+        WallPanel.__init__(self, pos, 'L', libtcod.light_green)
         CanHaveEvidence.__init__(self)
-        self.has_given_item = False
 
     def try_movement(self,obj):
-        if not isinstance(obj,HasInventory) or self.has_given_item:
-            raise InvalidMoveError
+        if WallPanel.try_movement(self,obj):
 
-        if self.has_evidence():
-            obj.pickup(self.evidence)
+            if self.has_evidence():
+                obj.pickup(self.evidence)
 
-        else:
-            i = Item.random(None,None,weight=1.2)
-            if not obj.pickup(i):
-                i.pos = obj.pos
-                i.is_visible = True
-                self.map.add(i)
+            else:
+                i = Item.random(None,None,weight=1.2)
+                if not obj.pickup(i):
+                    i.pos = obj.pos
+                    i.is_visible = True
+                    self.map.add(i)
 
-        self.colour = libtcod.light_grey
-        self.has_given_item = True
         raise InvalidMoveError
 
-class WallPanel(Tile,CanHaveEvidence):
-    # TODO: factor out common with lockers and subclass
-    patterns = [
-        MapPattern("...",
-                   "###",
-                   "###")
-        ]
+
+class EvidencePanel(WallPanel,CanHaveEvidence):
     place_min = 7
     place_max = 13
+
     def __init__(self, pos):
-        Tile.__init__(self, pos, 'P', libtcod.dark_yellow, 0.0, 0.0, True)
-        self.has_given_item = False
+        WallPanel.__init__(self, pos, 'P', libtcod.dark_yellow)
         CanHaveEvidence.__init__(self)
 
     def try_movement(self,obj):
-        if not isinstance(obj,HasInventory) or self.has_given_item:
-            raise InvalidMoveError
+        if WallPanel.try_movement(self,obj):
 
-        if self.has_evidence():
-            obj.pickup(self.evidence)
-
-        self.colour = libtcod.light_grey
-        self.has_given_item = True
+            if self.has_evidence():
+                obj.pickup(self.evidence)
 
         raise InvalidMoveError
+
 
 class Table(Tile,Activatable):
     patterns = [

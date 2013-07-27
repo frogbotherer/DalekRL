@@ -243,7 +243,7 @@ class Map:
                         t.visible_to_player = False
                 
     def recalculate_lighting(self,pos=None,statics=True):
-        """recalculate lighting of each mappable."""
+        """recalculate lighting of each mappable. pos indicates position that has changed transparency"""
         # there are two maps for light; one of static objects that only gets refreshed when tiles and other fixed
         # mappables change state (e.g. doors opening); and one for moving objects, that gets refreshed every turn
         #
@@ -1199,7 +1199,7 @@ class TypeAMap(Map):
 
         # add remaining lights
         for s in corridors + rooms:
-            if s.flat_light:
+            if s.flat_light and (s.tile_id&(MapPattern.CORRIDOR|MapPattern.ROOM)):
                 self.add(FlatLight(s.pos,s.size))
 
         if 1.0 - (misses/(self.size.x*self.size.y)) < self.REJECT_COVERAGE_SQ:

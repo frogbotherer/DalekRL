@@ -3,7 +3,7 @@
 import libtcodpy as libtcod
 
 from interfaces import Mappable, Activator, Activatable, TurnTaker, Position, StatusEffect, HasInventory, Talker, LightSource
-from items import Item, SlotItem, Evidence, RunningShoes, NightVisionGoggles
+from items import Item, SlotItem, Evidence, RunningShoes, NightVisionGoggles, RunDownItem
 from tiles import Tile
 from ui import UI, Menu
 from errors import GameOverError, InvalidMoveError, InvalidMoveContinueError
@@ -303,8 +303,8 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory,LightSource
             if isinstance(i,TurnTaker):
                 i.refresh_turntaker()
 
-            # switch off active items before level transition
-            if isinstance(i,Activatable) and i.is_active:
+            # switch off active rundownitem items before level transition
+            if isinstance(i,RunDownItem) and i.is_active:
                 i.activate()
 
             # TODO: this isn't great :(
