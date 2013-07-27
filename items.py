@@ -142,8 +142,10 @@ class RunDownItem(SlotItem, CountUp, TurnTaker):
             self.activate()
             return False
 
+        # if run out of charge, deactivate
         if self.inc():
-            self.is_active = False
+            self.activate()
+            return False
 
         return True
 

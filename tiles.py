@@ -261,7 +261,7 @@ class LightSwitch(WallPanel,Shouter):
             self.switch_lights = weakref.WeakSet()
 
             for l in self.map.find_all(LightSource):
-                if l.remains_in_place and l.lights(self.pos,test_los=False):
+                if l.remains_in_place and l.lights(obj.pos,test_los=False):
                     self.switch_lights.add(l)
 
         for l in self.switch_lights:
@@ -391,9 +391,9 @@ class Light(Tile,LightSource):
         Tile.__init__(self, pos, '\'', libtcod.white, 1.0, 1.0)
         LightSource.__init__(self,r)
 
-class FlatLight(Tile,FlatLightSource):
+class FlatLight(Floor,FlatLightSource):
     def __init__(self, pos, size):
-        Tile.__init__(self, pos, ' ', libtcod.white, 1.0, 1.0)
+        Floor.__init__(self, pos)
         FlatLightSource.__init__(self,size)
 
 # TODO: is this an interface?
