@@ -3,7 +3,7 @@
 import libtcodpy as libtcod
 
 from interfaces import Mappable, Activator, Activatable, TurnTaker, Position, StatusEffect, HasInventory, Talker, LightSource
-from items import Item, SlotItem, Evidence, RunningShoes, NightVisionGoggles, RunDownItem
+from items import Item, SlotItem, Evidence, RunningShoes, NightVisionGoggles, RunDownItem, NinjaSuit
 from tiles import Tile
 from ui import UI, Menu
 from errors import GameOverError, InvalidMoveError, InvalidMoveContinueError
@@ -30,7 +30,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory,LightSource
         self.items = [Item.random(None,self,2,1.5),Item.random(None,self,1),None]
         self.slot_items = {
             SlotItem.HEAD_SLOT: NightVisionGoggles(self),
-            SlotItem.BODY_SLOT: None,
+            SlotItem.BODY_SLOT: NinjaSuit(self),
             SlotItem.FEET_SLOT: RunningShoes(self),
             }
         self.turns = 0
@@ -300,12 +300,12 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory,LightSource
     def refresh_turntaker(self):
         TurnTaker.refresh_turntaker(self)
         for i in self.items + list(self.slot_items.values()):
-            if isinstance(i,TurnTaker):
-                i.refresh_turntaker()
-
             # switch off active rundownitem items before level transition
             if isinstance(i,RunDownItem) and i.is_active:
+                print("switching off %s" % i)
                 i.activate()
+            elif isinstance(i,TurnTaker):
+                i.refresh_turntaker()
 
             # TODO: this isn't great :(
             if hasattr(i,'bar') and isinstance(i.bar,UI):

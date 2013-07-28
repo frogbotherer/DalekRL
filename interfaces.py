@@ -99,7 +99,7 @@ class Mappable:
         if self.map is None or self.pos is None:
             return False
         else:
-            return self.map.is_lit(self.pos)
+            return self.map.is_lit(self)
 
     @property
     def light_level(self):
@@ -439,10 +439,11 @@ class Transparent:
 class StatusEffect:
     """things that have passive status (such as being blind, stunned, able to see through walls, ...)"""
     # buffs
-    X_RAY_VISION = 100
-    FAST         = 101
-    INFRAVISION  = 102
-    NIGHT_VISION = 103
+    X_RAY_VISION     = 100
+    FAST             = 101
+    INFRAVISION      = 102
+    NIGHT_VISION     = 103
+    HIDDEN_IN_SHADOW = 104
 
     # debuffs
     BLIND        = 200
@@ -519,15 +520,48 @@ class Activatable:
         return True
 
 class Alertable:
+    PRI_LOW  = 0
+    PRI_MED  = 1
+    PRI_HIGH = 2
+    ALERTABLES = weakref.WeakSet()
+
     def __init__(self,listen_radius=10):
-        self.listen_radius = listen_radius
+        self.listen_radius    = listen_radius
+        self.investigate_list = { Alertable.PRI_LOW:[], Alertable.PRI_MED:[], Alertable.PRI_HIGH:[] }
+        Alertable.ALERTABLES.add(self)
 
-    def alert(self,to_pos):
-        if hasattr(self,'pos'):
-            return to_pos.distance_to(self.pos) <= self.listen_radius
-        else:
-            return True
+    def alert(self,to_pos,priority=None):
+        if hasattr(self,'pos') and to_pos.distance_to(self.pos) > self.listen_radius:
+            return False
 
+        if priority is None:
+            priority = Alertable.PRI_MED
+
+        print("%s alerted to %s, pri %d"%(self,to_pos,priority))
+        self.investigate_list[priority].append(to_pos)
+
+        return True
+
+    def clear_alert(self,pos,clear_others=True):
+        r = False
+        for (pri,il) in self.investigate_list.items():
+            if pos in il:
+                il.remove(pos)
+                r = True
+                if pri in (Alertable.PRI_LOW,Alertable.PRI_MED) and clear_others:
+                    # clear from other priorities too
+                    for a in Alertable.ALERTABLES:
+                        if not a is self:
+                            a.clear_alert(pos,clear_others=False)
+
+        return r
+
+    def investigate_next(self):
+        # TODO: weight priority and self.pos
+        for pri in (Alertable.PRI_HIGH,Alertable.PRI_MED,Alertable.PRI_LOW):
+            if len(self.investigate_list[pri])>0:
+                return self.investigate_list[pri].pop(0)
+        return None
 
 # TODO: use this for symmetry between player and monsters with same capabilities
 class CanSee:
@@ -592,10 +626,10 @@ class Shouter:
         assert isinstance(self,Mappable), "Shouter must be a mappable object" # bad mi??
         self.audible_radius=audible_radius
 
-    def shout(self,at_pos=None):
+    def shout(self,at_pos=None,priority=None):
         if at_pos is None:
             at_pos = self.pos
 
         for a in self.map.find_all_within_r(self,Alertable,self.audible_radius):
-            a.alert(at_pos)
+            a.alert(at_pos,priority)
 

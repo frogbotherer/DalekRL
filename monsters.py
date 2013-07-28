@@ -115,9 +115,13 @@ class MS_InvestigateSpot(Monster_State):
         if len(next_move):
             return next_move[0]
         elif self.monster.pos == self.destination_pos:
+            if isinstance(self.monster,Alertable):
+                self.monster.clear_alert(self.destination_pos)
             return self.destination_pos
         else:
-            assert False, "Can't investigate %s from %s" % (self.destination_pos,self.monster.pos)
+            print("WARNING: Can't investigate %s from %s" % (self.destination_pos,self.monster.pos))
+            #assert False, "Can't investigate %s from %s" % (self.destination_pos,self.monster.pos)
+            return self.monster.pos
 
 class MS_Patrolling(Monster_State):
     def __init__(self,monster,min_distance=10):
@@ -320,7 +324,7 @@ class DalekAI(AI):
         # otherwise chase player if visible
         elif self.map.can_see(self,self.map.player,0.5):
             if not isinstance(self.state,MS_SeekingPlayer):
-                self.shout(self.map.player.pos)
+                self.shout(self.map.player.pos,priority=Alertable.PRI_HIGH)
                 return MS_SeekingPlayer(self)
 
         # otherwise: if was chasing and now lost player, home on last loc
@@ -335,7 +339,13 @@ class DalekAI(AI):
 
         # otherwise patrol
         else:
+            if isinstance(self,Alertable):
+                p = self.investigate_next()
+                if not p is None:
+                    print("%s now investigating %s"%(self,p))
+                    return MS_InvestigateSpot(self,p)
             if not isinstance(self.state,MS_Patrolling):
+                print("%s has nothing to investigate now"%self)
                 return MS_Patrolling(self)
 
         return self.state
@@ -410,10 +420,10 @@ class Dalek (Monster,Tanglable,Talker,Alertable,Shouter,DalekAI):
         # chatter
         self.talk(self.state.__class__)
 
-    def alert(self,to_pos):
+    def alert(self,to_pos,priority=None):
         # only become alerted if in a neutral state
         if isinstance(self.state,MS_Patrolling) or isinstance(self.state,MS_Stationary):
-            if Alertable.alert(self,to_pos):
+            if Alertable.alert(self,to_pos,priority):
                 self.state = MS_InvestigateSpot(self,to_pos)
 
 
@@ -425,7 +435,7 @@ class LitDalek(Dalek,LightSource):
         self.light_enabled = False
 
     def take_turn(self):
-        if not self.map.is_lit(self.pos) and not self.light_enabled:
+        if not self.map.is_lit(self) and not self.light_enabled:
             self.light_enabled = True
             #self.map.recalculate_lighting(statics=False)
         elif self.map.light_level(self.pos)-self.intensity > LightSource.INTENSITY_VISIBLE and self.light_enabled:
@@ -510,10 +520,10 @@ class BetterDalek (Monster,Talker,Alertable,Shouter,DalekAI):
         # chatter
         self.talk(self.state.__class__)
 
-    def alert(self,to_pos):
+    def alert(self,to_pos,priority=None):
         # only become alerted if in a neutral state
         if isinstance(self.state,MS_Patrolling) or isinstance(self.state,MS_Stationary):
-            if Alertable.alert(self,to_pos):
+            if Alertable.alert(self,to_pos,priority):
                 self.state = MS_InvestigateSpot(self,to_pos)
 
 class SlowDalek (BetterDalek):

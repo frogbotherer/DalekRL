@@ -97,7 +97,7 @@ class Item(Carryable, Activatable, Mappable):
         Item.AWESOME_MAP = {}
         for i in range(1,6):
             Item.AWESOME_MAP[i] = [] # need empty entries even if no rank
-        for C in (MemoryWipe,Tangler,TangleMine,HandTeleport,Cloaker,DoorRelease,LevelMap,XRaySpecs,LabCoat,EmergencyHammer,RemoteControl,AnalysisSpecs,TorchHelmet,InfraSpecs,NightVisionGoggles):
+        for C in (MemoryWipe,Tangler,TangleMine,HandTeleport,Cloaker,DoorRelease,LevelMap,XRaySpecs,LabCoat,NinjaSuit,EmergencyHammer,RemoteControl,AnalysisSpecs,TorchHelmet,InfraSpecs,NightVisionGoggles):
             Item.AWESOME_MAP[C.awesome_rank].append(C)
         for CL in Item.AWESOME_MAP.values():
             CL.sort(key=lambda x: x.awesome_weight)
@@ -234,6 +234,7 @@ class CoolDownItem(Item, CountUp, TurnTaker):
     def charge(self,amount=1):
         if self.is_chargable:
             return not self.inc(amount)
+
 
 class LimitedUsesItem(Item):
     awesome_rank   = 1
@@ -651,9 +652,52 @@ class RunningShoes(RunDownItem):
 
         return True
 
-class LabCoat(SlotItem):
+
+class PassiveItem(SlotItem):
+    awesome_rank   = 1
+    awesome_weight = 1.0
+
+    def __init__(self,owner,item_power,valid_slot,item_colour=libtcod.orange,bar_colour=libtcod.grey):
+        SlotItem.__init__(self,owner,item_power,valid_slot,item_colour)
+        self.bar = HBar(None, None, bar_colour, libtcod.dark_grey, False, False, str(self), str.ljust)
+        self.bar.is_visible = False
+
+    def draw_ui(self,pos,max_width=40):
+        self.bar.pos = pos
+        self.bar.size = max_width
+        self.bar.is_visible = True
+
+    def drop_at(self,pos):
+        SlotItem.drop_at(self,pos)
+        self.bar.is_visible = False
+
+    def take_by(self,owner):
+        SlotItem.take_by(self,owner)
+        self.bar.is_visible = True
+
+
+class LabCoat(PassiveItem):
     def __init__(self,owner,item_power=1.0):
-        SlotItem.__init__(self,owner,0.0,SlotItem.BODY_SLOT)
+        PassiveItem.__init__(self,owner,0.0,SlotItem.BODY_SLOT)
 
     def __str__(self):
         return "Lab Coat"
+
+class NinjaSuit(PassiveItem):
+    def __init__(self,owner,item_power=1.0):
+        PassiveItem.__init__(self,owner,0.0,SlotItem.BODY_SLOT)
+
+    def __str__(self):
+        return "Ninja Suit"
+
+    def drop_at(self,pos):
+        if isinstance(self.owner,StatusEffect):
+            self.owner.remove_effect(StatusEffect.HIDDEN_IN_SHADOW)
+        PassiveItem.drop_at(pos)
+
+    def take_by(self,owner):
+        PassiveItem.take_by(self,owner)
+        if isinstance(owner,StatusEffect):
+            owner.add_effect(StatusEffect.HIDDEN_IN_SHADOW)
+
+    

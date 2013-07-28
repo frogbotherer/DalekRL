@@ -71,7 +71,7 @@ def reset(keep_player=False):
 # main loop
 reset()
 while not libtcod.console_is_window_closed():
-
+    print("-------------")
     try:
         # monster movement and items
         TurnTaker.take_all_turns()

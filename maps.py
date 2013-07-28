@@ -270,8 +270,11 @@ class Map:
                 l.reset_map()
                 l.blit_to(self.__tcod_moving_light_console)
 
-    def is_lit(self, pos):
-        return self.light_level(pos) >= LightSource.INTENSITY_VISIBLE #INTENSITY_L_CLAMP
+    def is_lit(self, obj):
+        if isinstance(obj,StatusEffect) and obj.has_effect(StatusEffect.HIDDEN_IN_SHADOW):
+            return self.light_level(obj.pos) >= LightSource.INTENSITY_VISIBLE*1.5
+        else:
+            return self.light_level(obj.pos) >= LightSource.INTENSITY_VISIBLE #INTENSITY_L_CLAMP
 
     def light_level(self, pos):
         """returns a float representing light level/colour"""
@@ -302,9 +305,9 @@ class Map:
             # 
             #    travelling S:     pos-last_pos == (0,1)
             #    player in-front:  player.pos-obj.pos  must (0, >0)
-            return self.player.is_visible and self.is_lit(self.player.pos) and libtcod.map_is_in_fov(self.__tcod_map, obj.pos.x, obj.pos.y) and (angle_of_vis==1.0 or (obj.pos-obj.last_pos).angle_to(self.player.pos-obj.pos) <= angle_of_vis)
+            return self.player.is_visible and self.is_lit(self.player) and libtcod.map_is_in_fov(self.__tcod_map, obj.pos.x, obj.pos.y) and (angle_of_vis==1.0 or (obj.pos-obj.last_pos).angle_to(self.player.pos-obj.pos) <= angle_of_vis)
         elif obj is self.player:
-            return obj.is_visible and self.is_lit(obj.pos) and libtcod.map_is_in_fov(self.__tcod_map, obj.pos.x, obj.pos.y)
+            return obj.is_visible and self.is_lit(obj) and libtcod.map_is_in_fov(self.__tcod_map, obj.pos.x, obj.pos.y)
         else:
             raise NotImplementedError
 
@@ -1191,7 +1194,8 @@ class TypeAMap(Map):
                     else:
                         misses += 1
                 else:
-                    assert False, "Invalid _map data at pos (%d,%d); flags 0x%x"%(x,y,self._map[x][y])
+                    print("WARNING: Invalid _map data at pos (%d,%d); flags 0x%x"%(x,y,self._map[x][y]))
+                    #assert False, "Invalid _map data at pos (%d,%d); flags 0x%x"%(x,y,self._map[x][y])
 
                 # overlay lights
                 if t & MapPattern.LIGHT:

@@ -102,7 +102,7 @@ class Bar(UI):
         self.text_align = text_align
 
         self.value = 0
-        self.max_value = 0
+        self.max_value = 1
 
         self.percentiles = [1.0]
 

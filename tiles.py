@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import libtcodpy as libtcod
-from interfaces import Mappable, Traversable, Transparent, TurnTaker, CountUp, Position, Activatable, HasInventory, Shouter, Talker, StatusEffect, LightSource, FlatLightSource
+from interfaces import Mappable, Traversable, Transparent, TurnTaker, CountUp, Position, Activatable, HasInventory, Shouter, Talker, StatusEffect, LightSource, FlatLightSource, Alertable
 from errors import LevelWinError, InvalidMoveError
 from ui import HBar, Menu
 
@@ -259,12 +259,17 @@ class LightSwitch(WallPanel,Shouter):
     def try_movement(self,obj):
         if self.switch_lights is None:
             self.switch_lights = weakref.WeakSet()
+            #print("switching %s ------------------------------------" % self)
 
             for l in self.map.find_all(LightSource):
                 if l.remains_in_place and l.lights(obj.pos,test_los=False):
+                    #print("%s will be switched"%l)
                     self.switch_lights.add(l)
+                #else:
+                #    print("%s skipped"%l)
 
         for l in self.switch_lights:
+            print("switching %s by %s"%(l,obj))
             l.light_enabled = not l.light_enabled
 
         if self.colour == self.ON_COLOUR:
@@ -276,7 +281,7 @@ class LightSwitch(WallPanel,Shouter):
 
         # alert enemies to people switching stuff on and off
         if obj is self.map.player:
-            self.shout()
+            self.shout(priority=Alertable.PRI_LOW)
 
         raise InvalidMoveError
 
