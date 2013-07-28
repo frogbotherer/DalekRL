@@ -4,7 +4,7 @@ import libtcodpy as libtcod
 
 from functools import reduce
 
-from interfaces import Carryable, Activatable, Activator, CountUp, Mappable, TurnTaker, StatusEffect, Shouter, LightSource
+from interfaces import Carryable, Activatable, Activator, CountUp, Mappable, TurnTaker, StatusEffect, LightSource
 from ui import UI, HBar, Message
 from errors import InvalidMoveError
 
@@ -408,7 +408,7 @@ class MemoryWipe(LimitedUsesItem):
             return True
         return False
 
-from tiles import Tile, Door, Window, Floor
+from tiles import Tile, Door, Window
 class DoorRelease(LimitedUsesItem):
     awesome_weight = 0.7
 

@@ -8,11 +8,11 @@ import sys
 import libtcodpy as libtcod
 
 # our imports
-from interfaces import Position, TurnTaker, Talker
+from interfaces import Position, TurnTaker
 from ui import UI
 from maps import Map
 from player import Player
-from errors import InvalidMoveError, GameOverError, LevelWinError
+from errors import GameOverError, LevelWinError
 
 SCREEN_SIZE = Position(80,50)
 LIMIT_FPS = 10
