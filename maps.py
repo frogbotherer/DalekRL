@@ -444,14 +444,14 @@ class EmptyMap(Map):
                 self.add(Floor(Position(i,j)))
 
         # place daleks
-        for i in range(0,1):
-            d = Monster.random(self.map_rng,self.find_random_clear(self.map_rng))
-            self.add(d)
+        #for i in range(0,1):
+        #    d = Monster.random(self.map_rng,self.find_random_clear(self.map_rng))
+        #    self.add(d)
 
         # place some items
-        for i in range(0,3):
-            i = Item.random(self.map_rng,self.find_random_clear(self.map_rng))
-            self.add(i)
+        #for i in range(0,3):
+        #    i = Item.random(self.map_rng,self.find_random_clear(self.map_rng))
+        #    self.add(i)
 
         # add evidence
         self._gen_add_evidence()

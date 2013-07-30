@@ -3,6 +3,7 @@
 import libtcodpy as libtcod
 
 from functools import reduce
+import re # for sub
 
 from interfaces import Carryable, Activatable, Activator, CountUp, Mappable, TurnTaker, StatusEffect, LightSource
 from ui import UI, HBar, Message
@@ -93,6 +94,7 @@ class Item(Carryable, Activatable, Mappable):
 
         return Item.AWESOME_MAP[rank][item_idx](pos,item_power)
 
+    @staticmethod
     def __GEN_AWESOME_MAP():
         Item.AWESOME_MAP = {}
         for i in range(1,6):
@@ -107,6 +109,13 @@ class Item(Carryable, Activatable, Mappable):
                 C.awesome_acc_weight = (C.awesome_weight + last)/C.awesome_rank
                 last += C.awesome_weight
 
+    @staticmethod
+    def get_item_by_name(name):
+        for CL in Item.AWESOME_MAP.values():
+            for C in CL:
+                if C.__name__.lower() == name.lower() or re.sub("([a-z])([A-Z])",r'\1 \2',C.__name__).lower() == name.lower():
+                    return C
+        raise NameError(name)
 
 class SlotItem(Item):
     awesome_rank   = 3
@@ -654,10 +663,10 @@ class RunningShoes(RunDownItem):
 
 
 class PassiveItem(SlotItem):
-    awesome_rank   = 1
+    awesome_rank   = 3
     awesome_weight = 1.0
 
-    def __init__(self,owner,item_power,valid_slot,item_colour=libtcod.orange,bar_colour=libtcod.grey):
+    def __init__(self,owner,item_power,valid_slot,item_colour=libtcod.cyan,bar_colour=libtcod.grey):
         SlotItem.__init__(self,owner,item_power,valid_slot,item_colour)
         self.bar = HBar(None, None, bar_colour, libtcod.dark_grey, False, False, str(self), str.ljust)
         self.bar.is_visible = False
@@ -693,7 +702,7 @@ class NinjaSuit(PassiveItem):
     def drop_at(self,pos):
         if isinstance(self.owner,StatusEffect):
             self.owner.remove_effect(StatusEffect.HIDDEN_IN_SHADOW)
-        PassiveItem.drop_at(pos)
+        PassiveItem.drop_at(self,pos)
 
     def take_by(self,owner):
         PassiveItem.take_by(self,owner)

@@ -133,7 +133,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory,LightSource
             self.evidence.append(i)
             if not i.pos is None: # found it in a locker
                 self.map.remove(i)
-            return True
+            return Player.ITEM_PICKUP_COST
 
         item_index = None
         items      = self.items
@@ -151,12 +151,13 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory,LightSource
                 v = items[idx]
                 b.add('%d'%(idx+1),str(v))
             c = b.get_key()
+
             if isinstance(c,str) and c.isnumeric():
                 item_index = int(c) - 1
             self.redraw_screen()
             del b
             if item_index is None or item_index >= len(items):
-                return False
+                return 0.0
             items[item_index].drop_at(self.pos)
             self.map.add(items[item_index])
         else:
