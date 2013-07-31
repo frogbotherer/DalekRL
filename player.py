@@ -20,6 +20,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory,LightSource
     # these do though
     ITEM_ACTIVATE_COST = 0.6
     ITEM_PICKUP_COST   = 1.0
+    ITEM_DROP_COST     = 1.0
 
     def __init__(self,pos=None):
         Mappable.__init__(self,pos,'@',libtcod.white)
@@ -53,9 +54,10 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory,LightSource
             '4': self.use_head,
             '5': self.use_body,
             '6': self.use_feet,
-            'q': sys.exit,
-            'r': self.reset_game,
+            'Q': sys.exit,
+            'R': self.reset_game,
             ' ': self.interact,
+            'd': self.drop,
             'L': self.debug_lighting,
             }
 
@@ -103,7 +105,7 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory,LightSource
 
         # print slot items
         i = 4
-        for s in (SlotItem.HEAD_SLOT,SlotItem.BODY_SLOT,SlotItem.FEET_SLOT):
+        for s in self.slot_keys:
             libtcod.console_print(0, pos.x+COL_W+3+C_MARGIN_W, pos.y+i-4, "%d."%(i))
             if self.slot_items[s] is None:
                 libtcod.console_print(0, pos.x+COL_W+3+C_MARGIN_W+3, pos.y+i-4, "--- Nothing ---")
@@ -221,6 +223,55 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory,LightSource
                     r += 1.0
         #return r # whilst we can calculate cumulative cost of all this stuff; actually want to end turn regardless
         return 1.0
+    def drop(self):
+        # prompt to drop something; drop it
+        xu = self.map.size.x//4
+        yu = self.map.size.y//4
+        b = Menu( Position(xu,yu), Position(xu*2,yu*2), title="Drop" )
+        
+        b.add('x','Do nothing')
+        b.add_spacer()
+
+        for idx in range(len(self.items)):
+            v = self.items[idx]
+            if not v is None:
+                b.add('%d'%(idx+1),str(v))
+
+        b.add_spacer()
+        idx += 1
+
+        for k in self.slot_keys:
+            idx += 1
+            if not self.slot_items[k] is None:
+                b.add('%d'%idx,str(self.slot_items[k]))
+
+        c = b.get_key()
+                    
+        item_index = None
+        if isinstance(c,str) and c.isnumeric():
+            item_index = int(c) - 1
+        self.redraw_screen()
+        del b
+
+        if item_index is None:
+            return 0.0
+
+        i = None
+        if item_index < len(self.items):
+            i = self.items[item_index]
+            self.items[item_index] = None
+        elif item_index < len(self.items)+len(self.slot_keys):
+            k = self.slot_keys[item_index-len(self.items)]
+            i = self.slot_items[k]
+            self.slot_items[k] = None
+
+        if not i is None:
+            i.drop_at(self.pos)
+            self.map.add(i)
+            return self.ITEM_DROP_COST 
+
+        return 0.0
+            
 
     def take_turn(self):
         # runs just before handle_keys, so expensive ops run whilst player chooses what to do

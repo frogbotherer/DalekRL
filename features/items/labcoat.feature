@@ -23,6 +23,6 @@ Scenario: Pick up a lab coat when already wearing something
 
 Scenario: Drop the lab coat being worn
   Given the player is wearing a lab coat
-  When the lab coat is dropped the player
+  When the lab coat is dropped by the player
   Then the player is wearing nothing
   And the lab coat is on the ground where the player is standing

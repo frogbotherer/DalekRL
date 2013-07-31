@@ -499,6 +499,7 @@ class CountUp:
 class HasInventory:
     def __init__(self,inv_size,fixed_slots=()):
         self.items = [None for i in range(inv_size)]
+        self.slot_keys  = fixed_slots
         self.slot_items = {}
         for s in fixed_slots:
             self.slot_items[s] = None

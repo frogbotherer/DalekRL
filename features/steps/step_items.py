@@ -47,38 +47,61 @@ def step_impl(context,MockMenu,actor,thing):
     MockMenu().get_key = MagicMock(return_value='1')
 
     a, i_class = clean_actor_and_object(context,actor,thing)
+    context.item_slots_to_test = []
 
     if thing == 'nothing':
         # should be a.drop_all() or something
         for k in a.slot_items.keys():
             a.slot_items[k] = None
-
-    elif not i_class in [c.__class__ for c in a.items + list(a.slot_items.values())]:
-        a.pickup(i_class(a))
+            context.item_slots_to_test.append(k)
+            
+    elif not i_class in [c.__class__ for c in list(a.slot_items.values())]:
+        i = i_class(a)
+        a.slot_items[i.valid_slot] = None # clear out slot first to stop is_wearing from dropping defaults
+        a.pickup(i)
+        context.item_slots_to_test.append(i.valid_slot)
 
 
 @when('{thing} is picked up by {actor}')
 @patch('player.Menu')
 def step_impl(context,MockMenu,thing,actor):
-    MockMenu().get_key = MagicMock(return_value='1')
-
     a, i_class = clean_actor_and_object(context,actor,thing)
+
+    MockMenu().get_key = MagicMock(return_value='1')
 
     if thing != 'nothing':
         a.interact()
 
+@when('{thing} is dropped by {actor}')
+@patch('player.Menu')
+def step_impl(context,MockMenu,thing,actor):
+    a, i_class = clean_actor_and_object(context,actor,thing)
+
+    def mm_add(k,v):
+        if v == str(i_class(None)):
+            MockMenu().get_key = MagicMock(return_value=k)
+    MockMenu().add     = mm_add
+
+    if thing != 'nothing':
+        a.drop()
 
 @then('{actor} is wearing {thing}')
 def step_impl(context,actor,thing):
     a, i_class = clean_actor_and_object(context,actor,thing)
 
-    got = [c for c in a.items + list(a.slot_items.values()) if isinstance(c,i_class)]
+    
+    if thing == 'nothing':
+        for k in context.item_slots_to_test:
+            # assert all appropriate slots empty
+            assert_is(a.slot_items[k],None)
 
-    assert_equal( len(got), 1 )
+    else:
+        got = [c for c in list(a.slot_items.values()) if isinstance(c,i_class)]
+        assert_equal( len(got), 1 )
 
-    # check that the item we've got is in the correct slot
-    if isinstance(got[0], items.SlotItem):
-        assert_is( a.slot_items[got[0].valid_slot], got[0] )
+        # check that the item we've got is in the correct slot
+        if isinstance(got[0], items.SlotItem):
+            assert_is( a.slot_items[got[0].valid_slot], got[0] )
 
 
 @then('{thing} is on the ground where {actor} is standing')
