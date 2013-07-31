@@ -13,5 +13,6 @@ import interfaces
 def step_impl(context):
     p = player.Player()
     p.redraw_screen = Mock()
+    p.handle_keys = Mock(return_value=p.do_nothing) # default is do nothing
     context.map = maps.EmptyMap(0, interfaces.Position(80,46), p)
     context.map.generate()

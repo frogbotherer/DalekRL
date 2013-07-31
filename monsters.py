@@ -5,7 +5,9 @@ from interfaces import Mappable, Position, Activatable, Activator, CountUp, Talk
 from errors import GameOverError, InvalidMoveError, TodoError
 from ui import HBar, Message, Menu
 
+# lang imports
 from functools import reduce
+import re # for sub
 
 class Monster_State:
     def __init__(self,monster):
@@ -41,6 +43,7 @@ class Monster (Mappable, TurnTaker, StatusEffect):
     def __str__(self):
         return "%s at %s facing %s" %(self.__class__.__name__,self.pos,(self.pos is None or self.last_pos is None) and 'nowhere' or (self.pos-self.last_pos))
 
+    @staticmethod
     def random(rng,pos,weight=1.0):
         if Monster.GENERATOR == []:
             Monster.__GEN_GENERATOR()
@@ -58,9 +61,18 @@ class Monster (Mappable, TurnTaker, StatusEffect):
 
         return Monster.GENERATOR[m_idx](pos)
 
-
+    @staticmethod
     def __GEN_GENERATOR():
         Monster.GENERATOR = [StaticCamera,CrateLifter,Dalek,SlowDalek,BetterDalek,LitDalek]
+
+    @staticmethod
+    def get_monster_by_name(name):
+        if Monster.GENERATOR == []:
+            Monster.__GEN_GENERATOR()
+        for C in Monster.GENERATOR:
+            if C.__name__.lower() == name.lower() or re.sub("([a-z])([A-Z])",r'\1 \2',C.__name__).lower() == name.lower():
+                return C
+        raise NameError(name)
 
 from tangling import Tanglable
 

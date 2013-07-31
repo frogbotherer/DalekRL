@@ -7,6 +7,9 @@ from nose.tools import *
 
 # game imports
 import items
+import tiles
+import interfaces
+import monsters
 from errors import TodoError
 
 # lang imports
@@ -18,21 +21,35 @@ def strip_prepositions(text):
 
 def clean_actor_and_object(context,actor,thing):
     """returns instance of actor and class of thing"""
-    actor = strip_prepositions(actor)
     thing = strip_prepositions(thing)
-
-    if actor.lower() == 'player':
-        a = context.map.player
-    else:
-        raise TodoError
 
     if thing == 'nothing':
         i_class = None
     else:
         i_class = items.Item.get_item_by_name(thing)
 
-    return (a, i_class)
+    return (clean_actor(context,actor), i_class)
 
+def clean_actor(context,actor):
+    actor = strip_prepositions(actor)
+    if actor.lower() == 'player':
+        return context.map.player
+    else:
+        raise TodoError
+
+def clean_enemy(context,enemy):
+    enemy = strip_prepositions(enemy)
+    if enemy == 'nothing':
+        return None
+    else:
+        return monsters.Monster.get_monster_by_name(enemy)
+
+def clean_status_effect(effect):
+    effect = effect.upper().replace(' ','_')
+    if hasattr(interfaces.StatusEffect,effect):
+        return getattr(interfaces.StatusEffect,effect)
+    else:
+        raise AttributeError
 
 @given('{thing} on the ground where the {actor} is standing')
 def step_impl(context,thing,actor):
@@ -62,6 +79,25 @@ def step_impl(context,MockMenu,actor,thing):
         context.item_slots_to_test.append(i.valid_slot)
 
 
+@given('{brightness} light level')
+def step_impl(context,brightness):
+    brightness = strip_prepositions(brightness)
+    b = {'very dim': 0.1,
+         'dim':      0.3,
+         'low':      0.5,
+         'medium':   0.7,
+         'bright':   1.0,
+         'very bright': 1.2}.get(brightness,1.0)
+    context.map.add(tiles.FlatLight(interfaces.Position(1,1),context.map.size-interfaces.Position(1,1)))
+
+@given('{enemy} enemy near {actor}')
+def step_impl(context,enemy,actor):
+    a = clean_actor(context,actor)
+    e_class = clean_enemy(context,enemy)
+
+    e = e_class(a.pos+interfaces.Position(2,2))
+    context.map.add(e)
+
 @when('{thing} is picked up by {actor}')
 @patch('player.Menu')
 def step_impl(context,MockMenu,thing,actor):
@@ -84,6 +120,10 @@ def step_impl(context,MockMenu,thing,actor):
 
     if thing != 'nothing':
         a.drop()
+
+@when('turns are taken')
+def step_impl(context):
+    interfaces.TurnTaker.take_all_turns()
 
 @then('{actor} is wearing {thing}')
 def step_impl(context,actor,thing):
@@ -115,4 +155,51 @@ def step_impl(context,thing,actor):
     else:
         assert_equal(len(i),1)
         assert_is_instance(i[0],i_class)
+
+
+@then('{actor} has the {effect} effect')
+def step_impl(context,actor,effect):
+    a = clean_actor(context,actor)
+    e = clean_status_effect(effect)
+
+    assert_is_instance(a,interfaces.StatusEffect)
+    assert_true(a.has_effect(e))
+
+@then('{actor} does not have the {effect} effect')
+def step_impl(context,actor,effect):
+    a = clean_actor(context,actor)
+    e = clean_status_effect(effect)
+
+    assert_is_instance(a,interfaces.StatusEffect)
+    assert_false(a.has_effect(e))
+
+@then('{enemy} is alerted to {actor}')
+def step_impl(context,enemy,actor):
+    a = clean_actor(context,actor)
+    e_class = clean_enemy(context,enemy)
+
+    # sanity to be sure we've got the right thing
+    e = context.map.find_all(e_class,monsters.Monster)
+    assert_equal(len(e),1)
+    e = e[0]
+    assert_is_instance(e,monsters.AI)
+    assert_is_instance(e,e_class)
+
+    # is monster in an alerted state?
+    assert_is_instance(e.state,monsters.MS_SeekingPlayer)
+
+@then('{enemy} is not alerted to {actor}')
+def step_impl(context,enemy,actor):
+    a = clean_actor(context,actor)
+    e_class = clean_enemy(context,enemy)
+
+    # sanity to be sure we've got the right thing
+    e = context.map.find_all(e_class,monsters.Monster)
+    assert_equal(len(e),1)
+    e = e[0]
+    assert_is_instance(e,monsters.AI)
+    assert_is_instance(e,e_class)
+
+    # is monster in an alerted state?
+    assert_not_is_instance(e.state,monsters.MS_SeekingPlayer)
 
