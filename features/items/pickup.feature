@@ -9,8 +9,9 @@ Background: A game is in progress
 Scenario Outline: Pick up clothes
   Given a <thing> on the ground where the <actor> is standing
   And the <actor> is wearing nothing
-  When the <thing> is picked up
-  Then the <actor> is wearing the lab coat
+  When the <thing> is picked up by the <actor>
+  Then the <actor> is wearing the <thing>
+  And nothing is on the ground where the <actor> is standing
 
 Examples: Body slot items
   | actor    | thing      |
@@ -20,18 +21,18 @@ Examples: Body slot items
 Scenario Outline: Pick up clothes whilst already wearing something
   Given a <thing> on the ground where the <actor> is standing
   And the <actor> is wearing the <other thing>
-  When the <thing> is picked up
+  When the <thing> is picked up by the <actor>
   Then the <actor> is wearing the <thing>
   And the <other thing> is on the ground where the <actor> is standing
 
 Examples: Body slot items
-  | actor    | thing      |
-  | player   | lab coat   |
-  | player   | ninja suit |
+  | actor    | thing      | other thing |
+  | player   | lab coat   | ninja suit  |
+  | player   | ninja suit | lab coat    |
 
 Scenario Outline: Drop the clothes being worn
-  Given the <actor> wearing a <thing>
-  When the <thing> is dropped
+  Given the <actor> is wearing a <thing>
+  When the <thing> is dropped by the <actor>
   Then the <actor> is wearing nothing
 
 Examples: Body slot items
