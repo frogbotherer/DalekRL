@@ -18,7 +18,7 @@ Examples: Body slot items
   | player   | lab coat   |
   | player   | ninja suit |
 
-Scenario Outline: Pick up clothes whilst already wearing something
+Scenario Outline: Pick up clothes whilst already wearing something (in the same slot)
   Given a <thing> on the ground where the <actor> is standing
   And the <actor> is wearing the <other thing>
   When the <thing> is picked up by the <actor>
@@ -29,6 +29,12 @@ Examples: Body slot items
   | actor    | thing      | other thing |
   | player   | lab coat   | ninja suit  |
   | player   | ninja suit | lab coat    |
+
+Examples: Head slot items
+  | actor    | thing          | other thing  |
+  | player   | xray specs     | infra specs  |
+  | player   | torch helmet   | xray specs   |
+  | player   | analysis specs | torch helmet |
 
 Scenario Outline: Drop the clothes being worn
   Given the <actor> is wearing a <thing>
