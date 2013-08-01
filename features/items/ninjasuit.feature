@@ -28,6 +28,13 @@ Scenario: Can't be seen in shadows
   When turns are taken
   Then the static camera is not alerted to the player
 
+Scenario: Can be seen in shadows when not wearing suit
+  Given the player is wearing nothing
+  And a dim light level
+  And a static camera enemy near the player
+  When turns are taken
+  Then the static camera is alerted to the player
+
 Scenario: Can still be seen in bright light
   Given the player is wearing a ninja suit
   And a bright light level

@@ -271,8 +271,9 @@ class Map:
                 l.blit_to(self.__tcod_moving_light_console)
 
     def is_lit(self, obj):
+        print("got here %s %s" %(obj,obj.current_effects))
         if isinstance(obj,StatusEffect) and obj.has_effect(StatusEffect.HIDDEN_IN_SHADOW):
-            return self.light_level(obj.pos) >= LightSource.INTENSITY_VISIBLE*1.5
+            return self.light_level(obj.pos) >= LightSource.INTENSITY_VISIBLE*2.0
         else:
             return self.light_level(obj.pos) >= LightSource.INTENSITY_VISIBLE #INTENSITY_L_CLAMP
 

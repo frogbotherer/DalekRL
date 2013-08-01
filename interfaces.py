@@ -305,7 +305,7 @@ class FlatLightSource(LightSource):
 
     def reset_map(self,pos=None):
         if self.light_enabled:
-            libtcod.image_clear(self.__tcod_light_image,self.raw_light_colour)
+            libtcod.image_clear(self.__tcod_light_image,self.raw_light_colour*self.intensity)
             libtcod.image_set_key_color(self.__tcod_light_image,libtcod.black)
         else:
             libtcod.image_clear(self.__tcod_light_image,libtcod.black)

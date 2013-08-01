@@ -21,21 +21,22 @@ MAP = None
 PLAYER = None
 
 # for now
-if len(sys.argv)>1 and len(sys.argv[1])>0:
+if len(sys.argv)>1 and sys.argv[0].startswith('DalekRL') and len(sys.argv[1])>0:
     RANDOM_SEED=int(sys.argv[1])-1
 
-# init window
-font = os.path.join(b'resources', b'consolas10x10_gs_tc.png')
-libtcod.console_set_custom_font(font, libtcod.FONT_TYPE_GREYSCALE | libtcod.FONT_LAYOUT_TCOD)
-libtcod.console_init_root(SCREEN_SIZE.x, SCREEN_SIZE.y, b'DalekRL')
-libtcod.sys_set_fps(LIMIT_FPS)
+def init():
+    # init window
+    font = os.path.join(b'resources', b'consolas10x10_gs_tc.png')
+    libtcod.console_set_custom_font(font, libtcod.FONT_TYPE_GREYSCALE | libtcod.FONT_LAYOUT_TCOD)
+    libtcod.console_init_root(SCREEN_SIZE.x, SCREEN_SIZE.y, b'DalekRL')
+    libtcod.sys_set_fps(LIMIT_FPS)
 
-# set default text palette # TODO: merge with UI class statics
-libtcod.console_set_color_control(libtcod.COLCTRL_1,libtcod.red,libtcod.black)
-libtcod.console_set_color_control(libtcod.COLCTRL_2,libtcod.dark_yellow,libtcod.black)
-libtcod.console_set_color_control(libtcod.COLCTRL_3,libtcod.light_green,libtcod.black)
-libtcod.console_set_color_control(libtcod.COLCTRL_4,libtcod.light_blue,libtcod.black)
-libtcod.console_set_color_control(libtcod.COLCTRL_5,libtcod.purple,libtcod.black)
+    # set default text palette # TODO: merge with UI class statics
+    libtcod.console_set_color_control(libtcod.COLCTRL_1,libtcod.red,libtcod.black)
+    libtcod.console_set_color_control(libtcod.COLCTRL_2,libtcod.dark_yellow,libtcod.black)
+    libtcod.console_set_color_control(libtcod.COLCTRL_3,libtcod.light_green,libtcod.black)
+    libtcod.console_set_color_control(libtcod.COLCTRL_4,libtcod.light_blue,libtcod.black)
+    libtcod.console_set_color_control(libtcod.COLCTRL_5,libtcod.purple,libtcod.black)
 
 
 def reset(keep_player=False):
@@ -67,15 +68,17 @@ def reset(keep_player=False):
 
 
 
+if __name__ == '__main__':
+    init()
 
-# main loop
-reset()
-while not libtcod.console_is_window_closed():
-    print("-------------")
-    try:
-        # monster movement and items
-        TurnTaker.take_all_turns()
-    except GameOverError:
-        reset(False)
-    except LevelWinError:
-        reset(True)
+    # main loop
+    reset()
+    while not libtcod.console_is_window_closed():
+        print("-------------")
+        try:
+            # monster movement and items
+            TurnTaker.take_all_turns()
+        except GameOverError:
+            reset(False)
+        except LevelWinError:
+            reset(True)

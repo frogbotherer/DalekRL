@@ -51,6 +51,7 @@ def clean_status_effect(effect):
     else:
         raise AttributeError
 
+
 @given('{thing} on the ground where the {actor} is standing')
 def step_impl(context,thing,actor):
     a, i_class = clean_actor_and_object(context,actor,thing)
@@ -69,7 +70,10 @@ def step_impl(context,MockMenu,actor,thing):
     if thing == 'nothing':
         # should be a.drop_all() or something
         for k in a.slot_items.keys():
+            i = a.slot_items[k]
+            i.drop_at(None)
             a.slot_items[k] = None
+            del i
             context.item_slots_to_test.append(k)
             
     elif not i_class in [c.__class__ for c in list(a.slot_items.values())]:
@@ -77,7 +81,6 @@ def step_impl(context,MockMenu,actor,thing):
         a.slot_items[i.valid_slot] = None # clear out slot first to stop is_wearing from dropping defaults
         a.pickup(i)
         context.item_slots_to_test.append(i.valid_slot)
-
 
 @given('{brightness} light level')
 def step_impl(context,brightness):
@@ -88,7 +91,10 @@ def step_impl(context,brightness):
          'medium':   0.7,
          'bright':   1.0,
          'very bright': 1.2}.get(brightness,1.0)
-    context.map.add(tiles.FlatLight(interfaces.Position(1,1),context.map.size-interfaces.Position(1,1)))
+
+    context.map.add(tiles.FlatLight(interfaces.Position(1,1),context.map.size-interfaces.Position(1,1),b))
+    context.map.recalculate_lighting()
+
 
 @given('{enemy} enemy near {actor}')
 def step_impl(context,enemy,actor):
@@ -97,6 +103,7 @@ def step_impl(context,enemy,actor):
 
     e = e_class(a.pos+interfaces.Position(2,2))
     context.map.add(e)
+
 
 @when('{thing} is picked up by {actor}')
 @patch('player.Menu')
@@ -107,6 +114,7 @@ def step_impl(context,MockMenu,thing,actor):
 
     if thing != 'nothing':
         a.interact()
+
 
 @when('{thing} is dropped by {actor}')
 @patch('player.Menu')
@@ -121,9 +129,11 @@ def step_impl(context,MockMenu,thing,actor):
     if thing != 'nothing':
         a.drop()
 
+
 @when('turns are taken')
 def step_impl(context):
     interfaces.TurnTaker.take_all_turns()
+
 
 @then('{actor} is wearing {thing}')
 def step_impl(context,actor,thing):
@@ -165,6 +175,7 @@ def step_impl(context,actor,effect):
     assert_is_instance(a,interfaces.StatusEffect)
     assert_true(a.has_effect(e))
 
+
 @then('{actor} does not have the {effect} effect')
 def step_impl(context,actor,effect):
     a = clean_actor(context,actor)
@@ -172,6 +183,7 @@ def step_impl(context,actor,effect):
 
     assert_is_instance(a,interfaces.StatusEffect)
     assert_false(a.has_effect(e))
+
 
 @then('{enemy} is alerted to {actor}')
 def step_impl(context,enemy,actor):
@@ -186,7 +198,8 @@ def step_impl(context,enemy,actor):
     assert_is_instance(e,e_class)
 
     # is monster in an alerted state?
-    assert_is_instance(e.state,monsters.MS_SeekingPlayer)
+    assert isinstance(e.state,monsters.MS_SeekingPlayer) or isinstance(e.state,monsters.MS_InvestigateSpot), "%s is in %s state"%(e,e.state)
+
 
 @then('{enemy} is not alerted to {actor}')
 def step_impl(context,enemy,actor):
@@ -201,5 +214,5 @@ def step_impl(context,enemy,actor):
     assert_is_instance(e,e_class)
 
     # is monster in an alerted state?
-    assert_not_is_instance(e.state,monsters.MS_SeekingPlayer)
+    assert not isinstance(e.state,monsters.MS_SeekingPlayer) and not isinstance(e.state,monsters.MS_InvestigateSpot), "%s is in %s state"%(e,e.state)
 

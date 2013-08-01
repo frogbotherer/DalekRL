@@ -392,14 +392,14 @@ class ClankyFloor(Tile,Talker,Shouter):
         return True
 
 class Light(Tile,LightSource):
-    def __init__(self, pos, r=0):
+    def __init__(self, pos, r=0, intensity=1.0, light_colour=Mappable.LIGHT_H_CLAMP):
         Tile.__init__(self, pos, '\'', libtcod.white, 1.0, 1.0)
-        LightSource.__init__(self,r)
+        LightSource.__init__(self,r,intensity,light_colour)
 
 class FlatLight(Floor,FlatLightSource):
-    def __init__(self, pos, size):
+    def __init__(self, pos, size, intensity=1.0, light_colour=Mappable.LIGHT_H_CLAMP):
         Floor.__init__(self, pos)
-        FlatLightSource.__init__(self,size)
+        FlatLightSource.__init__(self,size,intensity,light_colour)
 
 # TODO: is this an interface?
 class Trap:

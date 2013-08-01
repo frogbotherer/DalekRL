@@ -28,16 +28,25 @@ class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory,LightSource
         TurnTaker.__init__(self,1)
         HasInventory.__init__(self,3,(SlotItem.HEAD_SLOT,SlotItem.BODY_SLOT,SlotItem.FEET_SLOT))
         LightSource.__init__(self,2,0.1)
-        self.items = [Item.random(None,self,2,1.5),Item.random(None,self,1),None]
+        self.items = [None,None,None]
         self.slot_items = {
-            SlotItem.HEAD_SLOT: NightVisionGoggles(self),
-            SlotItem.BODY_SLOT: NinjaSuit(self),
-            SlotItem.FEET_SLOT: RunningShoes(self),
+            SlotItem.HEAD_SLOT: None,
+            SlotItem.BODY_SLOT: None,
+            SlotItem.FEET_SLOT: None,
             }
         self.turns = 0
         self.evidence = []
         self.levels_seen = 1
         
+        # init items (must be done this way to invoke any pickup triggers)
+        #  - inv items
+        self.pickup(Item.random(None,self,2,1.5))
+        self.pickup(Item.random(None,self,1))
+        #  - slot items
+        self.pickup(NightVisionGoggles(self))
+        self.pickup(NinjaSuit(self))
+        self.pickup(RunningShoes(self))
+
         self.KEYMAP = {
             'k': self.move_n,
             'j': self.move_s,
