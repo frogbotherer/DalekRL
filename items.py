@@ -684,6 +684,8 @@ class PassiveItem(SlotItem):
         SlotItem.take_by(self,owner)
         self.bar.is_visible = True
 
+    def activate(self,activator=None):
+        return False
 
 class LabCoat(PassiveItem):
     def __init__(self,owner,item_power=1.0):
