@@ -8,7 +8,14 @@ from errors import InvalidMoveError, InvalidMoveContinueError
 from ui import Message
 
 class Position:
-    def __init__(self,x,y):
+    def __init__(self,x,y=None):
+        if y is None:
+            if isinstance(x,tuple) or isinstance(x,list):
+                y = x[1]
+                x = x[0]
+            elif isinstance(x,Position):
+                y = x.y
+                x = x.x
         self.x = x
         self.y = y
 
@@ -29,10 +36,24 @@ class Position:
 
     def __gt__(self,other):
         """Furthest from origin is largest; if tied, larger x beats larger y so that we sort left-right, top-bottom"""
-        return (self.x*self.y>other.x*other.y) or (self.x>other.x)
+        if not isinstance(other,Position):
+            other = Position(other)
+        return (self.x*self.y>other.x*other.y) or (self.y==other.y and self.x>other.x)
     def __ge__(self,other):
-        return (self.x*self.y>other.x*other.y) or (self.x>=other.x)
+        if not isinstance(other,Position):
+            other = Position(other)
+        return (self.x*self.y>other.x*other.y) or (self.y==other.y and self.x>=other.x)
+    def __lt__(self,other):
+        if not isinstance(other,Position):
+            other = Position(other)
+        return (self.x*self.y<other.x*other.y) or (self.y==other.y and self.x<other.x)
+    def __le__(self,other):
+        if not isinstance(other,Position):
+            other = Position(other)
+        return (self.x*self.y<other.x*other.y) or (self.y==other.y and self.x<=other.x)
     def __eq__(self,other):
+        if not isinstance(other,Position):
+            other = Position(other)
         return self.x==other.x and self.y==other.y
 
     def __repr__(self):
@@ -43,10 +64,14 @@ class Position:
 
     def distance_to(self,other):
         """returns distance to other"""
+        if not isinstance(other,Position):
+            other = Position(other)
         return hypot(self.x-other.x,self.y-other.y)
 
     def angle_to(self,other):
         """returns angle in radians/pi between self and other. i.e. 0.0 => matching directions; 1.0 => opposites"""
+        if not isinstance(other,Position):
+            other = Position(other)
         t = (atan2(self.x,self.y) - atan2(other.x,other.y))/ pi
         if t > 1.0:
             t -= 2.0

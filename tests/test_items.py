@@ -12,6 +12,7 @@ from functools import reduce
 import libtcodpy as libtcod
 import items
 import interfaces
+import player
 
 class ItemTest(DalekTest):
 
@@ -103,3 +104,24 @@ class NinjaSuit(ItemTest):
 
     def test_should_not_be_activatable(self):
         self._test_should_not_be_activatable()
+
+    def test_should_add_hidden_effect_when_taken(self):
+        i = self.item_class(None)
+        p = Mock(spec=interfaces.StatusEffect)
+        p.add_effect = Mock(return_value=True)
+        i.take_by(p)
+        p.add_effect.assert_called_once_with(interfaces.StatusEffect.HIDDEN_IN_SHADOW)
+
+    def test_should_remove_hidden_effect_when_dropped(self):
+        p = Mock(spec=player.Player) # i.e. mappable; activator; statuseffect
+        i = self.item_class(p)
+        p.remove_effect = Mock(return_value=True)
+        i.drop_at(Mock(spec=interfaces.Position))
+        p.remove_effect.assert_called_once_with(interfaces.StatusEffect.HIDDEN_IN_SHADOW)
+
+    def test_should_provide_effect_when_init_with_owner(self):
+        p = Mock(spec=player.Player) # i.e. mappable; activator; statuseffect
+        p.remove_effect = Mock(return_value=True)
+
+        i = self.item_class(p)
+        p.add_effect.assert_called_once_with(interfaces.StatusEffect.HIDDEN_IN_SHADOW)

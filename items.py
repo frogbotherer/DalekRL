@@ -27,6 +27,10 @@ class Item(Carryable, Activatable, Mappable):
             self.is_visible = False
         self.is_chargable = False
 
+        # to trigger any on-pickup behaviour
+        if not self.owner is None:
+            self.take_by(self.owner)
+
     def __str__(self):
         if self.owner is None:
             return "%s at %s"%(self.__class__.__name__,self.pos)
@@ -117,6 +121,7 @@ class Item(Carryable, Activatable, Mappable):
                     return C
         raise NameError(name)
 
+
 class SlotItem(Item):
     awesome_rank   = 3
     awesome_weight = 1.0
@@ -132,13 +137,13 @@ class SlotItem(Item):
 
 class RunDownItem(SlotItem, CountUp, TurnTaker):
     def __init__(self,owner,item_power,valid_slot,item_colour=libtcod.cyan,bar_colour=libtcod.dark_cyan):
+        self.bar = HBar(None, None, bar_colour, libtcod.dark_grey, True, False, str(self), str.ljust)
+        self.bar.is_visible = False
+
         SlotItem.__init__(self,owner,item_power,valid_slot,item_colour,bar_colour)
         count_to = int( 50 + 100*item_power )
         CountUp.__init__(self,count_to)
         TurnTaker.__init__(self,100,False)
-
-        self.bar = HBar(None, None, bar_colour, libtcod.dark_grey, True, False, str(self), str.ljust)
-        self.bar.is_visible = False
 
         self.is_active = False
         self.is_chargable = True
@@ -203,11 +208,11 @@ class CoolDownItem(Item, CountUp, TurnTaker):
 
     def __init__(self,owner,item_power,item_colour=libtcod.green,bar_colour=libtcod.dark_green):
         count_to = int( 30 - 10*item_power )
+        self.bar = HBar(None, None, bar_colour, libtcod.dark_grey, True, False, str(self), str.ljust)
+        self.bar.is_visible = False
         Item.__init__(self,owner,item_power,item_colour)
         CountUp.__init__(self,count_to,count_to)
         TurnTaker.__init__(self,100,False)
-        self.bar = HBar(None, None, bar_colour, libtcod.dark_grey, True, False, str(self), str.ljust)
-        self.bar.is_visible = False
         self.is_chargable = True
 
     def take_turn(self):
@@ -250,12 +255,12 @@ class LimitedUsesItem(Item):
     awesome_weight = 1.0
 
     def __init__(self,owner,item_power=1.0,item_colour=libtcod.orange,bar_colour=libtcod.red):
+        self.bar = HBar(None, None, bar_colour, libtcod.dark_grey, True, False, str(self), str.ljust)
+        self.bar.is_visible = False
         Item.__init__(self,owner,item_power,item_colour)
         uses = int(1 + 3*item_power)
         self.max_uses = uses
         self.uses = uses
-        self.bar = HBar(None, None, bar_colour, libtcod.dark_grey, True, False, str(self), str.ljust)
-        self.bar.is_visible = False
 
     def draw_ui(self,pos,max_width=40):
         self.bar.pos = pos
@@ -667,9 +672,9 @@ class PassiveItem(SlotItem):
     awesome_weight = 1.0
 
     def __init__(self,owner,item_power,valid_slot,item_colour=libtcod.cyan,bar_colour=libtcod.grey):
-        SlotItem.__init__(self,owner,item_power,valid_slot,item_colour)
         self.bar = HBar(None, None, bar_colour, libtcod.dark_grey, False, False, str(self), str.ljust)
         self.bar.is_visible = False
+        SlotItem.__init__(self,owner,item_power,valid_slot,item_colour)
 
     def draw_ui(self,pos,max_width=40):
         self.bar.pos = pos
