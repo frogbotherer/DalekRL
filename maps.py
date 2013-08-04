@@ -67,6 +67,10 @@ class Map:
         assert isinstance(obj,Mappable), "%s cannot appear on map"%obj
         r = 0.0
 
+        # check that destination is within map bounds
+        if pos.x > self.size.x or pos.x < 0 or pos.y > self.size.y or pos.y < 0:
+            raise InvalidMoveError
+
         # check that we can move from current pos
         srcs  = self.find_all_at_pos(obj.pos,Tile) # probably just Tiles
         for src in srcs:

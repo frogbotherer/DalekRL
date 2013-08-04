@@ -114,7 +114,7 @@ class Mappable:
         ## test whether movement is valid # this lives in map.move now
         #if not self.map is None and self.map.is_blocked(pos):
         #    raise InvalidMoveError( "Can't move %s to %s"%(self,pos) )
-
+        assert not self.map is None, "Mappable %s not on map" % self
         return self.map.move(self, pos)
 
     ##

@@ -11,6 +11,9 @@ from math import hypot
 import libtcodpy as libtcod
 import items
 import interfaces
+import maps
+import tiles
+import errors
 
 class InterfaceTest(DalekTest):
     pass
@@ -196,3 +199,123 @@ class PositionTest(InterfaceTest):
             assert_equal(p2.angle_to(rp1),angle)
 
 
+class MappableTest(InterfaceTest):
+    
+    def setUp(self):
+        self.map = Mock(spec_set=maps.Map)
+        libtcod.console_put_char_ex = Mock()
+
+    def tearDown(self):
+        libtcod.console_put_char_ex.reset_mock()
+
+    def test_should_prevent_movement_if_fixed_in_place(self):
+        m = interfaces.Mappable(interfaces.Position(1,1),'x',libtcod.white,remains_in_place=True)
+        self.map.add(m)
+        assert_true(m.remains_in_place)
+        assert_raises(AssertionError,m.move,(1,1))
+        assert_raises(AssertionError,m.move_to,(2,2))
+
+    def test_should_fail_movement_if_not_on_map(self):
+        m = interfaces.Mappable(interfaces.Position(1,1),'x',libtcod.white)
+        assert_is(m.map,None)
+        assert_raises(AssertionError,m.move,(1,1))
+        assert_raises(AssertionError,m.move_to,(2,2))
+
+    def test_should_move_by_delta(self):
+        for d in (
+            (1,1),
+            (10,10),
+            (-1,-1),
+            (-10,10),
+            ):
+            map = Mock(spec_set=maps.Map)
+            m = interfaces.Mappable(interfaces.Position(1,1),'x',libtcod.white)
+            m.map = map
+            m.move(d)
+            map.move.assert_called_once_with(m, m.pos + d)
+
+    def test_should_move_to_valid_pos(self):
+        for d in (
+            (1,1),
+            (10,10),
+            (40,26),
+            ):
+            map = Mock(spec_set=maps.Map)
+            m = interfaces.Mappable(interfaces.Position(1,1),'x',libtcod.white)
+            m.map = map
+            m.move_to(d)
+            map.move.assert_called_once_with(m, d)
+
+    def test_should_prevent_movement_to_invalid_pos(self):
+        for d in (
+            (-1,-1),
+            (-10,10),
+            (90,55),
+            ):
+            map = Mock(spec_set=maps.Map)
+            map.move = Mock(side_effect=errors.InvalidMoveError())
+            m = interfaces.Mappable(interfaces.Position(1,1),'x',libtcod.white)
+            m.map = map
+            assert_raises(errors.InvalidMoveError,m.move_to, d)
+            map.move.assert_called_once_with(m, d)
+
+    def test_should_not_be_lit_if_not_on_map(self):
+        m = interfaces.Mappable(None,'x',libtcod.white)
+        m.map = Mock(spec_set=maps.Map)
+        assert_is(m.pos,None)
+        assert_false(m.is_lit)
+
+        m.map = None
+        m.pos = Mock(spec_set=interfaces.Position)
+        assert_false(m.is_lit)
+
+    def test_should_use_map_data_for_lighting_tests(self):
+        m = interfaces.Mappable(Mock(spec_set=interfaces.Position),'x',libtcod.white)
+        m.map = Mock(spec_set=maps.Map)
+        m.map.is_lit = Mock(return_value=True)
+        assert_true(m.is_lit)
+        m.map.is_lit.assert_called_once_with(m)
+
+    def test_should_give_low_light_level_when_not_on_map(self):
+        m = interfaces.Mappable(Mock(spec_set=interfaces.Position),'x',libtcod.white)
+        assert_equal(m.light_level,interfaces.LightSource.INTENSITY_L_CLAMP)
+
+    def test_should_give_transparent_light_level_if_transparent(self):
+        # seems Mock() doesn't play nicely with @property
+        class T(interfaces.Mappable,interfaces.Transparent):
+            transparent_light_level = 5.0
+
+        m = T(Mock(spec_set=interfaces.Position),'x',libtcod.white)
+        m.map = self.map
+        assert_equal(m.light_level,5.0)
+
+    def test_should_use_map_data_for_light_level(self):
+        m = interfaces.Mappable(Mock(spec_set=interfaces.Position),'x',libtcod.white)
+        m.map = self.map
+        m.map.light_level = Mock(return_value=5.0)
+        assert_equal(m.light_level,5.0)
+        m.map.light_level.assert_called_once_with(m.pos)
+
+    def test_should_not_be_drawn_if_not_visible(self):
+        m = interfaces.Mappable(Mock(spec_set=interfaces.Position),'x',libtcod.white)
+        m.map = self.map
+        m.is_visible = False
+
+        assert_is(m.draw(),None)
+
+        assert_equal(libtcod.console_put_char_ex.call_count,0)
+
+    def test_should_not_be_drawn_if_not_visible_to_player_and_not_previously_seen(self):
+        pass
+
+    def test_should_be_drawn_according_to_incident_light_level(self):
+        pass
+
+    def test_should_use_unseen_tile_when_not_visible(self):
+        pass
+
+    def test_should_use_unseen_tile_when_remembered_and_in_dark(self):
+        pass
+
+    def test_should_flag_as_seen_once_drawn(self):
+        pass
