@@ -318,4 +318,9 @@ class MappableTest(InterfaceTest):
         pass
 
     def test_should_flag_as_seen_once_drawn(self):
-        pass
+        m = interfaces.Mappable(Mock(spec_set=interfaces.Position),'x',libtcod.white)
+        m.map = self.map
+
+        assert_false(m.has_been_seen)
+        assert_is(m.draw(),None)
+        assert_true(m.has_been_seen)
