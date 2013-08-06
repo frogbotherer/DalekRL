@@ -12,6 +12,7 @@ import libtcodpy as libtcod
 import items
 import interfaces
 import maps
+import player
 import tiles
 import errors
 
@@ -202,7 +203,11 @@ class PositionTest(InterfaceTest):
 class MappableTest(InterfaceTest):
     
     def setUp(self):
-        self.map = Mock(spec_set=maps.Map)
+        self.map = Mock(spec=maps.Map)
+        self.map.player = Mock(spec_set=player.Player)
+        self.map.player.has_effect = Mock(return_value=False)
+        self.map.light_level = Mock(return_value=5.0)
+        self.map.light_colour = Mock(return_value=libtcod.white)
         libtcod.console_put_char_ex = Mock()
 
     def tearDown(self):
@@ -292,7 +297,7 @@ class MappableTest(InterfaceTest):
     def test_should_use_map_data_for_light_level(self):
         m = interfaces.Mappable(Mock(spec_set=interfaces.Position),'x',libtcod.white)
         m.map = self.map
-        m.map.light_level = Mock(return_value=5.0)
+        #m.map.light_level = Mock(return_value=5.0)
         assert_equal(m.light_level,5.0)
         m.map.light_level.assert_called_once_with(m.pos)
 
@@ -306,20 +311,129 @@ class MappableTest(InterfaceTest):
         assert_equal(libtcod.console_put_char_ex.call_count,0)
 
     def test_should_not_be_drawn_if_not_visible_to_player_and_not_previously_seen(self):
-        pass
+        p = Mock(spec=interfaces.Position,x=1,y=1)
+        m = interfaces.Mappable(p,'x',libtcod.white)
+        m.map = self.map
+        m.visible_to_player = False
+
+        assert_false(m.has_been_seen)
+        assert_is(m.draw(),None)
+        assert_false(m.has_been_seen)
 
     def test_should_be_drawn_according_to_incident_light_level(self):
-        pass
+        p = Mock(spec=interfaces.Position,x=1,y=1)
+        m = interfaces.Mappable(p,'x',libtcod.white)
+        m.map = self.map
+        m.visible_to_player = True
 
-    def test_should_use_unseen_tile_when_not_visible(self):
-        pass
+        for (my_colour,colour,level) in (
+            (libtcod.white,libtcod.white,1.0),
+            (libtcod.white,libtcod.red,0.5),
+            (libtcod.white,libtcod.white,interfaces.LightSource.INTENSITY_L_CLAMP+0.1),
+            (libtcod.green,libtcod.white,1.0),
+            (libtcod.red,libtcod.blue,1.2),
+            #(libtcod.green,interfaces.LightSource.INTENSITY_L_CLAMP), # see below
+            ):
+            m.colour = my_colour
+            self.map.light_level = Mock(return_value=level)
+            self.map.light_colour = Mock(return_value=colour*level)
+            assert_is(m.draw(),None)
+            #self.map.light_level.assert_called_once_with(m) # copied for performance into m
+            self.map.light_colour.assert_called_once_with(p)
+            libtcod.console_put_char_ex.assert_called_with(0,p.x,p.y,'x',my_colour*colour*level,libtcod.BKGND_NONE)
+
+    def test_should_use_unseen_tile_when_static_and_not_visible(self):
+        p = Mock(spec=interfaces.Position,x=1,y=1)
+        m = interfaces.Mappable(p,'x',libtcod.white, unseen_symbol='y', unseen_colour=libtcod.red)
+        m.map = self.map
+        m.visible_to_player = False
+        m.has_been_seen = True
+        m.remains_in_place = True
+
+        assert_is(m.draw(),None)
+        libtcod.console_put_char_ex.assert_called_with(0,p.x,p.y,'y',libtcod.red,libtcod.BKGND_NONE)
+
+    def test_should_not_be_drawn_if_moving_and_not_visible(self):
+        p = Mock(spec=interfaces.Position,x=1,y=1)
+        m = interfaces.Mappable(p,'x',libtcod.white, unseen_symbol='y', unseen_colour=libtcod.red)
+        m.map = self.map
+        m.visible_to_player = False
+        m.has_been_seen = True
+        m.remains_in_place = False
+
+        assert_is(m.draw(),None)
+        assert_equal(libtcod.console_put_char_ex.call_count,0)
 
     def test_should_use_unseen_tile_when_remembered_and_in_dark(self):
+        p = Mock(spec=interfaces.Position,x=1,y=1)
+        m = interfaces.Mappable(p,'x',libtcod.white, unseen_symbol='y', unseen_colour=libtcod.red)
+        m.map = self.map
+        m.visible_to_player = True
+        m.has_been_seen = True
+        m.remains_in_place = True
+        self.map.light_level = Mock(return_value=interfaces.LightSource.INTENSITY_L_CLAMP-0.1)
+        self.map.light_colour = Mock(return_value=libtcod.white*(interfaces.LightSource.INTENSITY_L_CLAMP-0.1))
+
+        assert_is(m.draw(),None)
+        self.map.light_colour.assert_called_once_with(p)
+        libtcod.console_put_char_ex.assert_called_with(0,p.x,p.y,'y',libtcod.red,libtcod.BKGND_NONE)
+
+    def test_should_not_be_drawn_if_moving_remembered_and_in_dark(self):
+        p = Mock(spec=interfaces.Position,x=1,y=1)
+        m = interfaces.Mappable(p,'x',libtcod.white, unseen_symbol='y', unseen_colour=libtcod.red)
+        m.map = self.map
+        m.visible_to_player = True
+        m.has_been_seen = True
+        m.remains_in_place = False
+        self.map.light_level = Mock(return_value=interfaces.LightSource.INTENSITY_L_CLAMP-0.1)
+        self.map.light_colour = Mock(return_value=libtcod.white*(interfaces.LightSource.INTENSITY_L_CLAMP-0.1))
+
+        assert_is(m.draw(),None)
+        self.map.light_colour.assert_called_once_with(p)
+        assert_equal(libtcod.console_put_char_ex.call_count,0)
+
+    def test_should_see_moving_tile_as_bright_with_infravision(self):
+        # TODO: should be 'warm tile'
+        p = Mock(spec=interfaces.Position,x=1,y=1)
+        m = interfaces.Mappable(p,'x',libtcod.white, unseen_symbol='y', unseen_colour=libtcod.red)
+        m.map = self.map
+        m.visible_to_player = True
+        m.has_been_seen = True
+        m.remains_in_place = False
+        self.map.light_level = Mock(return_value=interfaces.LightSource.INTENSITY_L_CLAMP-0.1)
+        self.map.light_colour = Mock(return_value=libtcod.white*(interfaces.LightSource.INTENSITY_L_CLAMP-0.1))
+
+        self.map.player.has_effect.side_effect = lambda x: x == interfaces.StatusEffect.INFRAVISION
+
+        assert_is(m.draw(),None)
+        assert_equal(self.map.light_colour.call_count,0) # don't need to test light colour if max lit
+        libtcod.console_put_char_ex.assert_called_with(0,p.x,p.y,'x',libtcod.white,libtcod.BKGND_NONE)
+
+    def test_should_see_stationary_tile_as_dim_with_infravision(self):
+        # TODO: should be 'cold tile'
+        p = Mock(spec=interfaces.Position,x=1,y=1)
+        m = interfaces.Mappable(p,'x',libtcod.white, unseen_symbol='y', unseen_colour=libtcod.red)
+        m.map = self.map
+        m.visible_to_player = True
+        m.has_been_seen = True
+        m.remains_in_place = True
+        self.map.light_level = Mock(return_value=interfaces.LightSource.INTENSITY_L_CLAMP-0.1)
+        self.map.light_colour = Mock(return_value=libtcod.white*(interfaces.LightSource.INTENSITY_L_CLAMP-0.1))
+
+        self.map.player.has_effect.side_effect = lambda x: x == interfaces.StatusEffect.INFRAVISION
+
+        assert_is(m.draw(),None)
+        self.map.light_colour.assert_called_once_with(p)
+        libtcod.console_put_char_ex.assert_called_with(0,p.x,p.y,'y',libtcod.red,libtcod.BKGND_NONE)
+
+    def test_should_invert_lighting_with_night_vision(self):
         pass
 
     def test_should_flag_as_seen_once_drawn(self):
-        m = interfaces.Mappable(Mock(spec_set=interfaces.Position),'x',libtcod.white)
+        p = Mock(spec=interfaces.Position,x=1,y=1)
+        m = interfaces.Mappable(p,'x',libtcod.white)
         m.map = self.map
+        m.visible_to_player = True
 
         assert_false(m.has_been_seen)
         assert_is(m.draw(),None)

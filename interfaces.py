@@ -151,8 +151,6 @@ class Mappable:
         if not self.is_visible:
             return
 
-        # TODO: infravision
-        # if self.map.player.has_effect(StatusEffect.INFRAVISION):
         if self.visible_to_player:
             if self.map.player.has_effect(StatusEffect.INFRAVISION) and not self.remains_in_place:
                 c = libtcod.white
