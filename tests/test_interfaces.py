@@ -1,7 +1,7 @@
 # test imports
 from unit_environment import DalekTest
 from nose.tools import *
-from mock import Mock, MagicMock, patch
+from mock import Mock, MagicMock, patch, ANY
 
 # lang imports
 from functools import reduce
@@ -474,3 +474,100 @@ class MappableTest(InterfaceTest):
         assert_false(m.has_been_seen)
         assert_is(m.draw(),None)
         assert_true(m.has_been_seen)
+
+
+class LightSourceTest(InterfaceTest):
+    # can't instantiate LightSource by itself
+    class C(interfaces.Mappable,interfaces.LightSource):
+        def __init__(self,*args,**kwargs):
+            interfaces.LightSource.__init__(self,*args,**kwargs)
+
+    def setUp(self):
+        libtcod.map_compute_fov     = Mock()
+        libtcod.image_clear         = Mock()
+        libtcod.image_set_key_color = Mock()
+
+    def tearDown(self):
+        libtcod.map_compute_fov.reset()
+        libtcod.image_clear.reset()
+        libtcod.image_set_key_color.reset()
+
+    def test_should_be_mappable(self):
+        assert_raises(AssertionError,interfaces.LightSource.__init__,5)
+
+    def test_should_reset_when_radius_changes(self):
+        c = self.C(radius=1)
+        c.reset_map = Mock()
+        assert_equal(c.radius,1)
+        c.radius = 2
+        assert_equal(c.radius,2)
+        c.reset_map.assert_called_once_with()
+
+    def test_should_still_work_as_light_after_radius_changes(self):
+        assert False
+        # stays centred in same place
+        # LOS et al recalculated
+        # still enabled
+
+    def test_should_prepare_fov_over_whole_area_of_light(self):
+        for (r, dia) in (
+            (1,3),
+            (2,5),
+            (5,11),
+            ):
+            c = self.C(r)
+            assert_is(c.prepare_fov(),None)
+            libtcod.map_compute_fov.assert_called_with(ANY,r+1,r+1,r,ANY,ANY)
+    
+    def test_should_clear_light_map_to_black_if_reset_when_disabled(self):
+        c = self.C(5)
+        c.light_enabled = False
+
+        assert_is(c.reset_map(),None)
+        libtcod.image_clear.assert_called_once_with(ANY,libtcod.black)
+        libtcod.image_set_key_color.assert_called_once_with(ANY,libtcod.black)
+    
+    def test_should_fail_if_reset_when_not_on_map(self):
+        c = self.C(1)
+        c.map = None
+        
+        assert_raises(AssertionError,c.reset_map)
+
+        c.map = Mock(spec=maps.Map)
+        c.pos = None
+
+        assert_raises(AssertionError,c.reset_map)
+
+    def test_should_reset_whole_light_map_when_called_with_no_pos(self):
+        assert False
+
+    def test_should_reset_only_relevant_parts_when_pos_given(self):
+        assert False
+
+    def test_should_not_recalculate_if_pos_out_of_los(self):
+        assert False
+
+    def test_should_blit_image_data_to_console_at_given_coords(self):
+        # including size and offset
+        assert False
+
+    def test_should_not_light_things_when_disabled(self):
+        assert False
+
+    def test_should_not_light_things_outside_radius(self):
+        assert False
+
+    def test_should_always_light_things_in_radius_if_not_testing_los(self):
+        assert False
+
+    def test_should_use_los_data_for_lighting_check(self):
+        assert False
+
+    def test_should_clean_up_tcod_data_on_reset(self):
+        assert False
+
+    def test_should_clean_up_tcod_data_on_del(self):
+        assert False
+
+    def test_should_be_disabled_after_closed(self):
+        assert False
