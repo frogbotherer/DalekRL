@@ -426,8 +426,44 @@ class MappableTest(InterfaceTest):
         self.map.light_colour.assert_called_once_with(p)
         libtcod.console_put_char_ex.assert_called_with(0,p.x,p.y,'y',libtcod.red,libtcod.BKGND_NONE)
 
-    def test_should_invert_lighting_with_night_vision(self):
-        pass
+    def test_should_invert_lighting_with_night_vision_and_visible(self):
+        p = Mock(spec=interfaces.Position,x=1,y=1)
+        m = interfaces.Mappable(p,'x',libtcod.white)
+        m.map = self.map
+        m.visible_to_player = True
+
+        self.map.player.has_effect.side_effect = lambda x: x == interfaces.StatusEffect.NIGHT_VISION
+
+        for (my_colour,colour,level) in (
+            (libtcod.white,libtcod.white,0.0),
+            (libtcod.white,libtcod.red,0.5),
+            (libtcod.white,libtcod.white,interfaces.LightSource.INTENSITY_L_CLAMP+0.1),
+            (libtcod.green,libtcod.white,0.8), # close to 1.0-L_CLAMP
+            (libtcod.red,libtcod.blue,0.5),
+            #(libtcod.green,interfaces.LightSource.INTENSITY_L_CLAMP), # see below
+            ):
+            m.colour = my_colour
+            self.map.light_level = Mock(return_value=level)
+            self.map.light_colour = Mock(return_value=colour*level)
+            assert_is(m.draw(),None)
+            #self.map.light_level.assert_called_once_with(m) # copied for performance into m
+            self.map.light_colour.assert_called_once_with(p)
+            libtcod.console_put_char_ex.assert_called_with(0,p.x,p.y,'x',my_colour*(libtcod.white-(colour*level)),libtcod.BKGND_NONE)
+
+    def test_should_see_remembered_tiles_as_usual_with_night_vision(self):
+        p = Mock(spec=interfaces.Position,x=1,y=1)
+        m = interfaces.Mappable(p,'x',libtcod.white, unseen_symbol='y', unseen_colour=libtcod.red)
+        m.map = self.map
+        m.visible_to_player = True
+        m.has_been_seen = True
+        m.remains_in_place = True
+        # default bright white light
+
+        self.map.player.has_effect.side_effect = lambda x: x == interfaces.StatusEffect.NIGHT_VISION
+
+        assert_is(m.draw(),None)
+        self.map.light_colour.assert_called_once_with(p)
+        libtcod.console_put_char_ex.assert_called_with(0,p.x,p.y,'y',libtcod.red,libtcod.BKGND_NONE)
 
     def test_should_flag_as_seen_once_drawn(self):
         p = Mock(spec=interfaces.Position,x=1,y=1)

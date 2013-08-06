@@ -6,3 +6,4 @@ __pycache__/*
 *.e4p
 .ropeproject/*
 .coverage
+reports/
