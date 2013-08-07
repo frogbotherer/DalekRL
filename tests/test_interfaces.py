@@ -481,16 +481,21 @@ class LightSourceTest(InterfaceTest):
     class C(interfaces.Mappable,interfaces.LightSource):
         def __init__(self,*args,**kwargs):
             interfaces.LightSource.__init__(self,*args,**kwargs)
+            interfaces.Mappable.__init__(self,None,'x',libtcod.white)
 
     def setUp(self):
         libtcod.map_compute_fov     = Mock()
+        libtcod.map_set_properties  = Mock()
         libtcod.image_clear         = Mock()
         libtcod.image_set_key_color = Mock()
+        libtcod.image_put_pixel     = Mock()
 
     def tearDown(self):
-        libtcod.map_compute_fov.reset()
-        libtcod.image_clear.reset()
-        libtcod.image_set_key_color.reset()
+        libtcod.map_compute_fov.reset_mock()
+        libtcod.map_set_properties.reset_mock()
+        libtcod.image_clear.reset_mock()
+        libtcod.image_set_key_color.reset_mock()
+        libtcod.image_put_pixel.reset_mock()
 
     def test_should_be_mappable(self):
         assert_raises(AssertionError,interfaces.LightSource.__init__,5)
@@ -504,10 +509,21 @@ class LightSourceTest(InterfaceTest):
         c.reset_map.assert_called_once_with()
 
     def test_should_still_work_as_light_after_radius_changes(self):
-        assert False
+        c = self.C(radius=1)
+        c.reset_map = Mock()
+        c.prepare_fov = Mock()
+        c.light_enabled = True
+        p = Mock(spec=interfaces.Position)
+        c.pos = p
+        c.map = Mock(spec=maps.Map)
+        c.radius = 3
         # stays centred in same place
+        assert_equal(c.pos,p)
         # LOS et al recalculated
+        c.reset_map.assert_called_once_with()
+        #c.prepare_fov.assert_called_once_with(ANY) # cos its parent is a mock!
         # still enabled
+        assert_true(c.light_enabled)
 
     def test_should_prepare_fov_over_whole_area_of_light(self):
         for (r, dia) in (
@@ -539,13 +555,98 @@ class LightSourceTest(InterfaceTest):
         assert_raises(AssertionError,c.reset_map)
 
     def test_should_reset_whole_light_map_when_called_with_no_pos(self):
-        assert False
+        # TODO: apply this test with various radii (as there was a bug when radius was even number)
+        # define a test light like this
+        # .....        .....             
+        # .....        .###.        ### 
+        # ..'..   -->  .#'..   -->  #'..
+        # .....        .#/..        #/..
+        # .....        .....         ...
+        c = self.C(radius=2)
+        c.light_enabled = True
+        c.intensity = 1.0
+        c.pos = interfaces.Position(2,2)
+        c.map = Mock(spec=maps.Map)
+        c.map.find_all_within_r = Mock(return_value = [
+                tiles.Floor(interfaces.Position(0,0)),
+                tiles.Floor(interfaces.Position(1,0)),
+                tiles.Floor(interfaces.Position(2,0)),
+                tiles.Floor(interfaces.Position(3,0)),
+                tiles.Floor(interfaces.Position(4,0)),
+                tiles.Floor(interfaces.Position(0,1)),
+                tiles.Floor(interfaces.Position(5,1)),
+                tiles.Floor(interfaces.Position(0,2)),
+                tiles.Floor(interfaces.Position(2,2)),
+                tiles.Floor(interfaces.Position(3,2)),
+                tiles.Floor(interfaces.Position(4,2)),
+                tiles.Floor(interfaces.Position(0,3)),
+                tiles.Floor(interfaces.Position(3,3)),
+                tiles.Floor(interfaces.Position(4,3)),
+                tiles.Floor(interfaces.Position(0,4)),
+                tiles.Floor(interfaces.Position(1,4)),
+                tiles.Floor(interfaces.Position(2,4)),
+                tiles.Floor(interfaces.Position(3,4)),
+                tiles.Floor(interfaces.Position(4,4)),
+                tiles.Window(interfaces.Position(2,3)),
+                ])
+        libtcod.map_is_in_fov = Mock( side_effect = lambda n,x,y: x>1 and y>1 )
+
+        assert_is(c.reset_map(None),None)
+
+        c.map.find_all_within_r.assert_called_once_with(c,interfaces.Transparent,c.radius)
+        libtcod.map_compute_fov.assert_called_once_with(ANY,c.radius+1,c.radius+1,c.radius,ANY,ANY)
+        libtcod.image_clear.assert_called_once_with(ANY,libtcod.black)
+        libtcod.image_set_key_color.assert_called_once_with(ANY,libtcod.black)
+
+        for p in (
+            ## would be this, but we light walls differently
+            #(1,1),(2,1),(3,1),       #   ###
+            #(1,2),(2,2),(3,2),(4,2), #   #'..
+            #(1,3),(2,3),(3,3),(4,3), #   #/..
+            #(1,4),(2,4),(3,4),(4,4), #    ...
+                                         #   ###
+            (2,2,255),(3,2,255),(4,2,0), #   #'..
+            (2,3,255),(3,3,149),(4,3,0), #   #/..
+            (2,4,0),(3,4,0),(4,4,0),     #    ...
+            ):
+            libtcod.image_put_pixel.assert_any_call(ANY,p[0],p[1],libtcod.white*(p[2]/255))
 
     def test_should_reset_only_relevant_parts_when_pos_given(self):
-        assert False
+        for (r, cx, cy) in (
+            (3, 3, 2),
+            (2, 2, 3),
+            (5, 8, 9),
+            ):
+            px = r; py = r
+            c = self.C(radius=r)
+            c.light_enabled = True
+            c.intensity = 1.0
+            c.pos = interfaces.Position(px,py)
+            c.map = Mock(spec=maps.Map)
+            c.map.find_all_at_pos = Mock( return_value = [tiles.Window(interfaces.Position(cx,cy))] )
+
+            assert_is(c.reset_map(pos=interfaces.Position(cx,cy)),None)
+            libtcod.map_set_properties.assert_called_once_with(ANY,cx,cy,True,True)
+            libtcod.map_set_properties.reset_mock()
 
     def test_should_not_recalculate_if_pos_out_of_los(self):
-        assert False
+        for (r, cx, cy) in (
+            (3, 0, 0),
+            (2, 4, 4),
+            (5, 9, 9),
+            ):
+            px = r; py = r
+            c = self.C(radius=r)
+            c.light_enabled = True
+            c.intensity = 1.0
+            c.pos = interfaces.Position(px,py)
+            c.prepare_fov = Mock()
+            c.map = Mock(spec=maps.Map)
+            c.map.find_all_at_pos = Mock( return_value = [tiles.Window(interfaces.Position(cx,cy))] )
+
+            assert_is(c.reset_map(pos=interfaces.Position(cx,cy)),None)
+            assert_equal(libtcod.map_set_properties.call_count,0)
+            assert_equal(c.prepare_fov.call_count,0)
 
     def test_should_blit_image_data_to_console_at_given_coords(self):
         # including size and offset

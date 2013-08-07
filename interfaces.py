@@ -245,7 +245,7 @@ class LightSource: #(Mappable):
                         if isinstance(o,Transparent) and o.blocks_light():
                             is_transparent = False
                             break
-                    libtcod.map_set_properties(self.__tcod_light_map,1+self.radius+p.x-self.pos.x,1+self.radius+p.y-self.pos.y,is_transparent,True)
+                    libtcod.map_set_properties(self.__tcod_light_map,self.radius+p.x-self.pos.x,self.radius+p.y-self.pos.y,is_transparent,True)
 
             if skip_calc:
                 # all pos were outside of light radius!
@@ -269,12 +269,15 @@ class LightSource: #(Mappable):
         i1  = self.raw_light_colour * self.intensity
         for x in range(r*2+1):
             for y in range(r*2+1):
+                #print("(%d,%d)"%(x,y))
                 if libtcod.map_is_in_fov(self.__tcod_light_map,x,y):
-                    d = hypot(1+r-x,1+r-y)
+                    d = hypot(r-x,r-y)
                     if d > rd2:
                         libtcod.image_put_pixel(self.__tcod_light_image,x,y,i1*(1.0-(d-rd2)/rd2))
+                        #print("  %s %s"%(d,i1*(1.0-(d-rd2)/rd2)))
                     else:
                         libtcod.image_put_pixel(self.__tcod_light_image,x,y,i1)
+                        #print("  %s %s"%(d,i1))
 
     def blit_to(self,tcod_console,ox=0,oy=0,sx=-1,sy=-1):
         libtcod.image_blit_rect(self.__tcod_light_image, tcod_console,
@@ -292,9 +295,9 @@ class LightSource: #(Mappable):
         if not test_los:
             return True
 
-        print("does %s light pos %s?"%(self,pos))
-        print("%d < %d" %(self.pos.distance_to(pos),self.radius))
-        print("%d,%d"%(1+self.radius+pos.x-self.pos.x,1+self.radius+pos.y-self.pos.y))
+        #print("does %s light pos %s?"%(self,pos))
+        #print("%d < %d" %(self.pos.distance_to(pos),self.radius))
+        #print("%d,%d"%(1+self.radius+pos.x-self.pos.x,1+self.radius+pos.y-self.pos.y))
 
         return libtcod.map_is_in_fov(self.__tcod_light_map,1+self.radius+pos.x-self.pos.x,1+self.radius+pos.y-self.pos.y)
 
