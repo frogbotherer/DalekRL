@@ -489,6 +489,7 @@ class LightSourceTest(InterfaceTest):
         libtcod.image_clear         = Mock()
         libtcod.image_set_key_color = Mock()
         libtcod.image_put_pixel     = Mock()
+        libtcod.image_blit_rect     = Mock()
 
     def tearDown(self):
         libtcod.map_compute_fov.reset_mock()
@@ -496,6 +497,7 @@ class LightSourceTest(InterfaceTest):
         libtcod.image_clear.reset_mock()
         libtcod.image_set_key_color.reset_mock()
         libtcod.image_put_pixel.reset_mock()
+        libtcod.image_blit_rect.reset_mock()
 
     def test_should_be_mappable(self):
         assert_raises(AssertionError,interfaces.LightSource.__init__,5)
@@ -567,7 +569,7 @@ class LightSourceTest(InterfaceTest):
         c.intensity = 1.0
         c.pos = interfaces.Position(2,2)
         c.map = Mock(spec=maps.Map)
-        c.map.find_all_within_r = Mock(return_value = [
+        m = [
                 tiles.Floor(interfaces.Position(0,0)),
                 tiles.Floor(interfaces.Position(1,0)),
                 tiles.Floor(interfaces.Position(2,0)),
@@ -588,7 +590,8 @@ class LightSourceTest(InterfaceTest):
                 tiles.Floor(interfaces.Position(3,4)),
                 tiles.Floor(interfaces.Position(4,4)),
                 tiles.Window(interfaces.Position(2,3)),
-                ])
+                ]
+        c.map.find_all_within_r = Mock(return_value = m)
         libtcod.map_is_in_fov = Mock( side_effect = lambda n,x,y: x>1 and y>1 )
 
         assert_is(c.reset_map(None),None)
@@ -597,6 +600,8 @@ class LightSourceTest(InterfaceTest):
         libtcod.map_compute_fov.assert_called_once_with(ANY,c.radius+1,c.radius+1,c.radius,ANY,ANY)
         libtcod.image_clear.assert_called_once_with(ANY,libtcod.black)
         libtcod.image_set_key_color.assert_called_once_with(ANY,libtcod.black)
+        for p in m:
+            libtcod.map_set_properties.assert_any_call(ANY,p.pos.x,p.pos.y,isinstance(p,interfaces.Transparent) and not p.blocks_light(),True)
 
         for p in (
             ## would be this, but we light walls differently
@@ -649,8 +654,30 @@ class LightSourceTest(InterfaceTest):
             assert_equal(c.prepare_fov.call_count,0)
 
     def test_should_blit_image_data_to_console_at_given_coords(self):
-        # including size and offset
-        assert False
+        # e.g. pos (3,3), r=2
+        #    |
+        #  X...      ox, oy = (0,0); tlx, tly = (1,1)
+        #  .....
+        # -..'..
+        #  .....
+        #   ...      sx, sy = (5,5)
+        #
+        for (r, con, px, py, ox, oy, sx, sy, tlx, tly) in (
+            (3, 0,   3,  3,  0,  0,  -1, -1, 0,   0  ),
+            (3, 1,   9,  9,  0,  0,  -1, -1, 6,   6, ),
+            (1, 1,   2,  2,  0,  0,  -1, -1, 1,   1, ),
+            (4, 4,   8,  6,  0,  0,  -1, -1, 4,   2, ),
+            ):
+            c = self.C(radius=r)
+            c.pos = interfaces.Position(px, py)
+            assert_is( c.blit_to(con, ox, oy, sx, sy), None )
+            libtcod.image_blit_rect.assert_called_once_with(
+                ANY, con,
+                tlx, tly,
+                sx, sy,
+                libtcod.BKGND_ADD)
+            libtcod.image_blit_rect.reset_mock()
+
 
     def test_should_not_light_things_when_disabled(self):
         assert False

@@ -227,7 +227,7 @@ class LightSource: #(Mappable):
 
             for (p, is_transparent) in cov.items():
                 # we're using the walkable bit to show that there is a tile that could be lit
-                libtcod.map_set_properties(self.__tcod_light_map,1+self.radius+p.x-self.pos.x,1+self.radius+p.y-self.pos.y,is_transparent,True)
+                libtcod.map_set_properties(self.__tcod_light_map,self.radius+p.x-self.pos.x,self.radius+p.y-self.pos.y,is_transparent,True)
 
         else:
             if not isinstance(pos,list):
@@ -281,8 +281,8 @@ class LightSource: #(Mappable):
 
     def blit_to(self,tcod_console,ox=0,oy=0,sx=-1,sy=-1):
         libtcod.image_blit_rect(self.__tcod_light_image, tcod_console,
-                                self.pos.x+ox-self.radius-1, 
-                                self.pos.y+oy-self.radius-1, 
+                                self.pos.x+ox-self.radius, 
+                                self.pos.y+oy-self.radius, 
                                 #self.radius*2+1-ox, self.radius*2+1-oy, 
                                 sx, sy,
                                 libtcod.BKGND_ADD)
@@ -299,7 +299,7 @@ class LightSource: #(Mappable):
         #print("%d < %d" %(self.pos.distance_to(pos),self.radius))
         #print("%d,%d"%(1+self.radius+pos.x-self.pos.x,1+self.radius+pos.y-self.pos.y))
 
-        return libtcod.map_is_in_fov(self.__tcod_light_map,1+self.radius+pos.x-self.pos.x,1+self.radius+pos.y-self.pos.y)
+        return libtcod.map_is_in_fov(self.__tcod_light_map,self.radius+pos.x-self.pos.x,self.radius+pos.y-self.pos.y)
 
     def close(self):
         libtcod.map_delete(self.__tcod_light_map)
