@@ -200,7 +200,9 @@ class LightSource: #(Mappable):
     def radius(self,r):
         if r == self._radius:
             return # because this is slow!
+        e = self.light_enabled
         self.close()
+        self.light_enabled      = e
         self._radius            = r
         self.__tcod_light_map   = libtcod.map_new(r*2+1,r*2+1)
         self.__tcod_light_image = libtcod.image_new(r*2+1,r*2+1)
@@ -304,6 +306,7 @@ class LightSource: #(Mappable):
     def close(self):
         libtcod.map_delete(self.__tcod_light_map)
         libtcod.image_delete(self.__tcod_light_image)
+        self.light_enabled = False
 
     def __del__(self):
         self.close()
@@ -345,7 +348,7 @@ class FlatLightSource(LightSource):
                                 libtcod.BKGND_ADD)
 
     def lights(self,pos,test_los=True):
-        return pos >= self.pos-Position(1,1) and pos <= self.pos+self.size+Position(1,1)
+        return self.light_enabled and pos >= self.pos-Position(1,1) and pos <= self.pos+self.size+Position(1,1)
 
     def close(self):
         libtcod.map_delete(self.__tcod_light_map)

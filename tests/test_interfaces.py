@@ -6,6 +6,7 @@ from mock import Mock, MagicMock, patch, ANY
 # lang imports
 from functools import reduce
 from math import hypot
+import gc
 
 # item under test
 import libtcodpy as libtcod
@@ -490,14 +491,8 @@ class LightSourceTest(InterfaceTest):
         libtcod.image_set_key_color = Mock()
         libtcod.image_put_pixel     = Mock()
         libtcod.image_blit_rect     = Mock()
-
-    def tearDown(self):
-        libtcod.map_compute_fov.reset_mock()
-        libtcod.map_set_properties.reset_mock()
-        libtcod.image_clear.reset_mock()
-        libtcod.image_set_key_color.reset_mock()
-        libtcod.image_put_pixel.reset_mock()
-        libtcod.image_blit_rect.reset_mock()
+        libtcod.map_delete          = Mock()
+        libtcod.image_delete        = Mock()
 
     def test_should_be_mappable(self):
         assert_raises(AssertionError,interfaces.LightSource.__init__,5)
@@ -678,24 +673,99 @@ class LightSourceTest(InterfaceTest):
                 libtcod.BKGND_ADD)
             libtcod.image_blit_rect.reset_mock()
 
-
     def test_should_not_light_things_when_disabled(self):
-        assert False
+        c = self.C(radius=3)
+        c.light_enabled = False
+        c.pos = interfaces.Position(4,4)
+        
+        for p in (
+            (0,0),
+            (4,4),
+            (4,7),
+            (7,4),
+            (1,1),
+            ):
+            assert_false(c.lights(p))
 
     def test_should_not_light_things_outside_radius(self):
-        assert False
+        c = self.C(radius=3)
+        c.light_enabled = True
+        c.pos = interfaces.Position(4,4)
+        
+        for p in (
+            (0,0),
+            (1,1),
+            (4,8),
+            (8,4),
+            (6,7),
+            ):
+            assert_false(c.lights(p))
 
     def test_should_always_light_things_in_radius_if_not_testing_los(self):
-        assert False
+        c = self.C(radius=3)
+        c.light_enabled = True
+        c.pos = interfaces.Position(4,4)
+        
+        for p in (
+            (3,3),
+            (4,4),
+            (4,7),
+            (7,4),
+            (6,5),
+            ):
+            assert_true(c.lights(p,test_los=False))
 
     def test_should_use_los_data_for_lighting_check(self):
-        assert False
+        c = self.C(radius=4)
+        c.light_enabled = True
+        c.intensity = 1.0
+        c.pos = interfaces.Position(4,4)
+        c.map = Mock(spec=maps.Map)
+        libtcod.map_is_in_fov = Mock(return_value=True)
+
+        for p in (
+            (3,3),
+            (4,4),
+            (4,7),
+            (7,4),
+            (6,5),
+            ):
+            print(p)
+            assert_true(c.lights(interfaces.Position(p)))
+            libtcod.map_is_in_fov.assert_called_once_with(ANY,p[0],p[1],)
+            libtcod.map_is_in_fov.reset_mock()
 
     def test_should_clean_up_tcod_data_on_reset(self):
-        assert False
+        c = self.C(radius=3)
+        c.map = Mock(spec=maps.Map)
+        c.map.find_all_within_r = Mock(return_value=[])
+        c.pos = Mock(spec=interfaces.Position)
+        c.radius = 5
+        libtcod.map_delete.assert_called_once_with(ANY)
+        libtcod.image_delete.assert_called_once_with(ANY)
 
     def test_should_clean_up_tcod_data_on_del(self):
-        assert False
+        c = self.C(radius=5)
+        c.map = Mock(spec=maps.Map)
+        c.map.find_all_within_r = Mock(return_value=[])
+        c.pos = Mock(spec=interfaces.Position)
+        #c.reset_map()
+
+        del c
+        gc.collect()
+
+        libtcod.map_delete.assert_called_once_with(ANY)
+        libtcod.image_delete.assert_called_once_with(ANY)
 
     def test_should_be_disabled_after_closed(self):
-        assert False
+        c = self.C(radius=5)
+        c.map = Mock(spec=maps.Map)
+        c.map.find_all_within_r = Mock(return_value=[])
+        c.pos = Mock(spec=interfaces.Position)
+        c.reset_map()
+
+        c.close()
+
+        libtcod.map_delete.assert_called_once_with(ANY)
+        libtcod.image_delete.assert_called_once_with(ANY)
+        assert_false(c.light_enabled)
