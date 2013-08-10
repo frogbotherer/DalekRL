@@ -22,51 +22,60 @@ class Position:
     def __hash__(self):
         return hash((self.x,self.y))
 
-    def __add__(self,other):
+    def __add__(self, other):
         if isinstance(other,tuple):
             return Position(self.x + other[0], self.y + other[1])
         else:
             return Position(self.x + other.x, self.y + other.y)
 
-    def __sub__(self,other):
+    def __sub__(self, other):
         if isinstance(other,tuple):
             return Position(self.x - other[0], self.y - other[1])
         else:
             return Position(self.x - other.x, self.y - other.y)
 
-    def __gt__(self,other):
-        """Furthest from origin is largest; if tied, larger x beats larger y so that we sort left-right, top-bottom"""
-        if not isinstance(other,Position):
+    def __gt__(self, other):
+        """self > other if other would be enclosed in a box from (0,0) to self"""
+        if not isinstance(other, Position):
             other = Position(other)
-        return (self.x*self.y>other.x*other.y) or (self.y==other.y and self.x>other.x)
-    def __ge__(self,other):
-        if not isinstance(other,Position):
+        #return (self.x*self.y>other.x*other.y) or (self.y==other.y and self.x>other.x)
+        return (self.x>other.x and self.y>other.y)
+
+    def __ge__(self, other):
+        """self >= other if other would be enclosed in a box from (0,0) to self, including border"""
+        if not isinstance(other, Position):
             other = Position(other)
-        return (self.x*self.y>other.x*other.y) or (self.y==other.y and self.x>=other.x)
-    def __lt__(self,other):
-        if not isinstance(other,Position):
+        #return (self.x*self.y>other.x*other.y) or (self.y==other.y and self.x>=other.x)
+        return (self.x>=other.x and self.y>=other.y)
+
+    def __lt__(self, other):
+        if not isinstance(other, Position):
             other = Position(other)
-        return (self.x*self.y<other.x*other.y) or (self.y==other.y and self.x<other.x)
-    def __le__(self,other):
-        if not isinstance(other,Position):
+        #return (self.x*self.y<other.x*other.y) or (self.y==other.y and self.x<other.x)
+        return (self.x<other.x and self.y<other.y)
+
+    def __le__(self, other):
+        if not isinstance(other, Position):
             other = Position(other)
-        return (self.x*self.y<other.x*other.y) or (self.y==other.y and self.x<=other.x)
-    def __eq__(self,other):
-        if not isinstance(other,Position):
+        #return (self.x*self.y<other.x*other.y) or (self.y==other.y and self.x<=other.x)
+        return (self.x<=other.x and self.y<=other.y)
+
+    def __eq__(self, other):
+        if not isinstance(other, Position):
             other = Position(other)
         return self.x==other.x and self.y==other.y
 
     def __repr__(self):
-        return "Position(%d,%d)" % (self.x,self.y)
+        return "Position(%d,%d)" % (self.x, self.y)
 
     def __str__(self):
-        return "(%d,%d)" % (self.x,self.y)
+        return "(%d,%d)" % (self.x, self.y)
 
     def distance_to(self,other):
         """returns distance to other"""
-        if not isinstance(other,Position):
+        if not isinstance(other, Position):
             other = Position(other)
-        return hypot(self.x-other.x,self.y-other.y)
+        return hypot(self.x-other.x, self.y-other.y)
 
     def angle_to(self,other):
         """returns angle in radians/pi between self and other. i.e. 0.0 => matching directions; 1.0 => opposites"""
@@ -405,6 +414,7 @@ class FlatLightSource(LightSource):
     def lights(self,pos,test_los=True):
         """Does this light light pos?
         If test_los is False; don't bother checking line of sight"""
+        print("%s %s %s %s"%(pos,self.pos,self.pos+self._size,self.light_enabled))
         return self.light_enabled and pos >= self.pos - Position(1, 1) and pos <= self.pos + self._size + Position(1, 1)
 
     def close(self):

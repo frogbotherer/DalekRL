@@ -29,6 +29,8 @@ class PositionTest(InterfaceTest):
             [ (0,0), (0,0)      ],
             [ (100000000,100000000), (-100000000,-100000000) ],
             [ (1,-1), (-1,1)    ],
+            [ (11,4), (1,1)     ],
+            [ (11,4), (9,9)     ],
             ]
 
         self.angle_positions = [
@@ -100,44 +102,59 @@ class PositionTest(InterfaceTest):
             assert_equal(p1.y,p2.y)
 
     def test_should_be_greater_than_position(self):
+        # assert p > q
+        for (px, py, qx, qy, result) in (
+            ( 1,  1,  3,  3, False ),
+            ( 3,  3,  1,  1, True  ),
+            ( 3,  1,  1,  1, False ), # not in bounding box
+            ( 3,  1,  1,  0, True  ),
+            ( 1,  1,  1,  3, False ),
+            ( 1,  8,  2,  3, False ),
+            ( 5,  5,  6,  1, False  ),
+            ):
+            p1 = interfaces.Position(px,py)
+            p2 = interfaces.Position(qx,qy)
+            assert_equal(p1 > p2, result)
+
         for (rp1, rp2) in self.positions:
             p1 = interfaces.Position(rp1)
             p2 = interfaces.Position(rp2)
             if p1 > p2:
-                assert p1.distance_to((0,0)) > p2.distance_to((0,0)) or (p1.distance_to((0,0))==p2.distance_to((0,0)) and p1.x>p2.x), "%s > %s" %(p1,p2)
-
-            else:
-                assert p1.distance_to((0,0)) <= p2.distance_to((0,0)) or (p1.distance_to((0,0))==p2.distance_to((0,0)) and p1.x<=p2.x), "%s <= %s" %(p1,p2)
+                assert p1.x > p2.x and p1.y > p2.y
+            # these operators are not symmetrical!
+            #else:
+            #    assert p1.x <= p2.x and p1.y <= p2.y, "%s <= %s" %(p1,p2)
                 
     def test_should_be_greater_than_tuple(self):
         for (rp1, rp2) in self.positions:
             p1 = interfaces.Position(rp1)
             p2 = interfaces.Position(rp2)
             if p1 > rp2:
-                assert p1.distance_to((0,0)) > p2.distance_to((0,0)) or (p1.distance_to((0,0))==p2.distance_to((0,0)) and p1.x>p2.x), "%s > %s" %(p1,p2)
-
-            else:
-                assert p1.distance_to((0,0)) <= p2.distance_to((0,0)) or (p1.distance_to((0,0))==p2.distance_to((0,0)) and p1.x<=p2.x), "%s <= %s" %(p1,p2)
+                assert p1.x > p2.x and p1.y > p2.y
+            # these operators are not symmetrical!
+            #else:
+            #    assert p1.distance_to((0,0)) <= p2.distance_to((0,0)) or (p1.distance_to((0,0))==p2.distance_to((0,0)) and p1.x<=p2.x), "%s <= %s" %(p1,p2)
 
     def test_should_be_less_than_position(self):
         for (rp1, rp2) in self.positions:
             p1 = interfaces.Position(rp1)
             p2 = interfaces.Position(rp2)
             if p1 < p2:
-                assert p1.distance_to((0,0)) < p2.distance_to((0,0)) or (p1.distance_to((0,0))==p2.distance_to((0,0)) and p1.x<p2.x), "%s < %s" %(p1,p2)
-
-            else:
-                assert p1.distance_to((0,0)) >= p2.distance_to((0,0)) or (p1.distance_to((0,0))==p2.distance_to((0,0)) and p1.x>=p2.x), "%s >= %s" %(p1,p2)
+                assert p1.x < p2.x and p1.y < p2.y
+            # these operators are not symmetrical!
+            #else:
+            #    assert p1.distance_to((0,0)) >= p2.distance_to((0,0)) or (p1.distance_to((0,0))==p2.distance_to((0,0)) and p1.x>=p2.x), "%s >= %s" %(p1,p2)
 
     def test_should_be_less_than_tuple(self):
         for (rp1, rp2) in self.positions:
             p1 = interfaces.Position(rp1)
             p2 = interfaces.Position(rp2)
             if p1 < rp2:
-                assert p1.distance_to((0,0)) < p2.distance_to((0,0)) or (p1.distance_to((0,0))==p2.distance_to((0,0)) and p1.x<p2.x), "%s < %s" %(p1,p2)
+                assert p1.x < p2.x and p1.y < p2.y
 
-            else:
-                assert p1.distance_to((0,0)) >= p2.distance_to((0,0)) or (p1.distance_to((0,0))==p2.distance_to((0,0)) and p1.x>=p2.x), "%s >= %s" %(p1,p2)
+            # these operators are not symmetrical!
+            #else:
+            #    assert p1.distance_to((0,0)) >= p2.distance_to((0,0)) or (p1.distance_to((0,0))==p2.distance_to((0,0)) and p1.x>=p2.x), "%s >= %s" %(p1,p2)
 
     def test_should_be_equal_to_position(self):
         for (rp1, rp2) in self.positions:
@@ -846,121 +863,33 @@ class FlatLightSourceTest(InterfaceTest):
 
         assert_raises(AssertionError,c.reset_map)
 
-
-class todo:
-    def todo_test_should_reset_whole_light_map_when_called_with_no_pos(self):
-        # TODO: apply this test with various radii (as there was a bug when radius was even number)
-        # define a test light like this
-        # .....        .....             
-        # .....        .###.        ### 
-        # ..'..   -->  .#'..   -->  #'..
-        # .....        .#/..        #/..
-        # .....        .....         ...
-        c = self.C(radius=2)
+    def test_should_reset_whole_light_map_when_called_with_no_pos(self):
+        c = self.C(interfaces.Position(3,3))
         c.light_enabled = True
         c.intensity = 1.0
         c.pos = interfaces.Position(2,2)
         c.map = Mock(spec=maps.Map)
-        m = [
-                tiles.Floor(interfaces.Position(0,0)),
-                tiles.Floor(interfaces.Position(1,0)),
-                tiles.Floor(interfaces.Position(2,0)),
-                tiles.Floor(interfaces.Position(3,0)),
-                tiles.Floor(interfaces.Position(4,0)),
-                tiles.Floor(interfaces.Position(0,1)),
-                tiles.Floor(interfaces.Position(5,1)),
-                tiles.Floor(interfaces.Position(0,2)),
-                tiles.Floor(interfaces.Position(2,2)),
-                tiles.Floor(interfaces.Position(3,2)),
-                tiles.Floor(interfaces.Position(4,2)),
-                tiles.Floor(interfaces.Position(0,3)),
-                tiles.Floor(interfaces.Position(3,3)),
-                tiles.Floor(interfaces.Position(4,3)),
-                tiles.Floor(interfaces.Position(0,4)),
-                tiles.Floor(interfaces.Position(1,4)),
-                tiles.Floor(interfaces.Position(2,4)),
-                tiles.Floor(interfaces.Position(3,4)),
-                tiles.Floor(interfaces.Position(4,4)),
-                tiles.Window(interfaces.Position(2,3)),
-                ]
-        c.map.find_all_within_r = Mock(return_value = m)
-        libtcod.map_is_in_fov = Mock( side_effect = lambda n,x,y: x>1 and y>1 )
 
         assert_is(c.reset_map(None),None)
-
-        c.map.find_all_within_r.assert_called_once_with(c,interfaces.Transparent,c.radius)
-        libtcod.map_compute_fov.assert_called_once_with(ANY,c.radius+1,c.radius+1,c.radius,ANY,ANY)
-        libtcod.image_clear.assert_called_once_with(ANY,libtcod.black)
+        libtcod.image_clear.assert_called_once_with(ANY,libtcod.white)
         libtcod.image_set_key_color.assert_called_once_with(ANY,libtcod.black)
-        for p in m:
-            libtcod.map_set_properties.assert_any_call(ANY,p.pos.x,p.pos.y,isinstance(p,interfaces.Transparent) and not p.blocks_light(),True)
 
-        for p in (
-            ## would be this, but we light walls differently
-            #(1,1),(2,1),(3,1),       #   ###
-            #(1,2),(2,2),(3,2),(4,2), #   #'..
-            #(1,3),(2,3),(3,3),(4,3), #   #/..
-            #(1,4),(2,4),(3,4),(4,4), #    ...
-                                         #   ###
-            (2,2,255),(3,2,255),(4,2,0), #   #'..
-            (2,3,255),(3,3,149),(4,3,0), #   #/..
-            (2,4,0),(3,4,0),(4,4,0),     #    ...
-            ):
-            libtcod.image_put_pixel.assert_any_call(ANY,p[0],p[1],libtcod.white*(p[2]/255))
-
-    def todo_test_should_reset_only_relevant_parts_when_pos_given(self):
-        for (r, cx, cy) in (
-            (3, 3, 2),
-            (2, 2, 3),
-            (5, 8, 9),
-            ):
-            px = r; py = r
-            c = self.C(radius=r)
-            c.light_enabled = True
-            c.intensity = 1.0
-            c.pos = interfaces.Position(px,py)
-            c.map = Mock(spec=maps.Map)
-            c.map.find_all_at_pos = Mock( return_value = [tiles.Window(interfaces.Position(cx,cy))] )
-
-            assert_is(c.reset_map(pos=interfaces.Position(cx,cy)),None)
-            libtcod.map_set_properties.assert_called_once_with(ANY,cx,cy,True,True)
-            libtcod.map_set_properties.reset_mock()
-
-    def todo_test_should_not_recalculate_if_pos_out_of_los(self):
-        for (r, cx, cy) in (
-            (3, 0, 0),
-            (2, 4, 4),
-            (5, 9, 9),
-            ):
-            px = r; py = r
-            c = self.C(radius=r)
-            c.light_enabled = True
-            c.intensity = 1.0
-            c.pos = interfaces.Position(px,py)
-            c.prepare_fov = Mock()
-            c.map = Mock(spec=maps.Map)
-            c.map.find_all_at_pos = Mock( return_value = [tiles.Window(interfaces.Position(cx,cy))] )
-
-            assert_is(c.reset_map(pos=interfaces.Position(cx,cy)),None)
-            assert_equal(libtcod.map_set_properties.call_count,0)
-            assert_equal(c.prepare_fov.call_count,0)
-
-    def todo_test_should_blit_image_data_to_console_at_given_coords(self):
-        # e.g. pos (3,3), r=2
+    def test_should_blit_image_data_to_console_at_given_coords(self):
+        # e.g. pos (1,1), s=(5,5)
         #    |
-        #  X...      ox, oy = (0,0); tlx, tly = (1,1)
+        #  X....     ox, oy = (0,0); tlx, tly = (1,1)
         #  .....
         # -..'..
         #  .....
-        #   ...      sx, sy = (5,5)
+        #  .....     sx, sy = (5,5)
         #
         for (r, con, px, py, ox, oy, sx, sy, tlx, tly) in (
-            (3, 0,   3,  3,  0,  0,  -1, -1, 0,   0  ),
-            (3, 1,   9,  9,  0,  0,  -1, -1, 6,   6, ),
-            (1, 1,   2,  2,  0,  0,  -1, -1, 1,   1, ),
-            (4, 4,   8,  6,  0,  0,  -1, -1, 4,   2, ),
+            (6, 0,   3,  3,  0,  0,  -1, -1, 2,   2  ),
+            (6, 1,   9,  9,  0,  0,  -1, -1, 8,   8, ),
+            (3, 1,   2,  2,  0,  0,  -1, -1, 1,   1, ),
+            (8, 4,   8,  6,  0,  0,  -1, -1, 7,   5, ),
             ):
-            c = self.C(radius=r)
+            c = self.C(size=interfaces.Position(r,r))
             c.pos = interfaces.Position(px, py)
             assert_is( c.blit_to(con, ox, oy, sx, sy), None )
             libtcod.image_blit_rect.assert_called_once_with(
@@ -970,10 +899,10 @@ class todo:
                 libtcod.BKGND_ADD)
             libtcod.image_blit_rect.reset_mock()
 
-    def todo_test_should_not_light_things_when_disabled(self):
-        c = self.C(radius=3)
+    def test_should_not_light_things_when_disabled(self):
+        c = self.C(size=interfaces.Position(7,7))
         c.light_enabled = False
-        c.pos = interfaces.Position(4,4)
+        c.pos = interfaces.Position(0,0)
         
         for p in (
             (0,0),
@@ -984,19 +913,23 @@ class todo:
             ):
             assert_false(c.lights(p))
 
-    def todo_test_should_not_light_things_outside_radius(self):
-        c = self.C(radius=3)
+    def test_should_not_light_things_outside_radius(self):
+        c = self.C(size=interfaces.Position(7,7))
         c.light_enabled = True
-        c.pos = interfaces.Position(4,4)
+        c.pos = interfaces.Position(2,2)
         
         for p in (
             (0,0),
-            (1,1),
-            (4,8),
-            (8,4),
-            (6,7),
+            (1,0),
+            (4,11),
+            (11,4),
+            (11,11),
             ):
+            print(p)
             assert_false(c.lights(p))
+
+class todo:
+
 
     def todo_test_should_always_light_things_in_radius_if_not_testing_los(self):
         c = self.C(radius=3)
