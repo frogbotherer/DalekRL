@@ -435,10 +435,12 @@ class TurnTaker:
             TurnTaker.add_turntaker(self)
 
     def take_turn(self):
+        """Instance takes a turn."""
         raise NotImplementedError
 
     @staticmethod
     def take_all_turns():
+        """All instances take a turn"""
         for tref in TurnTaker.turn_takers:
             t = tref()
             if t is None:
@@ -448,6 +450,7 @@ class TurnTaker:
 
     @staticmethod
     def clear_all():
+        """Clear all turn takers from list"""
         for tref in TurnTaker.turn_takers:
             t = tref()
             if not t is None:
@@ -455,17 +458,20 @@ class TurnTaker:
         TurnTaker.turn_takers = []
 
     def refresh_turntaker(self):
+        """Re-add turn taker to list if missing"""
         if not weakref.ref(self) in TurnTaker.turn_takers:
             TurnTaker.add_turntaker(self)
 
     @staticmethod
     def add_turntaker(t):
+        """Add a turn taker to the list that take a turn each round"""
         # might be a faster way to do this
         TurnTaker.turn_takers.append(weakref.ref(t))        
-        TurnTaker.turn_takers.sort( key = lambda x: x() is None and 100000 or x().initiative )                
+        TurnTaker.turn_takers.sort( key = lambda x: x() is None and 100000 or x().initiative )
 
     @staticmethod
-    def clear_turntaker(t,count=1):
+    def clear_turntaker(t, count=1):
+        """Clear count references of turn taker from the list"""
         r = weakref.ref(t)
         for x in range(count):
             if r in TurnTaker.turn_takers:

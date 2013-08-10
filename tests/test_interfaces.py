@@ -1000,3 +1000,128 @@ class todo:
         libtcod.image_delete.assert_called_once_with(ANY)
         assert_false(c.light_enabled)
 
+
+class TurnTakerTest(InterfaceTest):
+    class C(interfaces.TurnTaker):
+        def take_turn(self):
+            pass
+
+    def tearDown(self):
+        interfaces.TurnTaker.clear_all()
+
+    def test_lowest_initiative_should_go_first(self):
+        o = []
+
+        class C(interfaces.TurnTaker):
+            def take_turn(self):
+                o.append(self)
+
+        c1   = C(1)    # 2
+        c5   = C(5)    # 3
+        cm10 = C(-10)  # 1
+
+        assert_is(interfaces.TurnTaker.take_all_turns(), None)
+
+        # checks static list is in right order
+        assert_is(interfaces.TurnTaker.turn_takers[0](), cm10)
+        assert_is(interfaces.TurnTaker.turn_takers[1](), c1)
+        assert_is(interfaces.TurnTaker.turn_takers[2](), c5)
+
+        # check turn taken in right order
+        assert_equal(len(o),3)
+        assert_is(o[0],cm10)
+        assert_is(o[1],c1)
+        assert_is(o[2],c5)
+
+    def test_should_create_turn_takers_as_taking_turns_by_default(self):
+        a = self.C(1)
+        a.take_turn = Mock()
+
+        assert_is(interfaces.TurnTaker.take_all_turns(), None)
+
+        a.take_turn.assert_called_once_with()
+
+        b = self.C(1,False)
+        b.take_turn = Mock()
+
+        assert_is(interfaces.TurnTaker.take_all_turns(), None)
+
+        assert_equal(a.take_turn.call_count,2)
+        assert_equal(b.take_turn.call_count,0)
+        
+    def test_take_turn_should_fail_on_base_class(self):
+        a = interfaces.TurnTaker(1)
+        assert_raises(NotImplementedError,interfaces.TurnTaker.take_all_turns)
+
+
+    def test_all_turn_takers_should_take_a_turn_on_take_all_turns(self):
+        do_not_delete = []
+        for i in range(10):
+            c = self.C(1)
+            c.take_turn = Mock()
+            do_not_delete.append( c )
+
+        assert_is(interfaces.TurnTaker.take_all_turns(), None)
+
+        assert_equal(len(interfaces.TurnTaker.turn_takers),10)
+        for c in do_not_delete:
+            c.take_turn.assert_called_once_with()
+
+    def test_should_clear_all_turn_takers_on_call(self):
+        do_not_delete = []
+        for i in range(10):
+            c = self.C(1)
+            c.take_turn = Mock()
+            do_not_delete.append( c )
+        
+        assert_is(interfaces.TurnTaker.take_all_turns(), None)
+        assert_equal(len(interfaces.TurnTaker.turn_takers),10)
+        for c in do_not_delete:
+            c.take_turn.assert_called_once_with()
+            c.take_turn.reset_mock()
+
+        assert_is(interfaces.TurnTaker.clear_all(), None)
+
+        assert_equal(len(interfaces.TurnTaker.turn_takers),0)
+        for c in do_not_delete:
+            assert_equal(c.take_turn.call_count,0)
+
+    def test_should_not_take_turn_on_deleted_taker(self):
+        a = self.C(1)
+        a.take_turn = Mock()
+        b = self.C(2)
+        b.take_turn = Mock()
+
+        assert_is(interfaces.TurnTaker.take_all_turns(), None)
+
+        a.take_turn.assert_called_once_with()
+        b.take_turn.assert_called_once_with()
+        a.take_turn.reset_mock()
+        b.take_turn.reset_mock()
+
+        del b
+        gc.collect()
+
+        assert_is(interfaces.TurnTaker.take_all_turns(), None)
+        assert_equal(len(interfaces.TurnTaker.turn_takers),1)
+        assert_is(interfaces.TurnTaker.turn_takers[0](),a)
+        a.take_turn.assert_called_once_with()
+
+    def test_refresh_should_replace_turntaker_in_static_list(self):
+        a = self.C(1)
+        a.take_turn = Mock()
+
+        assert_is(interfaces.TurnTaker.take_all_turns(), None)
+
+        a.take_turn.assert_called_once_with()
+        a.take_turn.reset_mock()
+
+        assert_is(interfaces.TurnTaker.clear_all(), None)
+        assert_equal(interfaces.TurnTaker.turn_takers,[])
+        assert_is(interfaces.TurnTaker.take_all_turns(), None)
+        assert_equal(a.take_turn.call_count,0)
+
+        assert_is(a.refresh_turntaker(), None)
+        assert_is(interfaces.TurnTaker.turn_takers[0](), a)
+        assert_is(interfaces.TurnTaker.take_all_turns(), None)
+        a.take_turn.assert_called_once_with()
