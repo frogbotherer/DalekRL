@@ -121,6 +121,7 @@ class Mappable:
     # lighting
     @property
     def is_lit(self):
+        """Is this map tile lit?"""
         if self.map is None or self.pos is None:
             return False
         else:
@@ -128,18 +129,20 @@ class Mappable:
 
     @property
     def light_level(self):
+        """Light level of this map tile (0.0-1.0ish?)"""
         if self.map is None or self.pos is None:
             return LightSource.INTENSITY_L_CLAMP
-        elif isinstance(self,Transparent):
+        elif isinstance(self, Transparent):
             return self.transparent_light_level
         else:
             return self.map.light_level(self.pos)
 
     @property
     def light_colour(self):
+        """Colour (and intensity) of the light in this map tile"""
         if self.map is None or self.pos is None:
             return Mappable.LIGHT_L_CLAMP
-        elif isinstance(self,Transparent):
+        elif isinstance(self, Transparent):
             return self.transparent_light_colour
         else:
             return self.map.light_colour(self.pos)
@@ -147,6 +150,7 @@ class Mappable:
     ##
     # drawing
     def draw(self):
+        """Draw this map tile"""
         # NB. this gets called a lot!
         if not self.is_visible:
             return
@@ -195,44 +199,52 @@ class LightSource: #(Mappable):
 
     @property
     def radius(self):
+        """Set light radius"""
         return self._radius
     @radius.setter
-    def radius(self,r):
+    def radius(self, r):
+        """Change light radius"""
         if r == self._radius:
             return # because this is slow!
         e = self.light_enabled
         self.close()
         self.light_enabled      = e
         self._radius            = r
-        self.__tcod_light_map   = libtcod.map_new(r*2+1,r*2+1)
-        self.__tcod_light_image = libtcod.image_new(r*2+1,r*2+1)
+        self.__tcod_light_map   = libtcod.map_new(r*2+1, r*2+1)
+        self.__tcod_light_image = libtcod.image_new(r*2+1, r*2+1)
         self.reset_map()
 
-    def prepare_fov(self,light_walls=False):
+    def prepare_fov(self, light_walls=False):
+        """Calculate light's distribution"""
         libtcod.map_compute_fov(self.__tcod_light_map, self.radius+1, self.radius+1, self.radius, light_walls, libtcod.FOV_BASIC)
 
-    def reset_map(self,pos=None):
+    def reset_map(self, pos=None):
+        """Reset light map.
+        If pos is a list of Positions, only reset those areas"""
         if not self.light_enabled:
-            libtcod.image_clear(self.__tcod_light_image,libtcod.black)
-            libtcod.image_set_key_color(self.__tcod_light_image,libtcod.black)
+            libtcod.image_clear(self.__tcod_light_image, libtcod.black)
+            libtcod.image_set_key_color(self.__tcod_light_image, libtcod.black)
             return
         assert not self.pos is None and not self.map is None, "resetting LightSource that is not placed on map"
 
         # [re-]calculating FOV of light within its map
         if pos is None:
-            libtcod.map_clear(self.__tcod_light_map,False,False)
+            libtcod.map_clear(self.__tcod_light_map, False, False)
             cov = {}
-            for o in self.map.find_all_within_r(self,Transparent,self.radius):
+            for o in self.map.find_all_within_r(self, Transparent, self.radius):
                 # if there's something here already and it blocks light, light is blocked at pos
-                if cov.get(o.pos,True):
+                if cov.get(o.pos, True):
                     cov[o.pos] = not o.blocks_light()
 
             for (p, is_transparent) in cov.items():
                 # we're using the walkable bit to show that there is a tile that could be lit
-                libtcod.map_set_properties(self.__tcod_light_map,self.radius+p.x-self.pos.x,self.radius+p.y-self.pos.y,is_transparent,True)
+                libtcod.map_set_properties(self.__tcod_light_map,
+                                           self.radius+p.x-self.pos.x,
+                                           self.radius+p.y-self.pos.y,
+                                           is_transparent, True)
 
         else:
-            if not isinstance(pos,list):
+            if not isinstance(pos, list):
                 pos = [pos]
             skip_calc = True
             for p in pos:
@@ -244,10 +256,13 @@ class LightSource: #(Mappable):
                     skip_calc      = False
                     is_transparent = True
                     for o in self.map.find_all_at_pos(p):
-                        if isinstance(o,Transparent) and o.blocks_light():
+                        if isinstance(o, Transparent) and o.blocks_light():
                             is_transparent = False
                             break
-                    libtcod.map_set_properties(self.__tcod_light_map,self.radius+p.x-self.pos.x,self.radius+p.y-self.pos.y,is_transparent,True)
+                    libtcod.map_set_properties(self.__tcod_light_map,
+                                               self.radius+p.x-self.pos.x,
+                                               self.radius+p.y-self.pos.y,
+                                               is_transparent, True)
 
             if skip_calc:
                 # all pos were outside of light radius!
@@ -264,24 +279,29 @@ class LightSource: #(Mappable):
         # |     |    |     |          |     |    |   XXX
         #  \   /      \   /            \   /      \  XXX
         #   ---        ---              ---        --XXX
-        libtcod.image_clear(self.__tcod_light_image,libtcod.black)
-        libtcod.image_set_key_color(self.__tcod_light_image,libtcod.black)
+        libtcod.image_clear(self.__tcod_light_image, libtcod.black)
+        libtcod.image_set_key_color(self.__tcod_light_image, libtcod.black)
         r   = self.radius
         rd2 = r/2
         i1  = self.raw_light_colour * self.intensity
         for x in range(r*2+1):
             for y in range(r*2+1):
                 #print("(%d,%d)"%(x,y))
-                if libtcod.map_is_in_fov(self.__tcod_light_map,x,y):
+                if libtcod.map_is_in_fov(self.__tcod_light_map, x, y):
                     d = hypot(r-x,r-y)
                     if d > rd2:
-                        libtcod.image_put_pixel(self.__tcod_light_image,x,y,i1*(1.0-(d-rd2)/rd2))
+                        libtcod.image_put_pixel(self.__tcod_light_image,
+                                                x, y,
+                                                i1*(1.0-(d-rd2)/rd2))
                         #print("  %s %s"%(d,i1*(1.0-(d-rd2)/rd2)))
                     else:
-                        libtcod.image_put_pixel(self.__tcod_light_image,x,y,i1)
+                        libtcod.image_put_pixel(self.__tcod_light_image,
+                                                x, y,
+                                                i1)
                         #print("  %s %s"%(d,i1))
 
-    def blit_to(self,tcod_console,ox=0,oy=0,sx=-1,sy=-1):
+    def blit_to(self, tcod_console, ox=0, oy=0, sx=-1, sy=-1):
+        """Copy lighting information to libtcod console"""
         libtcod.image_blit_rect(self.__tcod_light_image, tcod_console,
                                 self.pos.x+ox-self.radius, 
                                 self.pos.y+oy-self.radius, 
@@ -289,7 +309,9 @@ class LightSource: #(Mappable):
                                 sx, sy,
                                 libtcod.BKGND_ADD)
 
-    def lights(self,pos,test_los=True):
+    def lights(self,pos, test_los=True):
+        """Does this light light pos?
+        If test_los is False; don't bother checking line of sight"""
         if not self.light_enabled:
             return False
         if self.pos.distance_to(pos) > self.radius:
@@ -301,54 +323,89 @@ class LightSource: #(Mappable):
         #print("%d < %d" %(self.pos.distance_to(pos),self.radius))
         #print("%d,%d"%(1+self.radius+pos.x-self.pos.x,1+self.radius+pos.y-self.pos.y))
 
-        return libtcod.map_is_in_fov(self.__tcod_light_map,self.radius+pos.x-self.pos.x,self.radius+pos.y-self.pos.y)
+        return libtcod.map_is_in_fov(self.__tcod_light_map,
+                                     self.radius+pos.x-self.pos.x,
+                                     self.radius+pos.y-self.pos.y)
 
     def close(self):
+        """Clean up lighting assets prior to deleting object"""
         libtcod.map_delete(self.__tcod_light_map)
         libtcod.image_delete(self.__tcod_light_image)
         self.light_enabled = False
 
     def __del__(self):
+        """del light"""
         self.close()
 
 
 class FlatLightSource(LightSource):
+    """Even lighting covering square area"""
     def __init__(self, size, intensity=1.0, light_colour=Mappable.LIGHT_H_CLAMP):
         assert isinstance(self,Mappable), "LightSource mixin must be mappable" # TODO: is this right? :D
-        self.size               = size
+        self._size              = size
         self.intensity          = intensity
         self.raw_light_colour   = light_colour
         self.light_enabled      = True
-        self.__tcod_light_map   = libtcod.map_new(size.x+2,size.y+2)
-        self.__tcod_light_image = libtcod.image_new(size.x+2,size.y+2)
+        self.__tcod_light_map   = libtcod.map_new(size.x+2, size.y+2)
+        self.__tcod_light_image = libtcod.image_new(size.x+2, size.y+2)
 
     @property
     def radius(self):
+        """Dummy radius"""
         return 0
+
     @radius.setter
-    def radius(self,r):
+    def radius(self, r):
+        """Dummy radius"""
         pass
 
-    def prepare_fov(self,light_walls=False):
-        libtcod.map_compute_fov(self.__tcod_light_map, self.pos.x+self.size.x//2, self.pos.y+self.size.y//2, max(self.size.x//2,self.size.y//2)+1, light_walls, libtcod.FOV_BASIC)
+    @property
+    def size(self):
+        """Size of light, as a Position"""
+        return self._size
 
-    def reset_map(self,pos=None):
+    @size.setter
+    def size(self, s):
+        """Reset size of light"""
+        if s == self._size:
+            return
+        self._size = s
+        e = self.light_enabled
+        self.close()
+        self.light_enabled = e
+        self.reset_map()
+
+    def prepare_fov(self, light_walls=False):
+        """Calculate light's distribution"""
+        libtcod.map_compute_fov(self.__tcod_light_map,
+                                self._size.x // 2,
+                                self._size.y // 2,
+                                max(self._size.x // 2, self._size.y // 2) + 1,
+                                light_walls, libtcod.FOV_BASIC)
+
+    def reset_map(self, pos=None):
+        """Reset light map.
+        If pos is a list of Positions, only reset those areas"""
         if self.light_enabled:
-            libtcod.image_clear(self.__tcod_light_image,self.raw_light_colour*self.intensity)
-            libtcod.image_set_key_color(self.__tcod_light_image,libtcod.black)
+            assert not self.pos is None and not self.map is None, "resetting LightSource that is not placed on map"
+            libtcod.image_clear(self.__tcod_light_image, self.raw_light_colour * self.intensity)
+            libtcod.image_set_key_color(self.__tcod_light_image, libtcod.black)
         else:
-            libtcod.image_clear(self.__tcod_light_image,libtcod.black)
-            libtcod.image_set_key_color(self.__tcod_light_image,libtcod.black)
+            libtcod.image_clear(self.__tcod_light_image, libtcod.black)
+            libtcod.image_set_key_color(self.__tcod_light_image, libtcod.black)
 
-    def blit_to(self,tcod_console,ox=0,oy=0,sx=-1,sy=-1):
+    def blit_to(self, tcod_console, ox=0, oy=0, sx=-1, sy=-1):
+        """Copy lighting information to libtcod console"""
         libtcod.image_blit_rect(self.__tcod_light_image, tcod_console,
-                                self.pos.x+ox-1,
-                                self.pos.y+oy-1,
+                                self.pos.x + ox - 1,
+                                self.pos.y + oy - 1,
                                 sx, sy,
                                 libtcod.BKGND_ADD)
 
     def lights(self,pos,test_los=True):
-        return self.light_enabled and pos >= self.pos-Position(1,1) and pos <= self.pos+self.size+Position(1,1)
+        """Does this light light pos?
+        If test_los is False; don't bother checking line of sight"""
+        return self.light_enabled and pos >= self.pos - Position(1, 1) and pos <= self.pos + self._size + Position(1, 1)
 
     def close(self):
         libtcod.map_delete(self.__tcod_light_map)
@@ -356,6 +413,7 @@ class FlatLightSource(LightSource):
 
     def __del__(self):
         self.close()
+
 
 class TurnTaker:
     turn_takers = []

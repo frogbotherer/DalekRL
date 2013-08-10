@@ -495,7 +495,7 @@ class LightSourceTest(InterfaceTest):
         libtcod.image_delete        = Mock()
 
     def test_should_be_mappable(self):
-        assert_raises(AssertionError,interfaces.LightSource.__init__,5)
+        assert_raises(AssertionError,interfaces.LightSource.__init__,Mock(),5)
 
     def test_should_reset_when_radius_changes(self):
         c = self.C(radius=1)
@@ -749,7 +749,7 @@ class LightSourceTest(InterfaceTest):
         c.map = Mock(spec=maps.Map)
         c.map.find_all_within_r = Mock(return_value=[])
         c.pos = Mock(spec=interfaces.Position)
-        #c.reset_map()
+        #c.reset_map()  # creates references preventing c from being deleted
 
         del c
         gc.collect()
@@ -769,3 +769,301 @@ class LightSourceTest(InterfaceTest):
         libtcod.map_delete.assert_called_once_with(ANY)
         libtcod.image_delete.assert_called_once_with(ANY)
         assert_false(c.light_enabled)
+
+
+class FlatLightSourceTest(InterfaceTest):
+    # can't instantiate LightSource by itself
+    class C(interfaces.Mappable,interfaces.FlatLightSource):
+        def __init__(self,*args,**kwargs):
+            interfaces.FlatLightSource.__init__(self,*args,**kwargs)
+            interfaces.Mappable.__init__(self,None,'x',libtcod.white)
+
+    def setUp(self):
+        libtcod.map_compute_fov     = Mock()
+        libtcod.map_set_properties  = Mock()
+        libtcod.image_clear         = Mock()
+        libtcod.image_set_key_color = Mock()
+        libtcod.image_put_pixel     = Mock()
+        libtcod.image_blit_rect     = Mock()
+        libtcod.map_delete          = Mock()
+        libtcod.image_delete        = Mock()
+
+    def test_should_be_mappable(self):
+        assert_raises(AssertionError,interfaces.FlatLightSource.__init__,Mock(),interfaces.Position(5,5))
+
+    def test_should_reset_when_size_changes(self):
+        s = interfaces.Position(5,5)
+        c = self.C(size=s)
+        c.reset_map = Mock()
+        assert_equal(c.size,s)
+        c.size = interfaces.Position(3,3)
+        assert_equal(c.size,interfaces.Position(3,3))
+        c.reset_map.assert_called_once_with()
+
+    def test_should_still_work_as_light_after_size_changes(self):
+        c = self.C(size=interfaces.Position(5,5))
+        c.reset_map = Mock()
+        c.prepare_fov = Mock()
+        c.light_enabled = True
+        p = Mock(spec=interfaces.Position)
+        c.pos = p
+        c.map = Mock(spec=maps.Map)
+        c.size = interfaces.Position(3,3)
+        # stays centred in same place
+        assert_equal(c.pos,p)
+        # LOS et al recalculated
+        c.reset_map.assert_called_once_with()
+        #c.prepare_fov.assert_called_once_with(ANY) # cos its parent is a mock!
+        # still enabled
+        assert_true(c.light_enabled)
+
+    def test_should_prepare_fov_over_whole_area_of_light(self):
+        for (px, py, r) in (
+            (1,  3,  2),
+            (5,  2,  3),
+            (5, 11,  6),
+            ):
+            c = self.C(interfaces.Position(px,py))
+            assert_is(c.prepare_fov(False),None)
+            libtcod.map_compute_fov.assert_called_with(ANY,px//2,py//2,r,False,ANY)
+    
+    def test_should_clear_light_map_to_black_if_reset_when_disabled(self):
+        c = self.C(interfaces.Position(5,5))
+        c.light_enabled = False
+
+        assert_is(c.reset_map(),None)
+        libtcod.image_clear.assert_called_once_with(ANY,libtcod.black)
+        libtcod.image_set_key_color.assert_called_once_with(ANY,libtcod.black)
+
+    def test_should_fail_if_reset_when_not_on_map(self):
+        c = self.C(interfaces.Position(5,5))
+        c.map = None
+        
+        assert_raises(AssertionError,c.reset_map)
+
+        c.map = Mock(spec=maps.Map)
+        c.pos = None
+
+        assert_raises(AssertionError,c.reset_map)
+
+
+class todo:
+    def todo_test_should_reset_whole_light_map_when_called_with_no_pos(self):
+        # TODO: apply this test with various radii (as there was a bug when radius was even number)
+        # define a test light like this
+        # .....        .....             
+        # .....        .###.        ### 
+        # ..'..   -->  .#'..   -->  #'..
+        # .....        .#/..        #/..
+        # .....        .....         ...
+        c = self.C(radius=2)
+        c.light_enabled = True
+        c.intensity = 1.0
+        c.pos = interfaces.Position(2,2)
+        c.map = Mock(spec=maps.Map)
+        m = [
+                tiles.Floor(interfaces.Position(0,0)),
+                tiles.Floor(interfaces.Position(1,0)),
+                tiles.Floor(interfaces.Position(2,0)),
+                tiles.Floor(interfaces.Position(3,0)),
+                tiles.Floor(interfaces.Position(4,0)),
+                tiles.Floor(interfaces.Position(0,1)),
+                tiles.Floor(interfaces.Position(5,1)),
+                tiles.Floor(interfaces.Position(0,2)),
+                tiles.Floor(interfaces.Position(2,2)),
+                tiles.Floor(interfaces.Position(3,2)),
+                tiles.Floor(interfaces.Position(4,2)),
+                tiles.Floor(interfaces.Position(0,3)),
+                tiles.Floor(interfaces.Position(3,3)),
+                tiles.Floor(interfaces.Position(4,3)),
+                tiles.Floor(interfaces.Position(0,4)),
+                tiles.Floor(interfaces.Position(1,4)),
+                tiles.Floor(interfaces.Position(2,4)),
+                tiles.Floor(interfaces.Position(3,4)),
+                tiles.Floor(interfaces.Position(4,4)),
+                tiles.Window(interfaces.Position(2,3)),
+                ]
+        c.map.find_all_within_r = Mock(return_value = m)
+        libtcod.map_is_in_fov = Mock( side_effect = lambda n,x,y: x>1 and y>1 )
+
+        assert_is(c.reset_map(None),None)
+
+        c.map.find_all_within_r.assert_called_once_with(c,interfaces.Transparent,c.radius)
+        libtcod.map_compute_fov.assert_called_once_with(ANY,c.radius+1,c.radius+1,c.radius,ANY,ANY)
+        libtcod.image_clear.assert_called_once_with(ANY,libtcod.black)
+        libtcod.image_set_key_color.assert_called_once_with(ANY,libtcod.black)
+        for p in m:
+            libtcod.map_set_properties.assert_any_call(ANY,p.pos.x,p.pos.y,isinstance(p,interfaces.Transparent) and not p.blocks_light(),True)
+
+        for p in (
+            ## would be this, but we light walls differently
+            #(1,1),(2,1),(3,1),       #   ###
+            #(1,2),(2,2),(3,2),(4,2), #   #'..
+            #(1,3),(2,3),(3,3),(4,3), #   #/..
+            #(1,4),(2,4),(3,4),(4,4), #    ...
+                                         #   ###
+            (2,2,255),(3,2,255),(4,2,0), #   #'..
+            (2,3,255),(3,3,149),(4,3,0), #   #/..
+            (2,4,0),(3,4,0),(4,4,0),     #    ...
+            ):
+            libtcod.image_put_pixel.assert_any_call(ANY,p[0],p[1],libtcod.white*(p[2]/255))
+
+    def todo_test_should_reset_only_relevant_parts_when_pos_given(self):
+        for (r, cx, cy) in (
+            (3, 3, 2),
+            (2, 2, 3),
+            (5, 8, 9),
+            ):
+            px = r; py = r
+            c = self.C(radius=r)
+            c.light_enabled = True
+            c.intensity = 1.0
+            c.pos = interfaces.Position(px,py)
+            c.map = Mock(spec=maps.Map)
+            c.map.find_all_at_pos = Mock( return_value = [tiles.Window(interfaces.Position(cx,cy))] )
+
+            assert_is(c.reset_map(pos=interfaces.Position(cx,cy)),None)
+            libtcod.map_set_properties.assert_called_once_with(ANY,cx,cy,True,True)
+            libtcod.map_set_properties.reset_mock()
+
+    def todo_test_should_not_recalculate_if_pos_out_of_los(self):
+        for (r, cx, cy) in (
+            (3, 0, 0),
+            (2, 4, 4),
+            (5, 9, 9),
+            ):
+            px = r; py = r
+            c = self.C(radius=r)
+            c.light_enabled = True
+            c.intensity = 1.0
+            c.pos = interfaces.Position(px,py)
+            c.prepare_fov = Mock()
+            c.map = Mock(spec=maps.Map)
+            c.map.find_all_at_pos = Mock( return_value = [tiles.Window(interfaces.Position(cx,cy))] )
+
+            assert_is(c.reset_map(pos=interfaces.Position(cx,cy)),None)
+            assert_equal(libtcod.map_set_properties.call_count,0)
+            assert_equal(c.prepare_fov.call_count,0)
+
+    def todo_test_should_blit_image_data_to_console_at_given_coords(self):
+        # e.g. pos (3,3), r=2
+        #    |
+        #  X...      ox, oy = (0,0); tlx, tly = (1,1)
+        #  .....
+        # -..'..
+        #  .....
+        #   ...      sx, sy = (5,5)
+        #
+        for (r, con, px, py, ox, oy, sx, sy, tlx, tly) in (
+            (3, 0,   3,  3,  0,  0,  -1, -1, 0,   0  ),
+            (3, 1,   9,  9,  0,  0,  -1, -1, 6,   6, ),
+            (1, 1,   2,  2,  0,  0,  -1, -1, 1,   1, ),
+            (4, 4,   8,  6,  0,  0,  -1, -1, 4,   2, ),
+            ):
+            c = self.C(radius=r)
+            c.pos = interfaces.Position(px, py)
+            assert_is( c.blit_to(con, ox, oy, sx, sy), None )
+            libtcod.image_blit_rect.assert_called_once_with(
+                ANY, con,
+                tlx, tly,
+                sx, sy,
+                libtcod.BKGND_ADD)
+            libtcod.image_blit_rect.reset_mock()
+
+    def todo_test_should_not_light_things_when_disabled(self):
+        c = self.C(radius=3)
+        c.light_enabled = False
+        c.pos = interfaces.Position(4,4)
+        
+        for p in (
+            (0,0),
+            (4,4),
+            (4,7),
+            (7,4),
+            (1,1),
+            ):
+            assert_false(c.lights(p))
+
+    def todo_test_should_not_light_things_outside_radius(self):
+        c = self.C(radius=3)
+        c.light_enabled = True
+        c.pos = interfaces.Position(4,4)
+        
+        for p in (
+            (0,0),
+            (1,1),
+            (4,8),
+            (8,4),
+            (6,7),
+            ):
+            assert_false(c.lights(p))
+
+    def todo_test_should_always_light_things_in_radius_if_not_testing_los(self):
+        c = self.C(radius=3)
+        c.light_enabled = True
+        c.pos = interfaces.Position(4,4)
+        
+        for p in (
+            (3,3),
+            (4,4),
+            (4,7),
+            (7,4),
+            (6,5),
+            ):
+            assert_true(c.lights(p,test_los=False))
+
+    def todo_est_should_use_los_data_for_lighting_check(self):
+        c = self.C(radius=4)
+        c.light_enabled = True
+        c.intensity = 1.0
+        c.pos = interfaces.Position(4,4)
+        c.map = Mock(spec=maps.Map)
+        libtcod.map_is_in_fov = Mock(return_value=True)
+
+        for p in (
+            (3,3),
+            (4,4),
+            (4,7),
+            (7,4),
+            (6,5),
+            ):
+            print(p)
+            assert_true(c.lights(interfaces.Position(p)))
+            libtcod.map_is_in_fov.assert_called_once_with(ANY,p[0],p[1],)
+            libtcod.map_is_in_fov.reset_mock()
+
+    def todo_test_should_clean_up_tcod_data_on_reset(self):
+        c = self.C(radius=3)
+        c.map = Mock(spec=maps.Map)
+        c.map.find_all_within_r = Mock(return_value=[])
+        c.pos = Mock(spec=interfaces.Position)
+        c.radius = 5
+        libtcod.map_delete.assert_called_once_with(ANY)
+        libtcod.image_delete.assert_called_once_with(ANY)
+
+    def todo_test_should_clean_up_tcod_data_on_del(self):
+        c = self.C(radius=5)
+        c.map = Mock(spec=maps.Map)
+        c.map.find_all_within_r = Mock(return_value=[])
+        c.pos = Mock(spec=interfaces.Position)
+        #c.reset_map()  # creates references preventing c from being deleted
+
+        del c
+        gc.collect()
+
+        libtcod.map_delete.assert_called_once_with(ANY)
+        libtcod.image_delete.assert_called_once_with(ANY)
+
+    def todo_test_should_be_disabled_after_closed(self):
+        c = self.C(radius=5)
+        c.map = Mock(spec=maps.Map)
+        c.map.find_all_within_r = Mock(return_value=[])
+        c.pos = Mock(spec=interfaces.Position)
+        c.reset_map()
+
+        c.close()
+
+        libtcod.map_delete.assert_called_once_with(ANY)
+        libtcod.image_delete.assert_called_once_with(ANY)
+        assert_false(c.light_enabled)
+
