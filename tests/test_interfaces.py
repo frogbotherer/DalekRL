@@ -305,8 +305,11 @@ class MappableTest(InterfaceTest):
 
     def test_should_give_transparent_light_level_if_transparent(self):
         # seems Mock() doesn't play nicely with @property
-        class T(interfaces.Mappable,interfaces.Transparent):
+        class T(interfaces.Transparent,interfaces.Mappable):
             transparent_light_level = 5.0
+            def __init__(self,*args,**kwargs):
+                interfaces.Mappable.__init__(self,*args,**kwargs)
+                interfaces.Transparent.__init__(self)
 
         m = T(Mock(spec_set=interfaces.Position),'x',libtcod.white)
         m.map = self.map

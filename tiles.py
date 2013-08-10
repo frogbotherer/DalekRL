@@ -105,7 +105,7 @@ class MapPattern:
     def __hash__(self):
         return self.__hash
 
-class Tile(Mappable,Traversable,Transparent):
+class Tile(Traversable,Transparent,Mappable):
     patterns  = []
     place_min = 1
     place_max = 10

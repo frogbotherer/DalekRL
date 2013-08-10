@@ -498,8 +498,9 @@ class Traversable:
     def blocks_movement(self, is_for_mapping=False):
         return (self.walk_cost == 0.0) and (not is_for_mapping or self.may_block_movement)
 
-class Transparent:
+class Transparent(Mappable):
     def __init__(self, transparency=0.0):
+        # NB. mixin so will not init Mappable here
         # 0.0 => completely opaque
         # 1.0 => completely transparent
         self.transparency = transparency
@@ -607,11 +608,14 @@ class HasInventory:
         for s in fixed_slots:
             self.slot_items[s] = None
 
+
 class Carryable:
     pass
 
+
 class Activator:
     pass
+
 
 class Activatable:
     def __init__(self,owner=None):
@@ -622,6 +626,7 @@ class Activatable:
     def activate(self,activator=None):
         assert isinstance(self.owner,Activator) or isinstance(activator,Activator), "%s can't be activated" % self
         return True
+
 
 class Alertable:
     PRI_LOW  = 0
@@ -666,6 +671,7 @@ class Alertable:
             if len(self.investigate_list[pri])>0:
                 return self.investigate_list[pri].pop(0)
         return None
+
 
 # TODO: use this for symmetry between player and monsters with same capabilities
 class CanSee:
@@ -725,9 +731,11 @@ class Talker:
             else:
                 t.stop_talk()
 
-class Shouter:
+
+class Shouter(Mappable):
     def __init__(self,audible_radius=10):
-        assert isinstance(self,Mappable), "Shouter must be a mappable object" # bad mi??
+        #assert isinstance(self,Mappable), "Shouter must be a mappable object" # bad mi??
+        # NB. mixin: doesn't init Mappable directly
         self.audible_radius=audible_radius
 
     def shout(self,at_pos=None,priority=None):
