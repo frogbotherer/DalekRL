@@ -1164,3 +1164,38 @@ class TurnTakerTest(InterfaceTest):
 
         assert_equal(len(interfaces.TurnTaker.turn_takers),1)
         assert_is(interfaces.TurnTaker.turn_takers[0](),a)
+
+
+class TraversableTest(InterfaceTest):
+    def test_should_always_permit_leaving_by_default(self):
+        t = interfaces.Traversable(0.0)
+        assert_true(t.try_leaving(Mock()))
+
+    def test_should_return_walk_cost_if_movement_permitted(self):
+        for w in (
+            0.1,
+            1.0,
+            0.6
+            ):
+            t = interfaces.Traversable(w)
+            assert_equal(t.try_movement(Mock()),w)
+
+    def test_should_raise_continue_error_if_movement_blocked(self):
+        t = interfaces.Traversable(0.0)
+        assert_raises(errors.InvalidMoveContinueError,t.try_movement,Mock())
+
+    def test_should_block_movement_if_walk_cost_zero(self):
+        t1 = interfaces.Traversable(0.0)
+        t2 = interfaces.Traversable(0.5)
+
+        assert_true(t1.blocks_movement())
+        assert_false(t2.blocks_movement())
+
+    def test_should_permit_movement_if_testing_pathing_and_may_block(self):
+        t1 = interfaces.Traversable(0.0)
+        t2 = interfaces.Traversable(0.0,True)
+
+        assert_true(t1.blocks_movement())
+        assert_true(t2.blocks_movement())
+        assert_false(t1.blocks_movement(is_for_mapping=True))
+        assert_true(t2.blocks_movement(is_for_mapping=True))
