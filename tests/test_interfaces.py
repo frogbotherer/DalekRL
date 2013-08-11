@@ -499,7 +499,7 @@ class MappableTest(InterfaceTest):
 
 class LightSourceTest(InterfaceTest):
     # can't instantiate LightSource by itself
-    class C(interfaces.Mappable,interfaces.LightSource):
+    class C(interfaces.LightSource,interfaces.Mappable):
         def __init__(self,*args,**kwargs):
             interfaces.LightSource.__init__(self,*args,**kwargs)
             interfaces.Mappable.__init__(self,None,'x',libtcod.white)
@@ -513,9 +513,6 @@ class LightSourceTest(InterfaceTest):
         libtcod.image_blit_rect     = Mock()
         libtcod.map_delete          = Mock()
         libtcod.image_delete        = Mock()
-
-    def test_should_be_mappable(self):
-        assert_raises(AssertionError,interfaces.LightSource.__init__,Mock(),5)
 
     def test_should_reset_when_radius_changes(self):
         c = self.C(radius=1)
@@ -793,7 +790,7 @@ class LightSourceTest(InterfaceTest):
 
 class FlatLightSourceTest(InterfaceTest):
     # can't instantiate LightSource by itself
-    class C(interfaces.Mappable,interfaces.FlatLightSource):
+    class C(interfaces.FlatLightSource,interfaces.Mappable):
         def __init__(self,*args,**kwargs):
             interfaces.FlatLightSource.__init__(self,*args,**kwargs)
             interfaces.Mappable.__init__(self,None,'x',libtcod.white)
@@ -807,9 +804,6 @@ class FlatLightSourceTest(InterfaceTest):
         libtcod.image_blit_rect     = Mock()
         libtcod.map_delete          = Mock()
         libtcod.image_delete        = Mock()
-
-    def test_should_be_mappable(self):
-        assert_raises(AssertionError,interfaces.FlatLightSource.__init__,Mock(),interfaces.Position(5,5))
 
     def test_should_reset_when_size_changes(self):
         s = interfaces.Position(5,5)
@@ -1128,3 +1122,45 @@ class TurnTakerTest(InterfaceTest):
         assert_is(interfaces.TurnTaker.turn_takers[0](), a)
         assert_is(interfaces.TurnTaker.take_all_turns(), None)
         a.take_turn.assert_called_once_with()
+
+    def test_add_turntaker_should_add_to_list(self):
+        a = self.C(1,False)
+        b = self.C(2)
+        assert_equal(len(interfaces.TurnTaker.turn_takers),1)
+        assert_is(interfaces.TurnTaker.turn_takers[0](),b)
+
+        assert_is(interfaces.TurnTaker.add_turntaker(a), None)
+
+        assert_equal(len(interfaces.TurnTaker.turn_takers),2)
+        assert_is(interfaces.TurnTaker.turn_takers[0](),a)
+        assert_is(interfaces.TurnTaker.turn_takers[1](),b)
+
+    def test_clear_turntaker_should_remove_count_from_list(self):
+        a = self.C(1)
+        b = self.C(2)
+        interfaces.TurnTaker.add_turntaker(b) # again
+
+        assert_equal(len(interfaces.TurnTaker.turn_takers),3)
+        assert_is(interfaces.TurnTaker.turn_takers[0](),a)
+        assert_is(interfaces.TurnTaker.turn_takers[1](),b)
+        assert_is(interfaces.TurnTaker.turn_takers[2](),b)
+
+        assert_equal(interfaces.TurnTaker.clear_turntaker(a), None)
+        assert_equal(len(interfaces.TurnTaker.turn_takers),2)
+        assert_is(interfaces.TurnTaker.turn_takers[0](),b)
+        assert_is(interfaces.TurnTaker.turn_takers[1](),b)
+
+        assert_equal(interfaces.TurnTaker.clear_turntaker(b,2), None)
+        assert_equal(len(interfaces.TurnTaker.turn_takers),0)
+
+    def test_clear_turntaker_should_not_raise_error_if_arg_not_in_list(self):
+        a = self.C(1)
+        b = self.C(2,False)
+
+        assert_equal(len(interfaces.TurnTaker.turn_takers),1)
+        assert_is(interfaces.TurnTaker.turn_takers[0](),a)
+
+        assert_equal(interfaces.TurnTaker.clear_turntaker(b), None)
+
+        assert_equal(len(interfaces.TurnTaker.turn_takers),1)
+        assert_is(interfaces.TurnTaker.turn_takers[0](),a)

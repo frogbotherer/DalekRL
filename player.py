@@ -11,7 +11,7 @@ from errors import GameOverError, InvalidMoveError, InvalidMoveContinueError
 import sys
 from time import sleep
 
-class Player (Mappable,Activator,TurnTaker,StatusEffect,HasInventory,LightSource):
+class Player (Activator,TurnTaker,StatusEffect,HasInventory,LightSource,Mappable):
     # these don't really belong here
     SCREEN_SIZE = Position(80,50)
     LIMIT_FPS = 15
