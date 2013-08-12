@@ -311,8 +311,10 @@ class MappableTest(InterfaceTest):
                 interfaces.Mappable.__init__(self,*args,**kwargs)
                 interfaces.Transparent.__init__(self)
 
-        m = T(Mock(spec_set=interfaces.Position),'x',libtcod.white)
+        m = T(interfaces.Position(0,0),'x',libtcod.white)
         m.map = self.map
+        m.map.player = Mock(spec=player.Player)
+        m.map.player.pos = interfaces.Position(1,1)
         assert_equal(m.light_level,5.0)
 
     def test_should_use_map_data_for_light_level(self):
@@ -1199,3 +1201,133 @@ class TraversableTest(InterfaceTest):
         assert_true(t2.blocks_movement())
         assert_false(t1.blocks_movement(is_for_mapping=True))
         assert_true(t2.blocks_movement(is_for_mapping=True))
+
+
+class TransparentTest(InterfaceTest):
+
+    def test_should_block_light_if_transparency_zero(self):
+        t1 = interfaces.Transparent(0.0)
+        t2 = interfaces.Transparent(0.1)
+        assert_true(t1.blocks_light())
+        assert_false(t2.blocks_light())
+
+    def test_should_derive_light_level_from_map_if_translucent(self):
+        m = Mock(spec=maps.Map)
+        m.light_level = Mock(return_value=5.0)
+        p = Mock(spec=interfaces.Position)
+        t = interfaces.Transparent(0.1)
+        t.map = m
+        t.pos = p
+
+        assert_equal(t.light_level,5.0)
+        m.light_level.assert_called_once_with(p)
+
+    def test_should_derive_light_level_from_next_space_towards_player(self):
+        m = Mock(spec=maps.Map)
+        m.light_level = Mock(return_value=5.0)
+        m.player = Mock(spec=player.Player)
+        p = interfaces.Position(5,5)
+        t = interfaces.Transparent(0.0)
+        t.map = m
+        t.pos = p
+
+        for (p_player, p_expected) in (
+            ((0,5),     (4,5)),
+            ((5,0),     (5,4)),
+            ((9,5),     (6,5)),
+            ((5,9),     (5,6)),
+            ((0,0),     (4,4)),
+            ((9,9),     (6,6)),
+            ((0,4),     (4,4)),
+            ((9,0),     (6,4)),
+            ):
+            m.player.pos = interfaces.Position(p_player)
+            assert_equal(t.light_level,5.0)
+            m.light_level.assert_called_once_with(p_expected)
+            m.light_level.reset_mock()
+
+    def test_should_derive_light_level_from_players_space_if_adjacent(self):
+        m = Mock(spec=maps.Map)
+        m.light_level = Mock(return_value=5.0)
+        m.player = Mock(spec=player.Player)
+        p = interfaces.Position(5,5)
+        t = interfaces.Transparent(0.0)
+        t.map = m
+        t.pos = p
+
+        for (p_player, p_expected) in (
+            ((4,5),     (4,5)),
+            ((5,4),     (5,4)),
+            ((6,5),     (6,5)),
+            ((5,6),     (5,6)),
+            ((4,4),     (4,4)),
+            ((6,6),     (6,6)),
+            ((6,4),     (6,4)),
+            ((4,6),     (4,6)),
+            ):
+            m.player.pos = interfaces.Position(p_player)
+            assert_equal(t.light_level,5.0)
+            m.light_level.assert_called_once_with(p_expected)
+            m.light_level.reset_mock()
+
+    def test_should_derive_light_colour_from_map_if_translucent(self):
+        m = Mock(spec=maps.Map)
+        m.light_colour = Mock(return_value=libtcod.white)
+        p = Mock(spec=interfaces.Position)
+        t = interfaces.Transparent(0.1)
+        t.map = m
+        t.pos = p
+
+        assert_equal(t.light_colour,libtcod.white)
+        m.light_colour.assert_called_once_with(p)
+
+    def test_should_derive_light_colour_from_next_space_towards_player(self):
+        m = Mock(spec=maps.Map)
+        m.light_colour = Mock(return_value=libtcod.white)
+        m.player = Mock(spec=player.Player)
+        p = interfaces.Position(5,5)
+        t = interfaces.Transparent(0.0)
+        t.map = m
+        t.pos = p
+
+        for (p_player, p_expected) in (
+            ((0,5),     (4,5)),
+            ((5,0),     (5,4)),
+            ((9,5),     (6,5)),
+            ((5,9),     (5,6)),
+            ((0,0),     (4,4)),
+            ((9,9),     (6,6)),
+            ((0,4),     (4,4)),
+            ((9,0),     (6,4)),
+            ):
+            m.player.pos = interfaces.Position(p_player)
+            assert_equal(t.light_colour,libtcod.white)
+            m.light_colour.assert_called_once_with(p_expected)
+            m.light_colour.reset_mock()
+
+    def test_should_derive_light_colour_from_players_space_if_adjacent(self):
+        m = Mock(spec=maps.Map)
+        m.light_colour = Mock(return_value=libtcod.white)
+        m.player = Mock(spec=player.Player)
+        p = interfaces.Position(5,5)
+        t = interfaces.Transparent(0.0)
+        t.map = m
+        t.pos = p
+
+        for (p_player, p_expected) in (
+            ((4,5),     (4,5)),
+            ((5,4),     (5,4)),
+            ((6,5),     (6,5)),
+            ((5,6),     (5,6)),
+            ((4,4),     (4,4)),
+            ((6,6),     (6,6)),
+            ((6,4),     (6,4)),
+            ((4,6),     (4,6)),
+            ):
+            m.player.pos = interfaces.Position(p_player)
+            assert_equal(t.light_colour,libtcod.white)
+            m.light_colour.assert_called_once_with(p_expected)
+            m.light_colour.reset_mock()
+
+
+

@@ -524,7 +524,7 @@ class Transparent(Mappable):
 
     # TODO: these should override Mappable properties using inheritance, not bodgerance
     @property
-    def transparent_light_level(self):
+    def light_level(self):
         if not self.blocks_light():
             return self.map.light_level(self.pos)
 
@@ -539,7 +539,7 @@ class Transparent(Mappable):
             return self.map.light_level(self.pos+v)
 
     @property
-    def transparent_light_colour(self):
+    def light_colour(self):
         if not self.blocks_light():
             return self.map.light_colour(self.pos)
 
