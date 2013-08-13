@@ -1330,4 +1330,124 @@ class TransparentTest(InterfaceTest):
             m.light_colour.reset_mock()
 
 
+class StatusEffectTest(InterfaceTest):
+    def test_should_add_effects(self):
+        s = interfaces.StatusEffect()
+        assert_true(s.add_effect(interfaces.StatusEffect.NIGHT_VISION))
 
+        assert_in(interfaces.StatusEffect.NIGHT_VISION,s.current_effects)
+        assert_equal(len(s.current_effects),1)
+
+    def test_should_not_add_same_effect_twice(self):
+        s = interfaces.StatusEffect()
+        assert_true(s.add_effect(interfaces.StatusEffect.NIGHT_VISION))
+
+        assert_false(s.add_effect(interfaces.StatusEffect.NIGHT_VISION))
+        assert_in(interfaces.StatusEffect.NIGHT_VISION,s.current_effects)
+        assert_equal(len(s.current_effects),1)
+
+    def test_should_remove_effect(self):
+        s = interfaces.StatusEffect()
+        assert_true(s.add_effect(interfaces.StatusEffect.NIGHT_VISION))
+        assert_in(interfaces.StatusEffect.NIGHT_VISION,s.current_effects)
+        assert_equal(len(s.current_effects),1)
+
+        assert_true(s.remove_effect(interfaces.StatusEffect.NIGHT_VISION))
+        assert_equal(len(s.current_effects),0)
+
+    def test_should_return_false_if_removing_effect_not_present(self):
+        s = interfaces.StatusEffect()
+        assert_true(s.add_effect(interfaces.StatusEffect.NIGHT_VISION))
+        assert_in(interfaces.StatusEffect.NIGHT_VISION,s.current_effects)
+        assert_equal(len(s.current_effects),1)
+        
+        assert_false(s.remove_effect(interfaces.StatusEffect.BLIND))
+
+        assert_in(interfaces.StatusEffect.NIGHT_VISION,s.current_effects)
+        assert_equal(len(s.current_effects),1)
+
+    def test_should_have_effect_if_effect_added(self):
+        s = interfaces.StatusEffect()
+        assert_true(s.add_effect(interfaces.StatusEffect.NIGHT_VISION))
+
+        assert_in(interfaces.StatusEffect.NIGHT_VISION,s.current_effects)
+        assert_equal(len(s.current_effects),1)
+
+        assert_true(s.has_effect(interfaces.StatusEffect.NIGHT_VISION))
+        assert_false(s.has_effect(interfaces.StatusEffect.BLIND))
+
+
+class CountUpTest(InterfaceTest):
+
+    def test_should_increment_and_return_false_if_not_hitting_cap(self):
+        for (c,  count_to, inc_by) in (
+            (0,  10,       1),
+            (0,  2,        1),
+            (5,  8,        2),
+            (10, 21,       10),
+            ):
+            cu = interfaces.CountUp(count_to,c)
+            assert_false(cu.inc(inc_by))
+            assert_equal(cu.count,c+inc_by)
+
+    def test_should_increment_to_limit_and_return_true_if_hits_cap(self):
+        for (c,  count_to, inc_by) in (
+            (0,  1,        1),
+            (1,  1,        1),
+            (0,  5,        10),
+            (10, 11,       10),
+            ):
+            cu = interfaces.CountUp(count_to,c)
+            assert_true(cu.inc(inc_by))
+            assert_equal(cu.count,count_to)
+
+    def test_should_decrement_and_return_false_if_not_zero(self):
+        for (c,   count_to,  dec_by) in (
+            (10,  10,        1),
+            (2,    2,        1),
+            (3,    8,        2),
+            (11,  21,       10),
+            ):
+            cu = interfaces.CountUp(count_to,c)
+            assert_false(cu.dec(dec_by))
+            assert_equal(cu.count,c-dec_by)
+
+    def test_should_decrement_and_return_true_if_zero(self):
+        for (c,   count_to,  dec_by) in (
+            (1,   10,        1),
+            (0,    2,        1),
+            (1,    8,        2),
+            (6,   21,       10),
+            ):
+            cu = interfaces.CountUp(count_to,c)
+            assert_true(cu.dec(dec_by))
+            assert_equal(cu.count,0)
+
+    def test_should_reset_to_given_value(self):
+        for r in (
+            0,
+            5,
+            11,
+            -1,
+            ):
+            cu = interfaces.CountUp(10)
+            assert_is(cu.reset(r),None)
+            assert_equal(cu.count,r)
+
+    def test_should_be_full_when_counted_up_to_max(self):
+        for (c,  count_to, rval) in (
+            (1,  1,        True),
+            (0,  1,        False),
+            (5,  10,       False),
+            (10, 10,       True),
+            ):
+            cu = interfaces.CountUp(count_to,c)
+            assert_equal(cu.full(),rval)
+            
+    def test_should_assert_error_if_init_out_of_bounds(self):
+        for (c,   count_to) in (
+            (2,   1),
+            (-1, -2),
+            (100, 9),
+            ):
+            assert_raises(AssertionError,interfaces.CountUp,count_to,c)

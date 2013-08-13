@@ -145,8 +145,6 @@ class Mappable:
         """Light level of this map tile (0.0-1.0ish?)"""
         if self.map is None or self.pos is None:
             return LightSource.INTENSITY_L_CLAMP
-        elif isinstance(self, Transparent):
-            return self.transparent_light_level
         else:
             return self.map.light_level(self.pos)
 
@@ -155,8 +153,6 @@ class Mappable:
         """Colour (and intensity) of the light in this map tile"""
         if self.map is None or self.pos is None:
             return Mappable.LIGHT_L_CLAMP
-        elif isinstance(self, Transparent):
-            return self.transparent_light_colour
         else:
             return self.map.light_colour(self.pos)
 
@@ -522,7 +518,6 @@ class Transparent(Mappable):
         """Does this object block light altogether?"""
         return self.transparency == 0.0
 
-    # TODO: these should override Mappable properties using inheritance, not bodgerance
     @property
     def light_level(self):
         if not self.blocks_light():
@@ -592,8 +587,9 @@ class StatusEffect:
 
 
 class CountUp:
-    """things that count up (e.g. multi-turn stairs traversal)"""
+    """things that count up (e.g. multi-turn stairs traversal)."""
     def __init__(self, count_to, c=0):
+        assert c <= count_to, "Setting count up limit of %d to less than initial value of %d" %(count_to,c)
         self.count_to = count_to
         self.count    = c
 
@@ -602,6 +598,8 @@ class CountUp:
         if self.full():
             return True
         self.count += i
+        if self.count > self.count_to:
+            self.count = self.count_to
         return self.full()
 
     def dec(self, i=1):
@@ -613,7 +611,8 @@ class CountUp:
         return self.count == 0
 
     def reset(self, c=0):
-        """Reset count to c. Defaults to zero"""
+        """Reset count to c. Defaults to zero.
+        NB. This does no bounds checking!"""
         self.count = c
 
     def full(self):
