@@ -1451,3 +1451,66 @@ class CountUpTest(InterfaceTest):
             (100, 9),
             ):
             assert_raises(AssertionError,interfaces.CountUp,count_to,c)
+
+
+class HasInventoryTest(InterfaceTest):
+    def test_should_init_fixed_slots_to_none(self):
+        for s in (
+            (),
+            (1, 2),
+            ('foo', 'bar', 'baz'),
+            ):
+            h = interfaces.HasInventory(0, s)
+            assert_equal(h.slot_keys,s)
+            for k in h.slot_keys:
+                assert_is(h.slot_items[k], None)
+            assert_equal(len(h.slot_items.keys()),len(s))
+
+    def test_should_init_inv_slots_to_none(self):
+        for s in (
+            0,
+            1,
+            7):
+            h = interfaces.HasInventory(s)
+            assert_equal(len(h.items),s)
+            for i in h.items:
+                assert_is(i,None)
+
+
+class ActivatableTest(InterfaceTest):
+    def test_should_not_be_init_with_bad_owner(self):
+        assert_raises( AssertionError,
+                       interfaces.Activatable.__init__,
+                       Mock(spec=interfaces.Activatable),
+                       Mock() # i.e. not an Activator
+                       )
+        a = interfaces.Activatable()
+        assert_is(a.owner, None)
+
+    def test_should_not_activate_with_bad_owner(self):
+        a = interfaces.Activatable()
+        a.owner = Mock() # i.e. not an Activator
+        assert_raises( AssertionError,
+                       a.activate )
+
+    def test_should_not_activate_with_bad_activator(self):
+        a = interfaces.Activatable()
+        a.owner = Mock(spec=interfaces.Activator)
+        assert_raises( AssertionError,
+                       a.activate,
+                       Mock() # i.e. not an Activator
+                       )
+
+    def test_should_not_activate_with_no_activator_or_owner(self):
+        a = interfaces.Activatable()
+        assert_raises( AssertionError,
+                       a.activate
+                       )
+
+    def test_should_activate_by_default(self):
+        a = interfaces.Activatable()
+        assert_is(a.activate(Mock(spec=interfaces.Activator)),True)
+
+        a.owner = Mock(spec=interfaces.Activator)
+        assert_is(a.activate(),True)
+        

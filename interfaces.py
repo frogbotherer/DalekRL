@@ -589,7 +589,7 @@ class StatusEffect:
 class CountUp:
     """things that count up (e.g. multi-turn stairs traversal)."""
     def __init__(self, count_to, c=0):
-        assert c <= count_to, "Setting count up limit of %d to less than initial value of %d" %(count_to,c)
+        assert c <= count_to, "Setting count up limit of %d to less than initial value of %d" % (count_to, c)
         self.count_to = count_to
         self.count    = c
 
@@ -651,7 +651,11 @@ class Activatable:
     def activate(self, activator=None):
         """Activate object. If activator is set, object is activated by them and not their owner (set by constructor).
         Return False to indicate that activation failed"""
-        assert isinstance(self.owner, Activator) or isinstance(activator, Activator), "%s can't be activated" % self
+        if activator is None:
+            assert isinstance(self.owner, Activator), "%s can't be activated by %s" % (self, self.owner)
+        else:
+            assert isinstance(activator, Activator), "%s can't be activated by %s" % (self, activator)
+
         return True
 
 
