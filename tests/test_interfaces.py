@@ -1514,3 +1514,122 @@ class ActivatableTest(InterfaceTest):
         a.owner = Mock(spec=interfaces.Activator)
         assert_is(a.activate(),True)
         
+class AlertableTest(InterfaceTest):
+    class A(interfaces.Alertable,interfaces.Mappable):
+        def __init__(self,pos,listen_radius=10):
+            interfaces.Mappable.__init__(self,pos,'x',libtcod.white)
+            interfaces.Alertable.__init__(self,listen_radius)
+
+    def test_should_alert_to_pos_at_pri_within_radius(self):
+        for (r, my_pos, alert_pos, pri) in (
+            (1, (1,1),  (1,1),     interfaces.Alertable.PRI_LOW),
+            (1, (1,1),  (1,2),     interfaces.Alertable.PRI_HIGH),
+            (2, (1,1),  (2,2),     interfaces.Alertable.PRI_HIGH),
+            (3, (3,3),  (5,4),     interfaces.Alertable.PRI_MED),
+            ):
+            a = self.A(interfaces.Position(my_pos),r)
+            assert_true(a.alert(interfaces.Position(alert_pos),priority=pri))
+            assert_equal(a.investigate_list[pri], [alert_pos])
+            assert_in(a,interfaces.Alertable.ALERTABLES)
+
+    def test_should_not_alert_to_pos_outside_radius(self):
+        for (r, my_pos, alert_pos, pri) in (
+            (1, (1,1),  (1,3),     interfaces.Alertable.PRI_LOW),
+            (1, (1,1),  (3,1),     interfaces.Alertable.PRI_HIGH),
+            (2, (1,1),  (3,3),     interfaces.Alertable.PRI_HIGH),
+            (3, (3,3),  (7,4),     interfaces.Alertable.PRI_MED),
+            ):
+            a = self.A(interfaces.Position(my_pos),r)
+            assert_false(a.alert(interfaces.Position(alert_pos),priority=pri))
+            assert_equal(a.investigate_list[pri], [])
+            assert_in(a,interfaces.Alertable.ALERTABLES)
+
+    def test_should_default_priority_to_medium(self):
+        p = interfaces.Position(1,1)
+        a = self.A(p,10)
+        assert_true(a.alert(p))
+        assert_equal(a.investigate_list[interfaces.Alertable.PRI_MED], [p])
+        assert_in(a,interfaces.Alertable.ALERTABLES)
+
+    def test_should_not_clear_other_alerts_if_their_pri_is_high(self):
+        p = interfaces.Position(1,1)
+        a = self.A(p, 1)
+        b = self.A(p, 1)
+        assert_in(a,interfaces.Alertable.ALERTABLES)
+        assert_in(b,interfaces.Alertable.ALERTABLES)
+
+        assert_true(a.alert(p,interfaces.Alertable.PRI_MED))
+        assert_true(b.alert(p,interfaces.Alertable.PRI_HIGH))
+
+        assert_true(a.clear_alert(p))
+        assert_equal(b.investigate_next(),p)
+
+    def test_should_not_clear_other_alerts_if_my_pri_is_high(self):
+        p = interfaces.Position(1,1)
+        a = self.A(p, 1)
+        b = self.A(p, 1)
+        assert_in(a,interfaces.Alertable.ALERTABLES)
+        assert_in(b,interfaces.Alertable.ALERTABLES)
+
+        assert_true(a.alert(p,interfaces.Alertable.PRI_HIGH))
+        assert_true(b.alert(p,interfaces.Alertable.PRI_MED))
+
+        assert_true(a.clear_alert(p))
+        assert_equal(b.investigate_next(),p)
+
+    def test_should_clear_other_alerts_if_their_pri_is_not_high(self):
+        p = interfaces.Position(1,1)
+        a = self.A(p, 1)
+        b = self.A(p, 1)
+        assert_in(a,interfaces.Alertable.ALERTABLES)
+        assert_in(b,interfaces.Alertable.ALERTABLES)
+
+        assert_true(a.alert(p,interfaces.Alertable.PRI_LOW))
+        assert_true(b.alert(p,interfaces.Alertable.PRI_MED))
+
+        assert_true(a.clear_alert(p))
+        assert_is(b.investigate_next(),None)
+
+    def test_should_return_false_if_no_alerts_cleared(self):
+        p = interfaces.Position(1,1)
+        a = self.A(p, 1)
+        assert_in(a,interfaces.Alertable.ALERTABLES)
+        assert_false(a.clear_alert(p))
+
+    def test_should_give_high_priority_pos_to_investigate_next(self):
+        p1 = interfaces.Position(1,2)
+        p2 = interfaces.Position(2,1)
+        a = self.A(interfaces.Position(1,1), 2)
+        assert_in(a,interfaces.Alertable.ALERTABLES)
+
+        assert_true(a.alert(p1,interfaces.Alertable.PRI_HIGH))
+        assert_true(a.alert(p2,interfaces.Alertable.PRI_LOW))
+
+        assert_equal(a.investigate_next(),p1)
+        assert_equal(a.investigate_next(),p2)
+        assert_equal(a.investigate_next(),None)
+
+    def test_should_give_med_pri_pos_to_investigate_if_no_high(self):
+        p1 = interfaces.Position(1,2)
+        p2 = interfaces.Position(2,1)
+        a = self.A(interfaces.Position(1,1), 2)
+        assert_in(a,interfaces.Alertable.ALERTABLES)
+
+        assert_true(a.alert(p1,interfaces.Alertable.PRI_MED))
+        assert_true(a.alert(p2,interfaces.Alertable.PRI_LOW))
+
+        assert_equal(a.investigate_next(),p1)
+        assert_equal(a.investigate_next(),p2)
+        assert_equal(a.investigate_next(),None)
+
+    def test_should_give_low_pri_pos_to_investigate_if_no_med_or_high(self):
+        p1 = interfaces.Position(1,2)
+        a = self.A(interfaces.Position(1,1), 2)
+        assert_in(a,interfaces.Alertable.ALERTABLES)
+
+        assert_true(a.alert(p1,interfaces.Alertable.PRI_LOW))
+
+        assert_equal(a.investigate_next(),p1)
+        assert_equal(a.investigate_next(),None)
+
+

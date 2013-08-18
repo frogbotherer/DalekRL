@@ -691,10 +691,10 @@ class Alertable:
             if pos in il:
                 il.remove(pos)
                 r = True
-                if pri in (Alertable.PRI_LOW, Alertable.PRI_MED) and clear_others:
+                if clear_others and pri != Alertable.PRI_HIGH:
                     # clear from other priorities too
                     for a in Alertable.ALERTABLES:
-                        if not a is self:
+                        if not a is self and (pos in a.investigate_list[Alertable.PRI_LOW] or pos in a.investigate_list[Alertable.PRI_MED]):
                             a.clear_alert(pos, clear_others=False)
 
         return r
