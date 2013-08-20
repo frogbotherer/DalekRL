@@ -16,6 +16,7 @@ import maps
 import player
 import tiles
 import errors
+import ui
 
 class InterfaceTest(DalekTest):
     pass
@@ -1633,3 +1634,175 @@ class AlertableTest(InterfaceTest):
         assert_equal(a.investigate_next(),None)
 
 
+class TalkerTest(InterfaceTest):
+
+    class T(interfaces.Talker,interfaces.Shouter,interfaces.Mappable):
+        def __init__(self):
+            interfaces.Mappable.__init__(self,interfaces.Position(1,1),'x',libtcod.white)
+            interfaces.Shouter.__init__(self)
+            interfaces.Talker.__init__(self)
+
+    def setUp(self):
+        libtcod.random_get_float = Mock(return_value=0.1)
+        libtcod.random_get_int = Mock(return_value=0)
+        interfaces.Talker.stop_all_talk()
+
+    @patch('interfaces.Message')
+    def test_should_add_phrases_and_talk_based_on_key(self,M):
+        mock_message = M(spec=ui.Message)
+        libtcod.random_get_int = Mock(side_effect=[0,1,2,0,1,2,0,1,2])
+        t = self.T()
+        fixture = (
+            ('1',    ['1','2','3']),
+            (2,      ['4','5','6']),
+            (None,   ['7','8','9']),
+            )
+        for (k, phrases) in fixture:
+            t.add_phrases(k,phrases,1.0)
+
+        for (k, phrases) in fixture:
+            for p in phrases:
+                assert_false( t.is_talking )
+                assert_true( t.talk(k) )
+                assert_true( t.is_talking )
+                assert_equal( mock_message.text, p )
+                assert_true(mock_message.is_visible)
+
+                t.stop_talk()
+
+    @patch('interfaces.Message')
+    def test_should_overwrite_phrases_if_added_with_same_key(self,M):
+        mock_message = M(spec=ui.Message)
+        libtcod.random_get_int = Mock(side_effect=[0,1,2,0,1,2,0,1,2])
+        t = self.T()
+        fixture = (
+            ('1',    ['1','2','3']),
+            ('1',    ['4','5','6']),
+            ('1',    ['7','8','9']),
+            )
+        for (k, phrases) in fixture:
+            t.add_phrases(k,phrases,1.0)
+
+        for (k, phrases) in fixture:
+            for p in ['7','8','9']:
+                assert_false( t.is_talking )
+                assert_true( t.talk(k) )
+                assert_true( t.is_talking )
+                assert_equal( mock_message.text, p )
+                assert_true(mock_message.is_visible)
+
+                t.stop_talk()
+
+    @patch('interfaces.Message')
+    def test_should_stop_talking_when_stop_talk_called(self,M):
+        mock_message = M(spec=ui.Message)
+        t = self.T()
+        t.add_phrases(None,['1'],1.0)
+        assert_false(t.is_talking)
+
+        assert_true(t.talk())
+        assert_true(t.is_talking)
+        assert_equal( mock_message.text, '1' )
+        assert_true(mock_message.is_visible)
+        assert_equal(len(interfaces.Talker.currently_talking),1,"%s"%interfaces.Talker.currently_talking)
+
+        assert_is(t.stop_talk(),None)
+
+        assert_false(t.is_talking)
+        assert_false(mock_message.is_visible)
+        assert_equal(len(interfaces.Talker.currently_talking),0)
+
+    @patch('interfaces.Message')
+    def test_should_stop_talking_even_when_not_talking(self,M):
+        mock_message = M(spec=ui.Message)
+        t = self.T()
+        t.add_phrases(None,['1'],1.0)
+        assert_false(t.is_talking)
+
+        assert_is(t.stop_talk(),None)
+
+        assert_false(t.is_talking)
+        assert_false(mock_message.is_visible)
+        assert_equal(len(interfaces.Talker.currently_talking),0)
+
+    @patch('interfaces.Message')
+    def test_should_talk_using_default_key_of_none(self,M):
+        mock_message = M(spec=ui.Message)
+        libtcod.random_get_int = Mock(side_effect=[0,1,2])
+        t = self.T()
+        fixture = (
+            ('1',    ['1','2','3']),
+            (2,      ['4','5','6']),
+            (None,   ['7','8','9']),
+            )
+        for (k, phrases) in fixture:
+            t.add_phrases(k,phrases,1.0)
+        assert_false(t.is_talking)
+
+        for phrase in ['7','8','9']:
+            assert_true(t.talk())
+            assert_true(t.is_talking)
+            assert_equal( mock_message.text, phrase )
+            assert_true(mock_message.is_visible)
+            assert_equal(len(interfaces.Talker.currently_talking),1)
+
+    @patch('interfaces.Message')
+    def test_should_not_talk_if_no_phrases_for_key(self,M):
+        mock_message = M(spec=ui.Message)
+        t = self.T()
+        t.add_phrases(None,['1'],1.0)
+        t.add_phrases('not none',[],1.0)
+        assert_false(t.is_talking)
+
+        assert_false(t.talk('not none'))
+        assert_false(t.is_talking)
+        assert_false(mock_message.is_visible)
+        assert_equal(len(interfaces.Talker.currently_talking),0)
+
+    @patch('interfaces.Message')
+    def test_should_not_talk_if_probability_for_key_is_zero(self,M):
+        mock_message = M(spec=ui.Message)
+        t = self.T()
+        t.add_phrases(None,['1'],0.0)
+        assert_false(t.is_talking)
+
+        assert_false(t.talk())
+        assert_false(t.is_talking)
+        assert_false(mock_message.is_visible)
+        assert_equal(len(interfaces.Talker.currently_talking),0)
+
+    @patch('interfaces.Message')
+    def test_should_not_talk_if_key_not_configured(self,M):
+        mock_message = M(spec=ui.Message)
+        t = self.T()
+        t.add_phrases(None,['1'],1.0)
+        assert_false(t.is_talking)
+
+        assert_false(t.talk('not none'))
+        assert_false(t.is_talking)
+        assert_false(mock_message.is_visible)
+        assert_equal(len(interfaces.Talker.currently_talking),0)
+
+    def test_should_stop_talking_if_talking_again_whilst_still_talking(self):
+        t = self.T()
+        t.stop_talk = Mock()
+        t.add_phrases(None,['1'],1.0)
+        assert_false(t.is_talking)
+
+        assert_true(t.talk())
+        assert_equal(t.stop_talk.call_count, 0)
+
+        assert_true(t.talk())
+        t.stop_talk.assert_called_once_with()
+
+    def test_should_use_phrase_probability_to_determine_whether_to_talk(self):
+        pass
+
+    def test_should_display_chat_box_centred_above_actor(self):
+        pass
+
+    def test_should_shout_out_if_required_to(self):
+        pass
+
+    def test_should_stop_all_talkers_from_talking(self):
+        pass

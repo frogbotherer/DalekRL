@@ -721,7 +721,7 @@ class CanSee:
 
 class Talker:
     """Mixin for objects that talk out loud"""
-    currently_talking = []
+    currently_talking = weakref.WeakSet()
 
     def __init__(self):
         self.__phrases = {}
@@ -744,13 +744,14 @@ class Talker:
         """Stop any talking activity immediately."""
         self.__chat.is_visible = False
         self.is_talking = False
-        self.currently_talking.remove(weakref.ref(self))
+        if self in self.currently_talking:
+            self.currently_talking.remove(self)
 
     def talk(self, key=None):
         """Talk out loud, using a randomly chosen phrase based on key."""
         if self.is_talking:
             self.stop_talk()
-        if not key in self.__phrases.keys():
+        if not key in self.__phrases.keys() or len(self.__phrases[key]['phrases']) == 0:
             return False
         if libtcod.random_get_float(None, 0.0, 1.0) < self.__phrases[key]['probability']:
             #assert key in self.__phrases.keys(), "Talker %s has no vocab for key %s"%(self,key)
@@ -758,7 +759,7 @@ class Talker:
             self.__chat.text = self.__phrases[key]['phrases'][libtcod.random_get_int(None, 0, len(self.__phrases[key]['phrases'])-1)]
             self.is_talking = True
             self.__chat.is_visible = True
-            self.currently_talking.append(weakref.ref(self))
+            self.currently_talking.add(self)
             if isinstance(self, Shouter) and self.__phrases[key]['is_shouting']:
                 self.shout()
             return True
@@ -767,12 +768,8 @@ class Talker:
     @staticmethod
     def stop_all_talk():
         """Clear list of objects currently talking."""
-        for tref in Talker.currently_talking:
-            t = tref()
-            if t is None:
-                Talker.currently_talking.remove(tref)
-            else:
-                t.stop_talk()
+        for t in Talker.currently_talking:
+            t.stop_talk()
 
 
 class Shouter(Mappable):
