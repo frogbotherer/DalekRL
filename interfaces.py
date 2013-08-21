@@ -203,8 +203,8 @@ class LightSource(Mappable):
         self.intensity          = intensity
         self.raw_light_colour   = light_colour
         self.light_enabled      = True
-        self.__tcod_light_map   = libtcod.map_new(radius*2+1, radius*2+1)
-        self.__tcod_light_image = libtcod.image_new(radius*2+1, radius*2+1)
+        self.__tcod_light_map   = libtcod.map_new(radius * 2 + 1, radius * 2 + 1)
+        self.__tcod_light_image = libtcod.image_new(radius * 2 + 1, radius * 2 + 1)
 
     @property
     def radius(self):
@@ -220,14 +220,14 @@ class LightSource(Mappable):
         self.close()
         self.light_enabled      = e
         self._radius            = r
-        self.__tcod_light_map   = libtcod.map_new(r*2+1, r*2+1)
-        self.__tcod_light_image = libtcod.image_new(r*2+1, r*2+1)
+        self.__tcod_light_map   = libtcod.map_new(r * 2 + 1, r * 2 + 1)
+        self.__tcod_light_image = libtcod.image_new(r * 2 + 1, r * 2 + 1)
         self.reset_map()
 
     def prepare_fov(self, light_walls=False):
         """Calculate light's distribution"""
-        libtcod.map_compute_fov(self.__tcod_light_map, 
-                                self.radius+1, self.radius+1, self.radius,
+        libtcod.map_compute_fov(self.__tcod_light_map,
+                                self.radius + 1, self.radius + 1, self.radius,
                                 light_walls, libtcod.FOV_BASIC)
 
     def reset_map(self, pos=None):
@@ -272,8 +272,8 @@ class LightSource(Mappable):
                             is_transparent = False
                             break
                     libtcod.map_set_properties(self.__tcod_light_map,
-                                               self.radius+p.x-self.pos.x,
-                                               self.radius+p.y-self.pos.y,
+                                               self.radius + p.x - self.pos.x,
+                                               self.radius + p.y - self.pos.y,
                                                is_transparent, True)
 
             if skip_calc:
@@ -300,11 +300,11 @@ class LightSource(Mappable):
             for y in range(r * 2 + 1):
                 #print("(%d,%d)"%(x,y))
                 if libtcod.map_is_in_fov(self.__tcod_light_map, x, y):
-                    d = hypot(r-x, r-y)
+                    d = hypot(r - x, r - y)
                     if d > rd2:
                         libtcod.image_put_pixel(self.__tcod_light_image,
                                                 x, y,
-                                                i1 * (1.0 - (d-rd2)/rd2))
+                                                i1 * (1.0 - (d - rd2) / rd2))
                         #print("  %s %s"%(d,i1*(1.0-(d-rd2)/rd2)))
                     else:
                         libtcod.image_put_pixel(self.__tcod_light_image,
@@ -315,9 +315,9 @@ class LightSource(Mappable):
     def blit_to(self, tcod_console, ox=0, oy=0, sx=-1, sy=-1):
         """Copy lighting information to libtcod console"""
         libtcod.image_blit_rect(self.__tcod_light_image, tcod_console,
-                                self.pos.x + ox - self.radius, 
-                                self.pos.y + oy - self.radius, 
-                                #self.radius*2+1-ox, self.radius*2+1-oy, 
+                                self.pos.x + ox - self.radius,
+                                self.pos.y + oy - self.radius,
+                                #self.radius*2+1-ox, self.radius*2+1-oy,
                                 sx, sy,
                                 libtcod.BKGND_ADD)
 
@@ -336,8 +336,8 @@ class LightSource(Mappable):
         #print("%d,%d"%(1+self.radius+pos.x-self.pos.x,1+self.radius+pos.y-self.pos.y))
 
         return libtcod.map_is_in_fov(self.__tcod_light_map,
-                                     self.radius+pos.x-self.pos.x,
-                                     self.radius+pos.y-self.pos.y)
+                                     self.radius + pos.x - self.pos.x,
+                                     self.radius + pos.y - self.pos.y)
 
     def close(self):
         """Clean up lighting assets prior to deleting object"""
@@ -357,8 +357,8 @@ class FlatLightSource(LightSource):
         self.intensity          = intensity
         self.raw_light_colour   = light_colour
         self.light_enabled      = True
-        self.__tcod_light_map   = libtcod.map_new(size.x+2, size.y+2)
-        self.__tcod_light_image = libtcod.image_new(size.x+2, size.y+2)
+        self.__tcod_light_map   = libtcod.map_new(size.x + 2, size.y + 2)
+        self.__tcod_light_image = libtcod.image_new(size.x + 2, size.y + 2)
 
     @property
     def radius(self):
@@ -468,8 +468,8 @@ class TurnTaker:
     def add_turntaker(t):
         """Add a turn taker to the list that take a turn each round"""
         # might be a faster way to do this
-        TurnTaker.turn_takers.append(weakref.ref(t))        
-        TurnTaker.turn_takers.sort( key = lambda x: x() is None and 100000 or x().initiative )
+        TurnTaker.turn_takers.append(weakref.ref(t))
+        TurnTaker.turn_takers.sort(key=lambda x: x() is None and 100000 or x().initiative)
 
     @staticmethod
     def clear_turntaker(t, count=1):
@@ -531,7 +531,7 @@ class Transparent(Mappable):
             #v.x /= m; v.y /= m
             v.x = v.x > 0 and 1 or v.x < 0 and -1 or 0
             v.y = v.y > 0 and 1 or v.y < 0 and -1 or 0
-            return self.map.light_level(self.pos+v)
+            return self.map.light_level(self.pos + v)
 
     @property
     def light_colour(self):
@@ -546,7 +546,7 @@ class Transparent(Mappable):
             #v.x //= m; v.y //= m
             v.x = v.x > 0 and 1 or v.x < 0 and -1 or 0
             v.y = v.y > 0 and 1 or v.y < 0 and -1 or 0
-            return self.map.light_colour(self.pos+v)
+            return self.map.light_colour(self.pos + v)
 
 
 class StatusEffect:
@@ -659,7 +659,7 @@ class Activatable:
         return True
 
 
-class Alertable:
+class Alertable(Mappable):
     """Mixin for objects that can be alerted to things"""
     PRI_LOW  = 0
     PRI_MED  = 1
@@ -668,18 +668,18 @@ class Alertable:
 
     def __init__(self, listen_radius=10):
         self.listen_radius    = listen_radius
-        self.investigate_list = { Alertable.PRI_LOW:[], Alertable.PRI_MED:[], Alertable.PRI_HIGH:[] }
+        self.investigate_list = {Alertable.PRI_LOW: [], Alertable.PRI_MED: [], Alertable.PRI_HIGH: []}
         Alertable.ALERTABLES.add(self)
 
     def alert(self, to_pos, priority=None):
         """Alert object to given position with optional priority (see PRI_* attributes)"""
-        if hasattr(self, 'pos') and to_pos.distance_to(self.pos) > self.listen_radius:
+        if to_pos.distance_to(self.pos) > self.listen_radius:
             return False
 
         if priority is None:
             priority = Alertable.PRI_MED
 
-        print("%s alerted to %s, pri %d"%(self, to_pos, priority))
+        #print("%s alerted to %s, pri %d"%(self, to_pos, priority))
         self.investigate_list[priority].append(to_pos)
 
         return True
@@ -694,7 +694,8 @@ class Alertable:
                 if clear_others and pri != Alertable.PRI_HIGH:
                     # clear from other priorities too
                     for a in Alertable.ALERTABLES:
-                        if not a is self and (pos in a.investigate_list[Alertable.PRI_LOW] or pos in a.investigate_list[Alertable.PRI_MED]):
+                        if not a is self and \
+                                (pos in a.investigate_list[Alertable.PRI_LOW] or pos in a.investigate_list[Alertable.PRI_MED]):
                             a.clear_alert(pos, clear_others=False)
 
         return r
@@ -719,7 +720,23 @@ class CanSee:
         raise NotImplementedError
 
 
-class Talker:
+class Shouter(Mappable):
+    """Mixin for things that can alert others to something (e.g. alarms)"""
+    def __init__(self, audible_radius=10):
+        # NB. mixin: doesn't init Mappable directly
+        self.audible_radius = audible_radius
+
+    def shout(self, at_pos=None, priority=None):
+        """Shout out, alerting all alertables to at_pos, or Mappable.pos if omitted.
+        Set priority to increase importance of shout."""
+        if at_pos is None:
+            at_pos = self.pos
+
+        for a in self.map.find_all_within_r(self, Alertable, self.audible_radius):
+            a.alert(at_pos, priority)
+
+
+class Talker(Shouter):
     """Mixin for objects that talk out loud"""
     currently_talking = weakref.WeakSet()
 
@@ -731,7 +748,8 @@ class Talker:
         self.__chat.timeout = 2.0
 
     def add_phrases(self, key, phrases, probability=0.05, is_shouting=False):
-        """Associate list of phrases with a key (e.g. a monster AI state). Probability gives chance of a phrase being used.
+        """Associate list of phrases with a key (e.g. a monster AI state).
+        probability gives chance of a phrase being used.
         If isinstance(self, Shouter) and is_shouting set, triggering one of these phrases will call self.shout()"""
         if not key in self.__phrases.keys():
             self.__phrases[key] = {}
@@ -756,38 +774,23 @@ class Talker:
         if libtcod.random_get_float(None, 0.0, 1.0) < self.__phrases[key]['probability']:
             #assert key in self.__phrases.keys(), "Talker %s has no vocab for key %s"%(self,key)
             self.__chat.pos = self.pos - (0, 1)
-            self.__chat.text = self.__phrases[key]['phrases'][libtcod.random_get_int(None, 0, len(self.__phrases[key]['phrases'])-1)]
+            self.__chat.text = self.__phrases[key]['phrases'][
+                libtcod.random_get_int(None, 0, len(self.__phrases[key]['phrases']) - 1)
+                ]
             self.is_talking = True
             self.__chat.is_visible = True
             self.currently_talking.add(self)
-            if isinstance(self, Shouter) and self.__phrases[key]['is_shouting']:
+            if self.__phrases[key]['is_shouting']:
                 self.shout()
             return True
         return False
-    
+
     @staticmethod
     def stop_all_talk():
         """Clear list of objects currently talking."""
-        # TODO: this can chuck a runtime error due to a bug in Python 3.2
+        # NB: this can chuck a runtime error due to a bug in Python 3.2
         # see http://bugs.python.org/issue14159
         #for t in Talker.currently_talking:
         #    t.stop_talk()
-        while( len(Talker.currently_talking) > 0 ):
+        while(len(Talker.currently_talking) > 0):
             Talker.currently_talking.pop().stop_talk()
-
-
-class Shouter(Mappable):
-    """Mixin for things that can alert others to something (e.g. alarms)"""
-    def __init__(self, audible_radius=10):
-        # NB. mixin: doesn't init Mappable directly
-        self.audible_radius = audible_radius
-
-    def shout(self, at_pos=None, priority=None):
-        """Shout out, alerting all alertables to at_pos, or Mappable.pos if omitted.
-        Set priority to increase importance of shout."""
-        if at_pos is None:
-            at_pos = self.pos
-
-        for a in self.map.find_all_within_r(self, Alertable, self.audible_radius):
-            a.alert(at_pos, priority)
-
