@@ -768,8 +768,12 @@ class Talker:
     @staticmethod
     def stop_all_talk():
         """Clear list of objects currently talking."""
-        for t in Talker.currently_talking:
-            t.stop_talk()
+        # TODO: this can chuck a runtime error due to a bug in Python 3.2
+        # see http://bugs.python.org/issue14159
+        #for t in Talker.currently_talking:
+        #    t.stop_talk()
+        while( len(Talker.currently_talking) > 0 ):
+            Talker.currently_talking.pop().stop_talk()
 
 
 class Shouter(Mappable):

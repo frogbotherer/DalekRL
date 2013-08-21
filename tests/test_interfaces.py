@@ -1796,13 +1796,65 @@ class TalkerTest(InterfaceTest):
         t.stop_talk.assert_called_once_with()
 
     def test_should_use_phrase_probability_to_determine_whether_to_talk(self):
-        pass
+        libtcod.random_get_float = Mock(return_value=0.5)
+        t = self.T()
+        t.add_phrases('1',['1'],0.0)
+        t.add_phrases('2',['2'],0.4)
+        t.add_phrases('3',['3'],0.5)
+        t.add_phrases('4',['4'],0.6)
+        t.add_phrases('5',['5'],1.0)
+        assert_false(t.talk('1'))
+        assert_false(t.talk('2'))
+        assert_false(t.talk('3'))
+        assert_true(t.talk('4'))
+        assert_true(t.talk('5'))
 
-    def test_should_display_chat_box_centred_above_actor(self):
-        pass
+    @patch('interfaces.Message')
+    def test_should_display_chat_box_centred_above_actor(self,M):
+        mock_message = M(spec=ui.Message)
+        t = self.T()
+        t.add_phrases(None,['1'],1.0)
+
+        assert_true(t.talk())
+
+        assert_true(mock_message.is_visible)
+        assert_equal(mock_message.pos, (1,0))
+        assert_equal(mock_message.text,'1')
 
     def test_should_shout_out_if_required_to(self):
-        pass
+        t1 = self.T()
+        t1.add_phrases(None,['1'],1.0)
+        t1.shout = Mock()
+        t2 = self.T()
+        t2.add_phrases(None,['2'],1.0,True)
+        t2.shout = Mock()
+
+        assert_true(t1.talk())
+        assert_true(t2.talk())
+
+        assert_equal(t1.shout.call_count,0)
+        t2.shout.assert_called_once_with()
 
     def test_should_stop_all_talkers_from_talking(self):
-        pass
+        t1 = self.T()
+        t1.add_phrases(None,['1'],1.0)
+        t2 = self.T()
+        t2.add_phrases(None,['2'],1.0)
+        t3 = self.T()
+        t3.add_phrases(None,['2'],1.0)
+
+        assert_true(t1.talk())
+        assert_true(t2.talk())
+        assert_true(t1.is_talking)
+        assert_true(t2.is_talking)
+        assert_false(t3.is_talking)
+
+        assert_equal(len(interfaces.Talker.currently_talking),2)
+        assert_in(t1,interfaces.Talker.currently_talking)
+        assert_in(t2,interfaces.Talker.currently_talking)
+
+        assert_is(interfaces.Talker.stop_all_talk(),None)
+        assert_false(t1.is_talking)
+        assert_false(t2.is_talking)
+        assert_false(t3.is_talking)
+        assert_equal(len(interfaces.Talker.currently_talking),0)
