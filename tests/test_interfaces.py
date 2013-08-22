@@ -1908,7 +1908,7 @@ class ShouterTest(InterfaceTest):
             assert_is(s.shout(at_thing), None)
             for a in expected_alerts:
                 a.alert.assert_called_once_with(pos,None)
-            s.map.find_all_within_r.assert_called_once_with(at_thing,interfaces.Alertable,r)
+            s.map.find_all_within_r.assert_called_once_with(s,interfaces.Alertable,r)
 
     def test_should_alert_with_given_priority(self):
         for (pos, ps, r, pri) in (
@@ -1925,7 +1925,7 @@ class ShouterTest(InterfaceTest):
             assert_is(s.shout(at_thing,pri), None)
             for a in expected_alerts:
                 a.alert.assert_called_once_with(pos,pri)
-            s.map.find_all_within_r.assert_called_once_with(at_thing,interfaces.Alertable,r)
+            s.map.find_all_within_r.assert_called_once_with(s,interfaces.Alertable,r)
 
     def test_should_not_alert_self(self):
         for (pos, ps, r) in (
@@ -1943,7 +1943,7 @@ class ShouterTest(InterfaceTest):
             assert_is(s.shout(at_thing), None)
             for a in expected_alerts:
                 a.alert.assert_called_once_with(pos,None)
-            s.map.find_all_within_r.assert_called_once_with(at_thing,interfaces.Alertable,r)
+            s.map.find_all_within_r.assert_called_once_with(s,interfaces.Alertable,r)
             assert_equal(s.alert.call_count, 0)
 
     def test_should_not_alert_target_of_shout(self):
@@ -1962,7 +1962,7 @@ class ShouterTest(InterfaceTest):
             assert_is(s.shout(at_thing), None)
             for a in expected_alerts:
                 a.alert.assert_called_once_with(pos,None)
-            s.map.find_all_within_r.assert_called_once_with(at_thing,interfaces.Alertable,r)
+            s.map.find_all_within_r.assert_called_once_with(s,interfaces.Alertable,r)
 
             assert_equal(at_thing.alert.call_count, 0)
 

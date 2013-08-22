@@ -732,7 +732,8 @@ class Shouter(Mappable):
         if at_thing is None:
             at_thing = self
 
-        for a in self.map.find_all_within_r(at_thing, Alertable, self.audible_radius):
+        # alert things within your audible radius, NOT the target's
+        for a in self.map.find_all_within_r(self, Alertable, self.audible_radius):
             # don't alert yourself [TODO: this is probably right]
             # ... or the thing you're alerting about
             if not (a is self or a is at_thing):
