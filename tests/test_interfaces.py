@@ -1858,3 +1858,111 @@ class TalkerTest(InterfaceTest):
         assert_false(t2.is_talking)
         assert_false(t3.is_talking)
         assert_equal(len(interfaces.Talker.currently_talking),0)
+
+
+class ShouterTest(InterfaceTest):
+    class S(interfaces.Shouter,interfaces.Alertable,interfaces.Mappable):
+        def __init__(self,pos,audible_radius):
+            interfaces.Mappable.__init__(self,pos,'x',libtcod.white)
+            interfaces.Alertable.__init__(self,audible_radius)
+            interfaces.Shouter.__init__(self,audible_radius)
+
+    class A(interfaces.Alertable,interfaces.Mappable):
+        def __init__(self,pos,listen_radius=10):
+            interfaces.Mappable.__init__(self,pos,'a',libtcod.white)
+            interfaces.Alertable.__init__(self,listen_radius)
+
+    def test_should_alert_all_within_audible_radius(self):
+        for (pos, ps, r) in (
+            ( (2,2), [(1,1),(1,3),(3,1),(3,3)], 2 ),
+            ( (2,2), [(0,2),(2,0),(2,4),(4,2)], 2 ),
+            ( (6,6), [(4,4),(6,6),(7,7),(8,8)], 3 ),
+            ( (6,6), [], 3 ),
+            ):
+            s = self.S(pos,r)
+            expected_alerts = [Mock(spec=interfaces.Alertable,pos=p) for p in ps]
+            s.map = Mock(spec=maps.Map)
+            s.map.find_all_within_r = Mock(return_value=expected_alerts)
+            assert_is(s.shout(), None)
+            for a in expected_alerts:
+                a.alert.assert_called_once_with(pos,None)
+            s.map.find_all_within_r.assert_called_once_with(s,interfaces.Alertable,r)
+
+    #def test_should_not_alert_any_outside_radius(self):
+    #    pass
+    #    ... because of the way the previous test works, by mocking
+    #    find_all_within_r, this test is effectively redundant
+
+    def test_should_alert_all_within_radius_to_pos(self):
+        for (pos, ps, r) in (
+            ( (2,2), [(1,1),(1,3),(3,1),(3,3)], 2 ),
+            ( (2,2), [(0,2),(2,0),(2,4),(4,2)], 2 ),
+            ( (6,6), [(4,4),(6,6),(7,7),(8,8)], 3 ),
+            ( (6,6), [], 3 ),
+            ):
+            s = self.S(interfaces.Position(25,25),r)
+            expected_alerts = [Mock(spec=interfaces.Alertable,pos=p) for p in ps]
+            s.map = Mock(spec=maps.Map)
+            s.map.find_all_within_r = Mock(return_value=expected_alerts)
+            at_thing = Mock(spec=interfaces.Mappable,pos=pos)
+            assert_is(s.shout(at_thing), None)
+            for a in expected_alerts:
+                a.alert.assert_called_once_with(pos,None)
+            s.map.find_all_within_r.assert_called_once_with(at_thing,interfaces.Alertable,r)
+
+    def test_should_alert_with_given_priority(self):
+        for (pos, ps, r, pri) in (
+            ( (2,2), [(1,1),(1,3),(3,1),(3,3)], 2, interfaces.Alertable.PRI_HIGH ),
+            ( (2,2), [(0,2),(2,0),(2,4),(4,2)], 2, interfaces.Alertable.PRI_MED ),
+            ( (6,6), [(4,4),(6,6),(7,7),(8,8)], 3, interfaces.Alertable.PRI_LOW ),
+            ( (6,6), [], 3, interfaces.Alertable.PRI_MED ),
+            ):
+            s = self.S(interfaces.Position(25,25),r)
+            expected_alerts = [Mock(spec=interfaces.Alertable,pos=p) for p in ps]
+            s.map = Mock(spec=maps.Map)
+            s.map.find_all_within_r = Mock(return_value=expected_alerts)
+            at_thing = Mock(spec=interfaces.Mappable,pos=pos)
+            assert_is(s.shout(at_thing,pri), None)
+            for a in expected_alerts:
+                a.alert.assert_called_once_with(pos,pri)
+            s.map.find_all_within_r.assert_called_once_with(at_thing,interfaces.Alertable,r)
+
+    def test_should_not_alert_self(self):
+        for (pos, ps, r) in (
+            ( (2,2), [(1,1),(1,3),(3,1),(3,3)], 2 ),
+            ( (2,2), [(0,2),(2,0),(2,4),(4,2)], 2 ),
+            ( (6,6), [(4,4),(6,6),(7,7),(8,8)], 3 ),
+            ( (6,6), [], 3 ),
+            ):
+            s = self.S(pos,r)
+            s.alert = Mock()
+            expected_alerts = [Mock(spec=interfaces.Alertable,pos=p) for p in ps]
+            s.map = Mock(spec=maps.Map)
+            s.map.find_all_within_r = Mock(return_value=expected_alerts+[s])
+            at_thing = Mock(spec=interfaces.Mappable,pos=pos)
+            assert_is(s.shout(at_thing), None)
+            for a in expected_alerts:
+                a.alert.assert_called_once_with(pos,None)
+            s.map.find_all_within_r.assert_called_once_with(at_thing,interfaces.Alertable,r)
+            assert_equal(s.alert.call_count, 0)
+
+    def test_should_not_alert_target_of_shout(self):
+        for (pos, ps, r) in (
+            ( (2,2), [(1,1),(1,3),(3,1),(3,3)], 2 ),
+            ( (2,2), [(0,2),(2,0),(2,4),(4,2)], 2 ),
+            ( (6,6), [(4,4),(6,6),(7,7),(8,8)], 3 ),
+            ( (6,6), [], 3 ),
+            ):
+            s = self.S(interfaces.Position(25,25),r)
+            at_thing = Mock(spec=interfaces.Alertable,pos=pos)
+
+            expected_alerts = [Mock(spec=interfaces.Alertable,pos=p) for p in ps]
+            s.map = Mock(spec=maps.Map)
+            s.map.find_all_within_r = Mock(return_value=expected_alerts+[at_thing])
+            assert_is(s.shout(at_thing), None)
+            for a in expected_alerts:
+                a.alert.assert_called_once_with(pos,None)
+            s.map.find_all_within_r.assert_called_once_with(at_thing,interfaces.Alertable,r)
+
+            assert_equal(at_thing.alert.call_count, 0)
+

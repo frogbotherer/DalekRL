@@ -336,7 +336,7 @@ class DalekAI(AI):
         # otherwise chase player if visible
         elif self.map.can_see(self,self.map.player,0.5):
             if not isinstance(self.state,MS_SeekingPlayer):
-                self.shout(self.map.player.pos,priority=Alertable.PRI_HIGH)
+                self.shout(self.map.player,priority=Alertable.PRI_HIGH)
                 return MS_SeekingPlayer(self)
 
         # otherwise: if was chasing and now lost player, home on last loc

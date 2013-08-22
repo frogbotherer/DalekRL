@@ -726,14 +726,17 @@ class Shouter(Mappable):
         # NB. mixin: doesn't init Mappable directly
         self.audible_radius = audible_radius
 
-    def shout(self, at_pos=None, priority=None):
+    def shout(self, at_thing=None, priority=None):
         """Shout out, alerting all alertables to at_pos, or Mappable.pos if omitted.
         Set priority to increase importance of shout."""
-        if at_pos is None:
-            at_pos = self.pos
+        if at_thing is None:
+            at_thing = self
 
-        for a in self.map.find_all_within_r(self, Alertable, self.audible_radius):
-            a.alert(at_pos, priority)
+        for a in self.map.find_all_within_r(at_thing, Alertable, self.audible_radius):
+            # don't alert yourself [TODO: this is probably right]
+            # ... or the thing you're alerting about
+            if not (a is self or a is at_thing):
+                a.alert(at_thing.pos, priority)
 
 
 class Talker(Shouter):
