@@ -6,11 +6,11 @@ from monsters import Monster
 from player import Player
 from interfaces import Mappable, Position, Traversable, Transparent, StatusEffect, LightSource
 from items import Item, Evidence
-from tiles import Tile, Wall, Floor, Light, FlatLight, Door, StairsDown, StairsUp, FloorTeleport, MapPattern, CanHaveEvidence
-from errors import TodoError, InvalidMoveError
+from tiles import Tile, Wall, Floor, Light, FlatLight, Door, StairsDown, StairsUp, MapPattern, CanHaveEvidence
+from errors import InvalidMoveError
 
 from functools import reduce
-import weakref
+
 
 class Map:
     """Map of Mappable objects, representing the game map currently in play."""
@@ -28,12 +28,12 @@ class Map:
             }
         self.map_rng = libtcod.random_new_from_seed(seed)
         self.size = size
-        self.__tcod_map_empty             = libtcod.map_new( self.size.x, self.size.y ) # for xray, audio, ghosts(?)
-        libtcod.map_clear( self.__tcod_map_empty, True, True )               # clear the map to be traversable and visible
-        self.__tcod_map                   = libtcod.map_new( self.size.x, self.size.y ) # for pathing and rendering
+        self.__tcod_map_empty             = libtcod.map_new(self.size.x, self.size.y) # for xray, audio, ghosts(?)
+        libtcod.map_clear(self.__tcod_map_empty, True, True)               # clear the map to be traversable and visible
+        self.__tcod_map                   = libtcod.map_new(self.size.x, self.size.y) # for pathing and rendering
         self.__tcod_pathfinder            = None
-        self.__tcod_static_light_console  = libtcod.console_new( self.size.x, self.size.y )  # stores cumulative light data
-        self.__tcod_moving_light_console  = libtcod.console_new( self.size.x, self.size.y )
+        self.__tcod_static_light_console  = libtcod.console_new(self.size.x, self.size.y)  # stores cumulative light data
+        self.__tcod_moving_light_console  = libtcod.console_new(self.size.x, self.size.y)
         libtcod.console_set_default_background(self.__tcod_static_light_console, Mappable.LIGHT_L_CLAMP)
         #litbcod.console_set_default_background(self.__tcod_moving_light_console, Mappable.LIGHT_L_CLAMP)
         self._dirty_pos                   = []
@@ -43,7 +43,7 @@ class Map:
         for l in self.__layer_order:
             if isinstance(obj, l):
                 return l
-        assert False, "No map layer for %s"%obj
+        assert False, "No map layer for %s" % obj
 
     def add(self, obj, layer=None):
         """add object obj to given map layer. If omitted, relevant layer is calculated"""
@@ -69,7 +69,7 @@ class Map:
     def move(self, obj, pos, layer=None):
         """move object obj on map to position pos. Provide correct layer for more efficient calculation.
         NB. setting a Mappable's pos directly will break stuff."""
-        assert isinstance(obj,Mappable), "%s cannot appear on map" % obj
+        assert isinstance(obj, Mappable), "%s cannot appear on map" % obj
         r = 0.0
 
         # check that destination is within map bounds
@@ -147,14 +147,15 @@ class Map:
                 ret.append(o)
         return ret
 
-    def find_random_clear(self,rng=None):
+    def find_random_clear(self, rng=None):
         """find random clear cell in map, using given RNG, or TCOD default if none supplied"""
         # assumes that 2+ tiles in the same space means a door/crate/what-have-you
         occupied = list(self.__layers[Player].keys()) + list(self.__layers[Monster].keys()) \
-                 + [t[0] for t in self.__layers[Tile].items() if t[1][0].blocks_movement() and len(t[1]) == 0]
+            + [t[0] for t in self.__layers[Tile].items() if t[1][0].blocks_movement() and len(t[1]) == 0]
 
         while 1:
-            p = Position(libtcod.random_get_int(rng, 0, self.size.x - 1), libtcod.random_get_int(rng, 0, self.size.y - 1))
+            p = Position(libtcod.random_get_int(rng, 0, self.size.x - 1),
+                         libtcod.random_get_int(rng, 0, self.size.y - 1))
             if not p in occupied and not self.is_blocked(p):
                 return p
 
@@ -216,7 +217,7 @@ class Map:
         self.recalculate_lighting(self.player.pos, statics=False)
 
     def recalculate_paths(self, pos=None, is_for_mapping=False, force_now=False):
-        """Recalculates pathing information. If a list of pos given, will assume only those positions have changed state.
+        """Recalculates pathing information. If a list of pos given, assume only those positions have changed state.
         If is_for_mapping is set, don't count things like teleports as traversable.
         If force_now not set, flag positions as dirty but do no calculations yet"""
         #print("%d: RECALCULATING PATHS%s!"%(self.player.turns,pos is None and " FOR ALL" or " AT %s"%pos))
@@ -260,7 +261,7 @@ class Map:
                 elif reset:
                     for t in ts:
                         t.visible_to_player = False
-                
+
     def recalculate_lighting(self, pos=None, statics=True):
         """recalculate lighting of each mappable. pos indicates position(s) that has changed transparency.
         Set statics to false if only calculating moving light sources"""
@@ -296,12 +297,14 @@ class Map:
         if isinstance(obj, StatusEffect) and obj.has_effect(StatusEffect.HIDDEN_IN_SHADOW):
             return self.light_level(obj.pos) >= LightSource.INTENSITY_VISIBLE * 2.0
         else:
-            return self.light_level(obj.pos) >= LightSource.INTENSITY_VISIBLE #INTENSITY_L_CLAMP
+            return self.light_level(obj.pos) >= LightSource.INTENSITY_VISIBLE  # INTENSITY_L_CLAMP
 
     def light_level(self, pos):
         """returns a float representing light level/colour at pos"""
-        return libtcod.color_get_hsv(libtcod.console_get_char_background(self.__tcod_static_light_console, pos.x, pos.y))[2] \
-            + libtcod.color_get_hsv(libtcod.console_get_char_background(self.__tcod_moving_light_console, pos.x, pos.y))[2]
+        return libtcod.color_get_hsv(libtcod.console_get_char_background(
+                self.__tcod_static_light_console, pos.x, pos.y))[2] \
+            + libtcod.color_get_hsv(libtcod.console_get_char_background(
+                self.__tcod_moving_light_console, pos.x, pos.y))[2]
 
     def light_colour(self, pos):
         """returns colour of light at pos, incorporating intensity"""
@@ -327,10 +330,13 @@ class Map:
                 return False
             #if angle_of_vis<1.0:
             #    print("angle from %s to %s is %f"%(obj,self.player,(obj.pos-obj.last_pos).angle_to(self.player.pos-obj.pos)))
-            # 
+            #
             #    travelling S:     pos-last_pos == (0,1)
             #    player in-front:  player.pos-obj.pos  must (0, >0)
-            return self.player.is_visible and self.is_lit(self.player) and libtcod.map_is_in_fov(self.__tcod_map, obj.pos.x, obj.pos.y) and (angle_of_vis == 1.0 or (obj.pos - obj.last_pos).angle_to(self.player.pos - obj.pos) <= angle_of_vis)
+            return self.player.is_visible \
+                and self.is_lit(self.player) \
+                and libtcod.map_is_in_fov(self.__tcod_map, obj.pos.x, obj.pos.y) \
+                and (angle_of_vis == 1.0 or (obj.pos - obj.last_pos).angle_to(self.player.pos - obj.pos) <= angle_of_vis)
         elif obj is self.player:
             return obj.is_visible and self.is_lit(obj) and libtcod.map_is_in_fov(self.__tcod_map, obj.pos.x, obj.pos.y)
         else:
@@ -356,7 +362,7 @@ class Map:
 
         p = []
         for i in range(steps):
-            x,y = libtcod.dijkstra_get(self.__tcod_pathfinder, i)
+            x, y = libtcod.dijkstra_get(self.__tcod_pathfinder, i)
             p.append(Position(x, y))
 
         return p
@@ -408,7 +414,7 @@ class Map:
         if p <= 0.0:
             e.pos = self.find_random_clear(self.map_rng)
             self.add(e)
-        
+
         else:
             i = -1
             while p > 0:
@@ -422,7 +428,7 @@ class Map:
         down_pos = self.find_random_clear(self.map_rng)
 
         self.recalculate_paths(is_for_mapping=True)
-        while len(self.get_path(up_pos,down_pos)) < 1:
+        while len(self.get_path(up_pos, down_pos)) < 1:
             up_pos   = self.find_random_clear(self.map_rng)
             down_pos = self.find_random_clear(self.map_rng)
 
@@ -440,7 +446,7 @@ class Map:
         #for (T,ps) in Tile.get_all_tiles(self.map_rng,map_array).items():
         Tgat = Tile.get_all_tiles(self.map_rng, map_array)
         Ts = [k for k in Tgat.keys()]
-        Ts.sort(key = lambda T: T.__name__)
+        Ts.sort(key=lambda T: T.__name__)
         for T in Ts:
             ps = Tgat[T]
             T_wanted = libtcod.random_get_int(self.map_rng, T.place_min, T.place_max)
@@ -462,12 +468,13 @@ class Map:
         self.player.reset_fov()
 
     @staticmethod
-    def random(seed,size,player):
+    def random(seed, size, player):
         """return a random map of size for player using given RNG seed"""
-        print(" -- MAP SEED %d --" %seed)
+        print(" -- MAP SEED %d --" % seed)
         #return EmptyMap(seed,size,player)
         #return DalekMap(seed,size,player)
-        return TypeAMap(seed,size,player)
+        return TypeAMap(seed, size, player)
+
 
 class EmptyMap(Map):
     """Empty map, no monsters or items"""
@@ -544,10 +551,10 @@ class TypeAMap(Map):
      * 80-90% of map space used
     """
 
-    COMPASS = { 'N': {'opposite':'S', 'clockwise':'E', 'anticlockwise':'W', 'adjacent':['W', 'E']},
-                'S': {'opposite':'N', 'clockwise':'W', 'anticlockwise':'E', 'adjacent':['W', 'E']},
-                'E': {'opposite':'W', 'clockwise':'S', 'anticlockwise':'N', 'adjacent':['N', 'S']},
-                'W': {'opposite':'E', 'clockwise':'N', 'anticlockwise':'S', 'adjacent':['N', 'S']},
+    COMPASS = { 'N': {'opposite': 'S', 'clockwise': 'E', 'anticlockwise': 'W', 'adjacent': ['W', 'E']},
+                'S': {'opposite': 'N', 'clockwise': 'W', 'anticlockwise': 'E', 'adjacent': ['W', 'E']},
+                'E': {'opposite': 'W', 'clockwise': 'S', 'anticlockwise': 'N', 'adjacent': ['N', 'S']},
+                'W': {'opposite': 'E', 'clockwise': 'N', 'anticlockwise': 'S', 'adjacent': ['N', 'S']},
                 }
 
     CORRIDOR_MAX_BENDS  = 4
@@ -602,11 +609,13 @@ class TypeAMap(Map):
             if self.direction is None:
                 return "Internal map element %d at %s, size %s. pos=%s" % (self.tile_id, self.pos, self.size, self.opos)
             else:
-                return "Internal map element %d at %s, size %s. pos=%s, dir=%s, len=%d" % (self.tile_id, self.pos, self.size, self.opos, self.direction, self.length)
+                return "Internal map element %d at %s, size %s. pos=%s, dir=%s, len=%d" % (
+                    self.tile_id, self.pos, self.size, self.opos, self.direction, self.length)
 
         def commit(self, m):
             """applies map element to 2d map array m"""
-            assert self.pos.x + self.size.x <= len(m) and self.pos.y + self.size.y <= len(m[0]), "Can't commit %s to grid size (%d,%d)" % (self, len(m), len(m[0]))
+            assert self.pos.x + self.size.x <= len(m) and self.pos.y + self.size.y <= len(m[0]), \
+                "Can't commit %s to grid size (%d,%d)" % (self, len(m), len(m[0]))
             #self.debug_print(".commit %s to grid size (%d,%d)"%(self,len(m),len(m[0])))
             for x in range(self.size.x):
                 for y in range(self.size.y):
@@ -666,7 +675,7 @@ class TypeAMap(Map):
 
     def _gen_get_dir_to_furthest_edge(self, pos):
         """get compass direction from pos to furthest edge"""
-        return self._gen_compass_get_opposite(self._gen_get_dir_and_dist_to_closest_edge(self, pos))
+        return self._gen_compass_opposite(self._gen_get_dir_to_closest_edge(self, pos))
 
     def _gen_get_available_dist(self, pos, direction):
         """get distance from pos to edge in direction"""
@@ -698,7 +707,7 @@ class TypeAMap(Map):
         """calculate principal direction to travel in to get from pos to pos.
         if pos_to omitted, direction to get to map bounds"""
         if pos_to is None:
-            pos_to = self.map.size
+            pos_to = self.size
         v = pos_to - pos_from
 
         length = abs(v.x)
@@ -717,13 +726,17 @@ class TypeAMap(Map):
         """Random unoccupied Position() within <border_min/_max> tiles of map edge <edge>"""
         p = None
         if   edge == 'N':
-            p = Position(libtcod.random_get_int(self.map_rng, border_min, self.size.x - border_min - 1), libtcod.random_get_int(self.map_rng, border_min, border_max))
+            p = Position(libtcod.random_get_int(self.map_rng, border_min, self.size.x - border_min - 1),
+                         libtcod.random_get_int(self.map_rng, border_min, border_max))
         elif edge == 'S':
-            p = Position(libtcod.random_get_int(self.map_rng, border_min, self.size.x - border_min - 1), self.size.y - libtcod.random_get_int(self.map_rng, border_min, border_max) - 1)
+            p = Position(libtcod.random_get_int(self.map_rng, border_min, self.size.x - border_min - 1),
+                         self.size.y - libtcod.random_get_int(self.map_rng, border_min, border_max) - 1)
         elif edge == 'W':
-            p = Position(libtcod.random_get_int(self.map_rng, border_min, border_max), libtcod.random_get_int(self.map_rng, border_min, self.size.y - border_min - 1))
+            p = Position(libtcod.random_get_int(self.map_rng, border_min, border_max),
+                         libtcod.random_get_int(self.map_rng, border_min, self.size.y - border_min - 1))
         elif edge == 'E':
-            p = Position( self.size.x - libtcod.random_get_int(self.map_rng, border_min, border_max), libtcod.random_get_int(self.map_rng, border_min, self.size.y - border_min - 1))
+            p = Position( self.size.x - libtcod.random_get_int(self.map_rng, border_min, border_max),
+                          libtcod.random_get_int(self.map_rng, border_min, self.size.y - border_min - 1))
         else:
             assert False, "_gen_get_edge_tile called with invalid edge %s" % edge
 
@@ -751,16 +764,16 @@ class TypeAMap(Map):
         # 6444435         x++
         # 6666665         d = opposite(d)
         #
-        
+
         #  55.......       .......
         #  53333       86N5555579
         #  53114       86n3114s79
         #  53^24       86n3^24s79
         #  52224       86n2224s79
         #  44444       8644444s79
-        #              8666666s79 
+        #              8666666s79
         #              8888888879
-        #                         
+        #
 
         # no N/S bound set, increment N/S step every other turn
         # one N/S bound set, increment N/S step every 4th turn
@@ -769,31 +782,30 @@ class TypeAMap(Map):
         # one E/W bound set, increment E/W step every 4th turn
         # both E/W bounds set, don't increment
 
-        #    ''          ''        4ee''          ''             ''             ''      
-        #   3ccc        3ccc       4           N              NeeeE          NeeeE     
-        #   31a4'''     31a4'''    4    '''    4    '''       4    '''           4'''  
-        #'  3^24  '  '  3^24  '  ' 4 ^    '  ' 4 x    '     ' 4 x    '     '   x 4  '  
-        #   bb24  '     bb2S  '    ddddS  '    ddddS  '           S  '     fWffffS  '  
-        #  ''dd4       ''          ''          ''             ''             ''        
-        #                              
+        #    ''          ''        4ee''          ''             ''             ''
+        #   3ccc        3ccc       4           N              NeeeE          NeeeE
+        #   31a4'''     31a4'''    4    '''    4    '''       4    '''           4'''
+        #'  3^24  '  '  3^24  '  ' 4 ^    '  ' 4 x    '     ' 4 x    '     '   x 4  '
+        #   bb24  '     bb2S  '    ddddS  '    ddddS  '           S  '     fWffffS  '
+        #  ''dd4       ''          ''          ''             ''             ''
+        #
         #               S           S          NS             NSE
 
-        #        '''''                      '         '                                
-        #          ||Neeeeegi              3c!         '                               
-        #          ||531a45||              31a'      Ncc!                              
-        #         '||53^245||              3^2 '     3^2 '                             
-        #         |||5bb245||              bb2  '    bb2  '                            
-        #         jhffffffS||                                                          
-        #         '''''                                                                
+        #        '''''                      '         '                      
+        #          ||Neeeeegi              3c!         '
+        #          ||531a45||              31a'      Ncc!
+        #         '||53^245||              3^2 '     3^2 '
+        #         |||5bb245||              bb2  '    bb2  '
+        #         jhffffffS||
+        #         '''''
 
-        #                                                                              
-        #           '             3cEc                                                 
-        #        3cEc'            31a4  '                                              
-        #        31a'             3^24 '                                               
-        #        3^2              bb24'                                                
-        #        bb2                 !                                                 
-        #                           '                                                  
-
+        #
+        #           '             3cEc
+        #        3cEc'            31a4  '
+        #        31a'             3^24 '
+        #        3^2              bb24'
+        #        bb2                 !
+        #                           '
 
         # sanity
         if self._map[opos.x][opos.y] > 0:
@@ -803,7 +815,8 @@ class TypeAMap(Map):
         length    = 0
         pos       = Position(opos.x, opos.y)
         size      = Position(0, 0)
-        bounds    = {'N':self.BOUNDARY_UNSET, 'S':self.BOUNDARY_UNSET, 'E':self.BOUNDARY_UNSET, 'W':self.BOUNDARY_UNSET}
+        bounds    = {'N': self.BOUNDARY_UNSET, 'S': self.BOUNDARY_UNSET,
+                     'E': self.BOUNDARY_UNSET, 'W': self.BOUNDARY_UNSET}
         r_segs    = []
         sanity    = 0
 
@@ -841,17 +854,23 @@ class TypeAMap(Map):
                         if (x == target_pos.x and y == target_pos.y):
                             # hit at end of edge; don't need to rewind direction
                             target_pos -= self._gen_pos_from_dir(direction, 1)
-                            
+
                             # if we've already hit this edge, don't reset boundary
                             if bounds[direction] != self.BOUNDARY_UNSET:
-                                self.debug_print("    end hit %d ignored at (%d,%d) size=%s; target now %s" % (self._map[x][y], x, y, size, target_pos))
+                                self.debug_print("    end hit %d ignored at (%d,%d) size=%s; target now %s" % (
+                                        self._map[x][y], x, y, size, target_pos))
                                 found = True
                                 break
-                            self.debug_print("    end hit %d at (%d,%d) size=%s; target now %s" % (self._map[x][y], x, y, size, target_pos))
+                            self.debug_print("    end hit %d at (%d,%d) size=%s; target now %s" % (
+                                    self._map[x][y], x, y, size, target_pos))
 
                             #  * put a door at collision point
-                            self.debug_print("    Door added in corner at %s" % (target_pos + self._gen_pos_from_dir(self._gen_get_compass_right(direction), 1)))
-                            r_segs.append(self._ME(MapPattern.DOOR, target_pos + self._gen_pos_from_dir(self._gen_get_compass_right(direction), 1), Position(1, 1), Position(x, y)))
+                            self.debug_print("    Door added in corner at %s" % (
+                                    target_pos + self._gen_pos_from_dir(self._gen_get_compass_right(direction), 1)))
+                            r_segs.append(self._ME(MapPattern.DOOR, target_pos + \
+                                                       self._gen_pos_from_dir(self._gen_get_compass_right(direction), 1),
+                                                   Position(1, 1),
+                                                   Position(x, y)))
                             t = self._gen_get_compass_left(direction)
                             if bounds[t] == self.BOUNDARY_UNSET:
                                 if t in ('N', 'S'):
@@ -861,7 +880,8 @@ class TypeAMap(Map):
 
                         elif bounds[self._gen_get_compass_left(direction)] != self.BOUNDARY_UNSET:
                             target_pos -= self._gen_pos_from_dir(direction, 1)
-                            self.debug_print("        hit %d ignored at (%d,%d) size=%s; target now %s" % (self._map[x][y], x, y, size, target_pos))
+                            self.debug_print("        hit %d ignored at (%d,%d) size=%s; target now %s" % (
+                                    self._map[x][y], x, y, size, target_pos))
 
                             if bounds[direction] != self.BOUNDARY_UNSET:
                                 found = True
@@ -981,7 +1001,7 @@ class TypeAMap(Map):
         #       * one central light
         elif light_roll < 0.9:
             p = pos + (size.x // 2, size.y // 2)
-            self.debug_print("light at %s in corridor %s %s %s" % (p,pos, size, width))
+            self.debug_print("light at %s in corridor %s %s %s" % (p, pos, size, width))
             r_segs.insert(0, self._ME(MapPattern.LIGHT, p, (1, 1), p, 'N', 0))
         #       * light at each end
         #elif light_roll < 0.8:
@@ -1119,8 +1139,9 @@ class TypeAMap(Map):
         #    * choose random length and termination points
         #    * choose random number of bends
         #    * plot corridor
-        main_len = reduce(lambda a, b: a + b.length,corridors, 0)
-        used_len = 0; index_len = 0
+        main_len = reduce(lambda a, b: a + b.length, corridors, 0)
+        used_len = 0
+        index_len = 0
         c_idx = 0
         sanity = 0
         while used_len < main_len:
@@ -1201,7 +1222,8 @@ class TypeAMap(Map):
 
                 elif t & MapPattern.DOOR:
                     # only draw door if exactly two tiles in compass directions are walkable
-                    m_ns = 0; m_ew = 0
+                    m_ns = 0
+                    m_ew = 0
                     if y > 0 and y < self.size.y - 1:
                         n = self._map[x][y - 1]
                         s = self._map[x][y + 1]
