@@ -123,7 +123,7 @@ class Map:
 
     def find_nearest(self, obj, otype, layer=None, must_be_visible=True):
         """find nearest thing of type otype to obj. Can limit by map layer and whether visible (i.e. drawn)"""
-        # TODO: match arg order with find_within_r
+        # TODO: match arg order with find_within_r and find_all
         r = 10000000 # safely larger than the map
         ro = None
 
