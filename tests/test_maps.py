@@ -14,6 +14,7 @@ import items
 import interfaces
 import maps
 import player
+import monsters
 import tiles
 import errors
 import ui
@@ -22,57 +23,189 @@ class MapsTest(DalekTest):
     pass
 
 class MapTest(MapsTest):
-    @nottest
+    def setUp(self):
+        self.player = Mock(spec_set=player.Player)
+        self.map    = maps.Map(None,interfaces.Position(3,3),self.player)
+
     def test_should_add_obj_to_correct_layer_if_not_given(self):
-        pass
+        p = interfaces.Position(1,1)
+        for (o, layer) in (
+            (tiles.Wall(p), tiles.Tile),
+            (tiles.EvidencePanel(p), tiles.Tile),
+            (monsters.Dalek(p), monsters.Monster),
+            (monsters.StaticCamera(p), monsters.Monster),
+            (items.HandTeleport(p,1.0), items.Item),
+            (items.RemoteControl(p,1.0), items.Item),
+            ):
+            assert_is(self.map.add(o),None)
 
-    @nottest
+            assert_is(self.map.find_at_pos(p,layer),o)
+            assert_is(o.map,self.map)
+
+            assert_is(self.map.remove(o),None)
+            assert_is(self.map.find_at_pos(p,layer),None)
+
     def test_should_add_obj_to_given_layer(self):
-        pass
+        p = interfaces.Position(1,1)
+        for (o, layer) in (
+            (tiles.Wall(p), tiles.Tile),
+            (tiles.EvidencePanel(p), tiles.Tile),
+            (monsters.Dalek(p), monsters.Monster),
+            (monsters.StaticCamera(p), monsters.Monster),
+            (items.HandTeleport(p,1.0), items.Item),
+            (items.RemoteControl(p,1.0), items.Item),
+            ):
 
-    @nottest
-    def test_should_add_link_to_map_on_mappable(self):
-        pass
+            assert_is(self.map.add(o,layer),None)
 
-    @nottest
+            assert_is(o.map,self.map)
+            assert_is(self.map.find_at_pos(p,layer),o)
+
+            assert_is(self.map.remove(o,layer),None)
+            assert_is(self.map.find_at_pos(p,layer),None)
+
     def test_should_not_add_if_not_mappable(self):
-        pass
+        p = interfaces.Position(1,1)
+        assert_raises(AssertionError, self.map.add, self, p)
 
-    @nottest
     def test_should_remove_obj_from_given_layer(self):
-        pass
+        # almost exactly the same
+        p = interfaces.Position(1,1)
+        for (o, layer) in (
+            (tiles.Wall(p), tiles.Tile),
+            (tiles.EvidencePanel(p), tiles.Tile),
+            (monsters.Dalek(p), monsters.Monster),
+            (monsters.StaticCamera(p), monsters.Monster),
+            (items.HandTeleport(p,1.0), items.Item),
+            (items.RemoteControl(p,1.0), items.Item),
+            ):
 
-    @nottest
+            assert_is(self.map.add(o,layer),None)
+            assert_is(o.map,self.map)
+            assert_is(self.map.find_at_pos(p,layer),o)
+
+            assert_is(self.map.remove(o,layer),None)
+
+            assert_is(o.pos,None)
+            assert_is(self.map.find_at_pos(p,layer),None)
+
     def test_should_remove_obj_from_correct_layer_if_not_given(self):
-        pass
+        # repeat of test above
+        p = interfaces.Position(1,1)
+        for (o, layer) in (
+            (tiles.Wall(p), tiles.Tile),
+            (tiles.EvidencePanel(p), tiles.Tile),
+            (monsters.Dalek(p), monsters.Monster),
+            (monsters.StaticCamera(p), monsters.Monster),
+            (items.HandTeleport(p,1.0), items.Item),
+            (items.RemoteControl(p,1.0), items.Item),
+            ):
 
-    @nottest
+            assert_is(self.map.add(o,layer),None)
+            assert_is(o.map,self.map)
+            assert_is(self.map.find_at_pos(p,layer),o)
+
+            assert_is(self.map.remove(o),None)
+
+            assert_is(o.pos,None)
+            assert_is(self.map.find_at_pos(p,layer),None)
+
     def test_should_prevent_removal_of_obj_not_on_map(self):
-        pass
+        p = interfaces.Position(1,1)
+        o = tiles.Wall(p)
+        assert_raises(AssertionError, self.map.remove, o)
 
-    @nottest
-    def test_should_remove_link_to_mappable(self):
-        pass
+    def test_should_prevent_movement_when_not_added_to_map(self):
+        p = interfaces.Position(1,1)
+        o = tiles.Wall(p)
 
-    @nottest
-    def test_should_only_permit_movement_of_mappables(self):
-        pass
+        assert_raises(AssertionError, self.map.move, o, p+(1,1))
 
-    @nottest
     def test_should_prevent_movement_outside_of_map_bounds(self):
-        pass
+        p = interfaces.Position(1,1)
+        o = tiles.Wall(p)
+        assert_is(self.map.add(o),None)
 
-    @nottest
+        for (x,y) in (
+            (-1,0),
+            (9,9),
+            (-1,9),
+            ):
+            m = interfaces.Position(x,y)
+            assert_raises(errors.InvalidMoveError,self.map.move,o,m)
+
     def test_should_use_layer_parameter_if_given(self):
-        pass
+        p = interfaces.Position(1,1)
+        p1 = p + (1,1)
+        for (o, layer) in (
+            (tiles.Wall(p), tiles.Tile),
+            (tiles.EvidencePanel(p), tiles.Tile),
+            (monsters.Dalek(p), monsters.Monster),
+            (monsters.StaticCamera(p), monsters.Monster),
+            (items.HandTeleport(p,1.0), items.Item),
+            (items.RemoteControl(p,1.0), items.Item),
+            ):
+            assert_is(self.map.add(o,layer),None)
 
-    @nottest
+            assert_equal(self.map.move(o,p1,layer),0.0)
+
+            assert_is(o.map,self.map)
+            assert_is(self.map.find_at_pos(p,layer),None)
+            assert_is(self.map.find_at_pos(p1,layer),o)
+            assert_equal(o.pos,p1)
+
+            assert_is(self.map.remove(o,layer),None)
+            assert_is(self.map.find_at_pos(p,layer),None)        
+
     def test_should_call_try_leaving_on_traversables_at_current_pos(self):
-        pass
+        p = interfaces.Position(1,1)
+        p1 = p + (1,0)
+        ts = [
+            Mock(spec = tiles.Floor),
+            Mock(spec = tiles.Floor),
+            ]
+        o = monsters.Dalek(p)
+        for t in ts:
+            t.pos = p
+            t.try_leaving = Mock(return_value=True)
+            self.map.add(t)
+        self.map.add(o)
 
-    @nottest
+        t1 = Mock(spec=tiles.Floor)
+        t1.pos = p1
+        t1.try_movement = Mock(return_value=1.0)
+        self.map.add(t1)
+
+        assert_equal(self.map.move(o,p1),1.0)
+
+        for t in ts:
+            t.try_leaving.assert_called_once_with(o)
+        assert_equal(t1.try_leaving.call_count,0)
+
     def test_should_call_try_movement_on_all_traversables_at_destination_pos(self):
-        pass
+        p = interfaces.Position(1,1)
+        p1 = p + (1,0)
+        ts = [
+            Mock(spec = tiles.Floor),
+            Mock(spec = tiles.Floor),
+            ]
+        o = monsters.Dalek(p)
+        for t in ts:
+            t.pos = p1
+            t.try_movement = Mock(return_value=1.0)
+            self.map.add(t)
+        self.map.add(o)
+
+        t1 = Mock(spec=tiles.Floor)
+        t1.pos = p
+        t1.try_leaving = Mock(return_value=True)
+        self.map.add(t1)
+
+        assert_equal(self.map.move(o,p1),2.0)
+
+        for t in ts:
+            t.try_movement.assert_called_once_with(o)
+        assert_equal(t1.try_movement.call_count,0)
 
     @nottest
     def test_should_fail_if_obj_pos_data_out_of_sync_with_map(self):

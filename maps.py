@@ -26,7 +26,10 @@ class Map:
             Item: {},
             Tile: {},
             }
-        self.map_rng = libtcod.random_new_from_seed(seed)
+        if seed is None:
+            self.map_rng = None
+        else:
+            self.map_rng = libtcod.random_new_from_seed(seed)
         self.size = size
         self.__tcod_map_empty             = libtcod.map_new(self.size.x, self.size.y) # for xray, audio, ghosts(?)
         libtcod.map_clear(self.__tcod_map_empty, True, True)               # clear the map to be traversable and visible
@@ -65,11 +68,13 @@ class Map:
         if len(self.__layers[layer][obj.pos]) == 0:
             del self.__layers[layer][obj.pos]
         obj.map = None
+        obj.pos = None
 
     def move(self, obj, pos, layer=None):
         """move object obj on map to position pos. Provide correct layer for more efficient calculation.
         NB. setting a Mappable's pos directly will break stuff."""
         assert isinstance(obj, Mappable), "%s cannot appear on map" % obj
+        assert not obj.map is None, "%s not added to map" % obj
         r = 0.0
 
         # check that destination is within map bounds
@@ -167,7 +172,7 @@ class Map:
             layers = self.__layer_order
 
         for l in layers:
-            if pos in self.__layers[l].keys():
+            if pos in self.__layers[l].keys() and len(self.__layers[l][pos])>0:
                 return self.__layers[l][pos][0]
 
         return None
@@ -370,7 +375,8 @@ class Map:
     def close(self):
         """close map (prior to deletion)"""
         #libtcod.path_delete(self.__tcod_pathfinder)
-        libtcod.dijkstra_delete(self.__tcod_pathfinder)
+        if not self.__tcod_pathfinder is None:
+            libtcod.dijkstra_delete(self.__tcod_pathfinder)
         libtcod.map_delete(self.__tcod_map)
         libtcod.map_delete(self.__tcod_map_empty)
         libtcod.console_delete(self.__tcod_static_light_console)
